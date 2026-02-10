@@ -462,48 +462,38 @@ export function MCPPanel() {
             </div>
           )}
 
-          {/* Popular servers */}
-          <div
-            style={{
-              paddingTop: '16px',
-              borderTop: '1px solid var(--vscode-panel-border)',
-            }}
-          >
-            <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '10px', opacity: 0.7 }}>
-              Popular Servers
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {POPULAR_SERVERS.map((server) => {
-                const isInstalled = server.name in servers
-                return (
+          {/* Popular servers - hide installed ones */}
+          {POPULAR_SERVERS.filter((s) => !(s.name in servers)).length > 0 && (
+            <div
+              style={{
+                paddingTop: '16px',
+                borderTop: '1px solid var(--vscode-panel-border)',
+              }}
+            >
+              <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '10px', opacity: 0.7 }}>
+                Popular Servers
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {POPULAR_SERVERS.filter((s) => !(s.name in servers)).map((server) => (
                   <button
                     key={server.name}
                     onClick={() => handleQuickAdd(server)}
-                    disabled={isInstalled}
                     className="text-left cursor-pointer border-none text-inherit"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '10px',
                       padding: '8px 12px',
-                      background: isInstalled ? 'rgba(0, 210, 106, 0.05)' : 'transparent',
-                      border: isInstalled
-                        ? '1px solid rgba(0, 210, 106, 0.2)'
-                        : '1px solid transparent',
+                      background: 'transparent',
+                      border: '1px solid transparent',
                       borderRadius: 'var(--radius-md)',
                       transition: 'all 0.15s ease',
-                      opacity: isInstalled ? 0.6 : 1,
-                      cursor: isInstalled ? 'default' : 'pointer',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isInstalled) {
-                        e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                      }
+                      e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
                     }}
                     onMouseLeave={(e) => {
-                      if (!isInstalled) {
-                        e.currentTarget.style.background = 'transparent'
-                      }
+                      e.currentTarget.style.background = 'transparent'
                     }}
                   >
                     <span style={{ fontSize: '16px', minWidth: '24px', textAlign: 'center' }}>
@@ -515,20 +505,14 @@ export function MCPPanel() {
                         {server.description}
                       </div>
                     </div>
-                    {isInstalled ? (
-                      <span style={{ fontSize: '10px', color: 'rgba(0, 210, 106, 0.8)', fontWeight: 500 }}>
-                        Installed
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '10px', color: 'var(--chatui-accent)', fontWeight: 500, opacity: 0.7 }}>
-                        + Add
-                      </span>
-                    )}
+                    <span style={{ fontSize: '10px', color: 'var(--chatui-accent)', fontWeight: 500, opacity: 0.7 }}>
+                      + Add
+                    </span>
                   </button>
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
