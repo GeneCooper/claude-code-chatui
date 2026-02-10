@@ -33,7 +33,7 @@ export default function App() {
       )}
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
-      {activeView === 'mcp' && <MCPPanel />}
+      <MCPPanel />
     </div>
   )
 }

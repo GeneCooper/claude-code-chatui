@@ -436,7 +436,7 @@ export function InputArea() {
 
             {/* MCP button */}
             <button
-              onClick={() => useUIStore.getState().setActiveView('mcp')}
+              onClick={() => useUIStore.getState().setShowMCPModal(true)}
               className="cursor-pointer border-none"
               style={{
                 background: 'transparent',

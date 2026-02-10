@@ -5,44 +5,19 @@ import { useUIStore } from '../stores/uiStore'
 
 const POPULAR_SERVERS = [
   {
-    name: 'filesystem',
-    description: 'Read/write local files',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
-    icon: '\uD83D\uDCC1',
+    name: 'context7',
+    description: 'Up-to-date library docs',
+    type: 'http' as const,
+    url: 'https://context7.liam.sh/mcp',
+    icon: '📚',
   },
   {
-    name: 'github',
-    description: 'GitHub API access',
+    name: 'sequential-thinking',
+    description: 'Step-by-step reasoning',
     type: 'stdio' as const,
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-github'],
-    icon: '\uD83D\uDC19',
-  },
-  {
-    name: 'postgres',
-    description: 'PostgreSQL database',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost/mydb'],
-    icon: '\uD83D\uDDC4\uFE0F',
-  },
-  {
-    name: 'brave-search',
-    description: 'Brave web search',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-brave-search'],
-    icon: '\uD83D\uDD0D',
-  },
-  {
-    name: 'puppeteer',
-    description: 'Browser automation',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-puppeteer'],
-    icon: '\uD83C\uDFAD',
+    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+    icon: '🧠',
   },
   {
     name: 'memory',
@@ -50,14 +25,40 @@ const POPULAR_SERVERS = [
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-memory'],
-    icon: '\uD83E\udDE0',
+    icon: '💾',
+  },
+  {
+    name: 'puppeteer',
+    description: 'Browser automation',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-puppeteer'],
+    icon: '🎭',
+  },
+  {
+    name: 'fetch',
+    description: 'HTTP fetch requests',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-fetch'],
+    icon: '🌐',
+  },
+  {
+    name: 'filesystem',
+    description: 'Read/write local files',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
+    icon: '📁',
   },
 ]
 
 export function MCPPanel() {
+  const show = useUIStore((s) => s.showMCPModal)
+  const setShow = useUIStore((s) => s.setShowMCPModal)
   const { servers, editingServer } = useMCPStore()
-  const setActiveView = useUIStore((s) => s.setActiveView)
 
+  const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [serverType, setServerType] = useState<'stdio' | 'http' | 'sse'>('stdio')
   const [command, setCommand] = useState('')
@@ -65,10 +66,9 @@ export function MCPPanel() {
   const [args, setArgs] = useState('')
 
   useEffect(() => {
-    postMessage({ type: 'loadMCPServers' })
-  }, [])
+    if (show) postMessage({ type: 'loadMCPServers' })
+  }, [show])
 
-  // Populate form when editing
   useEffect(() => {
     if (editingServer && servers[editingServer]) {
       const config = servers[editingServer]
@@ -77,6 +77,7 @@ export function MCPPanel() {
       setCommand(config.command || '')
       setUrl(config.url || '')
       setArgs(config.args?.join(' ') || '')
+      setShowForm(true)
     }
   }, [editingServer, servers])
 
@@ -86,12 +87,12 @@ export function MCPPanel() {
     setCommand('')
     setUrl('')
     setArgs('')
+    setShowForm(false)
     useMCPStore.getState().setEditingServer(null)
   }
 
   const handleSave = () => {
     if (!name.trim()) return
-
     const config: Record<string, unknown> = { type: serverType }
     if (serverType === 'stdio') {
       config.command = command
@@ -99,7 +100,6 @@ export function MCPPanel() {
     } else {
       config.url = url
     }
-
     postMessage({ type: 'saveMCPServer', name: name.trim(), config })
     resetForm()
   }
@@ -108,13 +108,24 @@ export function MCPPanel() {
     postMessage({ type: 'deleteMCPServer', name: serverName })
   }
 
-  const handleQuickAdd = (server: typeof POPULAR_SERVERS[number]) => {
-    setName(server.name)
-    setServerType(server.type)
-    setCommand(server.command)
-    setArgs(server.args.join(' '))
-    setUrl('')
+  const handleQuickAdd = (server: (typeof POPULAR_SERVERS)[number]) => {
+    if (server.name in servers) return
+    const config: Record<string, unknown> = { type: server.type }
+    if (server.type === 'stdio') {
+      config.command = server.command
+      config.args = server.args
+    } else {
+      config.url = (server as { url?: string }).url
+    }
+    postMessage({ type: 'saveMCPServer', name: server.name, config })
   }
+
+  const handleClose = () => {
+    setShow(false)
+    resetForm()
+  }
+
+  if (!show) return null
 
   const serverEntries = Object.entries(servers)
 
@@ -132,331 +143,391 @@ export function MCPPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
+    >
       <div
-        className="flex items-center justify-between"
         style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--vscode-panel-border)',
+          backgroundColor: 'var(--vscode-editor-background)',
+          border: '1px solid var(--vscode-panel-border)',
+          borderRadius: 'var(--radius-lg)',
+          width: 'calc(100% - 32px)',
+          maxWidth: '480px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          animation: 'installFadeIn 0.2s ease-out',
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: '16px' }}>MCP Servers</span>
-        <button
-          onClick={() => setActiveView('chat')}
-          className="cursor-pointer bg-transparent border-none text-inherit"
-          style={{
-            fontSize: '13px',
-            opacity: 0.6,
-            transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
-        >
-          {'\u2190'} Back to Chat
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto" style={{ padding: '16px' }}>
-        {/* Server list */}
-        {serverEntries.length > 0 ? (
-          <div>
-            {serverEntries.map(([sName, config]) => (
-              <div
-                key={sName}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '20px 24px',
-                  border: '1px solid var(--vscode-panel-border)',
-                  borderRadius: 'var(--radius-md)',
-                  marginBottom: '16px',
-                  backgroundColor: 'var(--vscode-editor-background)',
-                  transition: 'all 0.2s ease',
-                  cursor: 'default',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '8px' }}>
-                    {sName}
-                  </div>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      backgroundColor: 'var(--vscode-badge-background)',
-                      color: 'var(--vscode-badge-foreground)',
-                      padding: '4px 8px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '11px',
-                      fontWeight: 500,
-                      marginBottom: '8px',
-                    }}
-                  >
-                    {config.type}
-                  </span>
-                  <div style={{ fontSize: '13px', color: 'var(--vscode-descriptionForeground)', opacity: 0.9, lineHeight: 1.4 }}>
-                    {config.type === 'stdio' ? config.command : config.url}
-                  </div>
-                </div>
-                <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                  <button
-                    onClick={() => useMCPStore.getState().setEditingServer(sName)}
-                    className="cursor-pointer"
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '13px',
-                      color: 'var(--vscode-foreground)',
-                      border: '1px solid var(--vscode-panel-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'transparent',
-                      minWidth: '80px',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                      e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(sName)}
-                    className="cursor-pointer"
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '13px',
-                      color: 'var(--vscode-errorForeground)',
-                      border: '1px solid var(--vscode-errorForeground)',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'transparent',
-                      minWidth: '80px',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--vscode-inputValidation-errorBackground, rgba(231, 76, 60, 0.1))'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent'
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', color: 'var(--vscode-descriptionForeground)', fontStyle: 'italic', padding: '40px 20px' }}>
-            No MCP servers configured
-          </div>
-        )}
-
-        {/* Add/Edit form */}
+        {/* Header */}
         <div
           style={{
-            backgroundColor: 'var(--vscode-editor-background)',
-            border: '1px solid var(--vscode-panel-border)',
-            borderRadius: 'var(--radius-md)',
-            padding: '24px',
-            marginBottom: '24px',
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--vscode-panel-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexShrink: 0,
           }}
         >
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '13px' }}>
-              {editingServer ? `Edit: ${editingServer}` : 'Add Server'}
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Server name"
-              disabled={!!editingServer}
-              style={{ ...inputStyle, opacity: editingServer ? 0.5 : 1 }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'; e.currentTarget.style.boxShadow = '0 0 0 1px var(--vscode-focusBorder)' }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-input-border)'; e.currentTarget.style.boxShadow = 'none' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '13px' }}>
-              Type
-            </label>
-            <select
-              value={serverType}
-              onChange={(e) => setServerType(e.target.value as 'stdio' | 'http' | 'sse')}
-              style={inputStyle}
-              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)' }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-input-border)' }}
-            >
-              <option value="stdio">stdio</option>
-              <option value="http">http</option>
-              <option value="sse">sse</option>
-            </select>
-          </div>
-
-          {serverType === 'stdio' ? (
-            <>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '13px' }}>
-                  Command
-                </label>
-                <input
-                  value={command}
-                  onChange={(e) => setCommand(e.target.value)}
-                  placeholder="e.g. npx -y @modelcontextprotocol/server-filesystem"
-                  style={inputStyle}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'; e.currentTarget.style.boxShadow = '0 0 0 1px var(--vscode-focusBorder)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-input-border)'; e.currentTarget.style.boxShadow = 'none' }}
-                />
-              </div>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '13px' }}>
-                  Arguments
-                </label>
-                <input
-                  value={args}
-                  onChange={(e) => setArgs(e.target.value)}
-                  placeholder="Space separated arguments"
-                  style={inputStyle}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'; e.currentTarget.style.boxShadow = '0 0 0 1px var(--vscode-focusBorder)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-input-border)'; e.currentTarget.style.boxShadow = 'none' }}
-                />
-              </div>
-            </>
-          ) : (
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '13px' }}>
-                URL
-              </label>
-              <input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="e.g. http://localhost:3000/mcp"
-                style={inputStyle}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'; e.currentTarget.style.boxShadow = '0 0 0 1px var(--vscode-focusBorder)' }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-input-border)'; e.currentTarget.style.boxShadow = 'none' }}
-              />
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
-            {editingServer && (
-              <button
-                onClick={resetForm}
-                className="cursor-pointer"
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'transparent',
-                  border: '1px solid var(--vscode-panel-border)',
-                  color: 'inherit',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              >
-                Cancel
-              </button>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={!name.trim()}
-              className="cursor-pointer"
-              style={{
-                padding: '8px 16px',
-                fontSize: '13px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--vscode-button-background)',
-                color: 'var(--vscode-button-foreground)',
-                border: 'none',
-                opacity: name.trim() ? 1 : 0.5,
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => { if (name.trim()) e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--vscode-button-background)' }}
-            >
-              {editingServer ? 'Update' : 'Add Server'}
-            </button>
-          </div>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>MCP Servers</span>
+          <button
+            onClick={handleClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--vscode-foreground)',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '4px',
+              opacity: 0.6,
+            }}
+          >
+            {'\u2715'}
+          </button>
         </div>
 
-        {/* Popular servers */}
-        <div
-          style={{
-            marginTop: '32px',
-            paddingTop: '24px',
-            borderTop: '1px solid var(--vscode-panel-border)',
-          }}
-        >
-          <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600, opacity: 0.9 }}>
-            Popular Servers
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {POPULAR_SERVERS.map((server) => {
-              const isInstalled = server.name in servers
-              return (
-                <button
-                  key={server.name}
-                  onClick={() => !isInstalled && handleQuickAdd(server)}
-                  disabled={isInstalled}
-                  className="text-left cursor-pointer border-none text-inherit"
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          {/* Configured servers */}
+          {serverEntries.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              {serverEntries.map(([sName, config]) => (
+                <div
+                  key={sName}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 12px',
-                    background: isInstalled ? 'rgba(0, 210, 106, 0.05)' : 'rgba(128, 128, 128, 0.04)',
-                    border: isInstalled
-                      ? '1px solid rgba(0, 210, 106, 0.3)'
-                      : '1px solid var(--vscode-panel-border)',
+                    justifyContent: 'space-between',
+                    padding: '14px 16px',
+                    border: '1px solid var(--vscode-panel-border)',
                     borderRadius: 'var(--radius-md)',
+                    marginBottom: '8px',
+                    backgroundColor: 'rgba(128, 128, 128, 0.04)',
                     transition: 'all 0.2s ease',
-                    opacity: isInstalled ? 0.6 : 1,
-                    cursor: isInstalled ? 'default' : 'pointer',
                   }}
                   onMouseEnter={(e) => {
-                    if (!isInstalled) {
-                      e.currentTarget.style.borderColor = 'var(--chatui-accent)'
-                      e.currentTarget.style.background = 'rgba(237, 110, 29, 0.06)'
-                    }
+                    e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'
                   }}
                   onMouseLeave={(e) => {
-                    if (!isInstalled) {
-                      e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
-                      e.currentTarget.style.background = 'rgba(128, 128, 128, 0.04)'
-                    }
+                    e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
-                  <span style={{ fontSize: '20px', minWidth: '32px', textAlign: 'center' }}>
-                    {server.icon}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, fontSize: '13px' }}>{server.name}</div>
-                    <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>
-                      {server.description}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+                      {sName}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          backgroundColor: 'var(--vscode-badge-background)',
+                          color: 'var(--vscode-badge-foreground)',
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '10px',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {config.type}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: 'var(--vscode-descriptionForeground)',
+                          opacity: 0.7,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {config.type === 'stdio' ? config.command : config.url}
+                      </span>
                     </div>
                   </div>
-                  {isInstalled && (
-                    <span style={{ fontSize: '11px', color: 'rgba(0, 210, 106, 0.8)', fontWeight: 500 }}>
-                      Installed
-                    </span>
-                  )}
+                  <div className="flex gap-1.5" style={{ flexShrink: 0, marginLeft: '12px' }}>
+                    <button
+                      onClick={() => useMCPStore.getState().setEditingServer(sName)}
+                      className="cursor-pointer"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        color: 'var(--vscode-foreground)',
+                        border: '1px solid var(--vscode-panel-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'transparent',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                        e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(sName)}
+                      className="cursor-pointer"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        color: 'var(--vscode-errorForeground)',
+                        border: '1px solid var(--vscode-errorForeground)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'transparent',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add server button */}
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="w-full cursor-pointer"
+              style={{
+                padding: '10px',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--chatui-accent)',
+                border: '1px dashed var(--chatui-accent)',
+                borderRadius: 'var(--radius-md)',
+                background: 'transparent',
+                transition: 'all 0.2s ease',
+                marginBottom: '20px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(237, 110, 29, 0.06)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              + Add MCP Server
+            </button>
+          )}
+
+          {/* Add/Edit form */}
+          {showForm && (
+            <div
+              style={{
+                border: '1px solid var(--vscode-panel-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px',
+                marginBottom: '20px',
+                backgroundColor: 'rgba(128, 128, 128, 0.04)',
+              }}
+            >
+              <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '14px', opacity: 0.8 }}>
+                {editingServer ? `Edit: ${editingServer}` : 'New Server'}
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
+                  Name
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="my-server"
+                  disabled={!!editingServer}
+                  style={{ ...inputStyle, opacity: editingServer ? 0.5 : 1 }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
+                  Type
+                </label>
+                <select
+                  value={serverType}
+                  onChange={(e) => setServerType(e.target.value as 'stdio' | 'http' | 'sse')}
+                  style={inputStyle}
+                >
+                  <option value="stdio">stdio</option>
+                  <option value="http">HTTP</option>
+                  <option value="sse">SSE</option>
+                </select>
+              </div>
+
+              {serverType === 'stdio' ? (
+                <>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
+                      Command
+                    </label>
+                    <input
+                      value={command}
+                      onChange={(e) => setCommand(e.target.value)}
+                      placeholder="npx -y @modelcontextprotocol/server-xxx"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
+                      Arguments (space separated)
+                    </label>
+                    <input
+                      value={args}
+                      onChange={(e) => setArgs(e.target.value)}
+                      placeholder="/path/to/dir --flag value"
+                      style={inputStyle}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
+                    URL
+                  </label>
+                  <input
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://example.com/mcp"
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
+                <button
+                  onClick={resetForm}
+                  className="cursor-pointer"
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'transparent',
+                    border: '1px solid var(--vscode-panel-border)',
+                    color: 'inherit',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  Cancel
                 </button>
-              )
-            })}
+                <button
+                  onClick={handleSave}
+                  disabled={!name.trim()}
+                  className="cursor-pointer"
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--vscode-button-background)',
+                    color: 'var(--vscode-button-foreground)',
+                    border: 'none',
+                    opacity: name.trim() ? 1 : 0.5,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { if (name.trim()) e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--vscode-button-background)' }}
+                >
+                  {editingServer ? 'Update' : 'Add'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Popular servers */}
+          <div
+            style={{
+              paddingTop: '16px',
+              borderTop: '1px solid var(--vscode-panel-border)',
+            }}
+          >
+            <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '10px', opacity: 0.7 }}>
+              Popular Servers
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {POPULAR_SERVERS.map((server) => {
+                const isInstalled = server.name in servers
+                return (
+                  <button
+                    key={server.name}
+                    onClick={() => handleQuickAdd(server)}
+                    disabled={isInstalled}
+                    className="text-left cursor-pointer border-none text-inherit"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 12px',
+                      background: isInstalled ? 'rgba(0, 210, 106, 0.05)' : 'transparent',
+                      border: isInstalled
+                        ? '1px solid rgba(0, 210, 106, 0.2)'
+                        : '1px solid transparent',
+                      borderRadius: 'var(--radius-md)',
+                      transition: 'all 0.15s ease',
+                      opacity: isInstalled ? 0.6 : 1,
+                      cursor: isInstalled ? 'default' : 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isInstalled) {
+                        e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isInstalled) {
+                        e.currentTarget.style.background = 'transparent'
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px', minWidth: '24px', textAlign: 'center' }}>
+                      {server.icon}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, fontSize: '12px' }}>{server.name}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.5, marginTop: '1px' }}>
+                        {server.description}
+                      </div>
+                    </div>
+                    {isInstalled ? (
+                      <span style={{ fontSize: '10px', color: 'rgba(0, 210, 106, 0.8)', fontWeight: 500 }}>
+                        Installed
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '10px', color: 'var(--chatui-accent)', fontWeight: 500, opacity: 0.7 }}>
+                        + Add
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>

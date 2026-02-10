@@ -164,7 +164,7 @@ export function SettingsPanel() {
           <label className="text-xs font-medium block mb-2">Quick Links</label>
           <div className="space-y-1.5">
             <button
-              onClick={() => setActiveView('mcp')}
+              onClick={() => { useUIStore.getState().setShowMCPModal(true); setActiveView('chat') }}
               className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-[var(--vscode-list-hoverBackground)] cursor-pointer bg-transparent border-none text-inherit"
             >
               MCP Server Management
