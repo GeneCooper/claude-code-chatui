@@ -200,7 +200,7 @@ export function InputArea() {
       {/* Pickers & Modals */}
       <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
       <FilePicker onSelect={handleFileSelect} />
-      <ThinkingIntensityModal />
+      <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
 
       {/* Image previews */}
       {images.length > 0 && (
@@ -227,7 +227,7 @@ export function InputArea() {
       {/* Mode toggles */}
       <div className="flex items-center gap-2 pb-2" style={{ fontSize: '11px' }}>
         <button
-          onClick={() => setThinkingMode(!thinkingMode)}
+          onClick={() => useUIStore.getState().setShowIntensityModal(true)}
           className="flex items-center gap-1 cursor-pointer border-none"
           style={{
             padding: '2px 10px',
@@ -244,28 +244,8 @@ export function InputArea() {
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4l2 2" />
           </svg>
-          <span>Think</span>
+          <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
         </button>
-
-        {thinkingMode && (
-          <button
-            onClick={() => useUIStore.getState().setShowIntensityModal(true)}
-            className="cursor-pointer border-none"
-            style={{
-              padding: '2px 8px',
-              borderRadius: '12px',
-              border: '1px solid var(--vscode-panel-border)',
-              background: 'transparent',
-              color: 'var(--chatui-accent)',
-              fontSize: '10px',
-              fontWeight: 500,
-              transition: 'all 0.2s ease',
-            }}
-            title="Change thinking intensity"
-          >
-            {useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')} ▾
-          </button>
-        )}
 
         <div className="flex items-center gap-1" style={{ opacity: planMode ? 1 : 0.7, cursor: 'pointer' }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -9,7 +9,12 @@ const LEVELS = [
   { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
 ]
 
-export function ThinkingIntensityModal() {
+interface Props {
+  enabled: boolean
+  onToggle: (enabled: boolean) => void
+}
+
+export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
   const show = useUIStore((s) => s.showIntensityModal)
   const setShow = useUIStore((s) => s.setShowIntensityModal)
   const currentIntensity = useSettingsStore((s) => s.thinkingIntensity)
@@ -20,7 +25,13 @@ export function ThinkingIntensityModal() {
   const handleSelect = (key: string) => {
     updateSettings({ thinkingIntensity: key })
     postMessage({ type: 'updateSettings', settings: { 'thinking.intensity': key } })
+    if (!enabled) onToggle(true)
     setShow(false)
+  }
+
+  const handleToggle = () => {
+    onToggle(!enabled)
+    if (enabled) setShow(false)
   }
 
   return (
@@ -51,7 +62,7 @@ export function ThinkingIntensityModal() {
           animation: 'installFadeIn 0.2s ease-out',
         }}
       >
-        {/* Header */}
+        {/* Header with toggle */}
         <div
           style={{
             padding: '16px',
@@ -61,25 +72,55 @@ export function ThinkingIntensityModal() {
             alignItems: 'center',
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: '14px' }}>Thinking Intensity</span>
-          <button
-            onClick={() => setShow(false)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--vscode-foreground)',
-              cursor: 'pointer',
-              fontSize: '16px',
-              padding: '4px',
-              opacity: 0.6,
-            }}
-          >
-            {'\u2715'}
-          </button>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Thinking Mode</span>
+          <div className="flex items-center gap-3">
+            {/* On/Off toggle */}
+            <div
+              onClick={handleToggle}
+              className="cursor-pointer"
+              style={{
+                width: '40px',
+                height: '22px',
+                borderRadius: '11px',
+                background: enabled ? 'var(--chatui-accent)' : 'rgba(128, 128, 128, 0.3)',
+                position: 'relative',
+                transition: 'background 0.2s ease',
+              }}
+            >
+              <div
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  background: '#fff',
+                  position: 'absolute',
+                  top: '2px',
+                  left: enabled ? '20px' : '2px',
+                  transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }}
+              />
+            </div>
+            {/* Close */}
+            <button
+              onClick={() => setShow(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--vscode-foreground)',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '4px',
+                opacity: 0.6,
+              }}
+            >
+              {'\u2715'}
+            </button>
+          </div>
         </div>
 
         {/* Levels */}
-        <div style={{ padding: '12px' }}>
+        <div style={{ padding: '12px', opacity: enabled ? 1 : 0.4, pointerEvents: enabled ? 'auto' : 'none', transition: 'opacity 0.2s ease' }}>
           {LEVELS.map((level) => {
             const isSelected = currentIntensity === level.key
             return (
