@@ -16,11 +16,20 @@ export function PermissionDialog({ data }: Props) {
 
   if (status !== 'pending') {
     return (
-      <div className={`px-3 py-2 rounded-lg text-xs border ${
-        status === 'approved'
-          ? 'border-green-600/30 bg-green-900/10 opacity-60'
-          : 'border-red-600/30 bg-red-900/10 opacity-60'
-      }`}>
+      <div
+        className="text-xs"
+        style={{
+          padding: '8px 12px',
+          borderRadius: 'var(--radius-md)',
+          border: status === 'approved'
+            ? '1px solid rgba(0, 210, 106, 0.3)'
+            : '1px solid rgba(255, 69, 58, 0.3)',
+          background: status === 'approved'
+            ? 'rgba(0, 210, 106, 0.05)'
+            : 'rgba(255, 69, 58, 0.05)',
+          opacity: 0.6,
+        }}
+      >
         <span>{status === 'approved' ? '\u2705' : '\u274C'} {tool} — {status}</span>
       </div>
     )
@@ -46,84 +55,191 @@ export function PermissionDialog({ data }: Props) {
   }
 
   return (
-    <div className="border-2 border-yellow-500/50 bg-yellow-900/10 rounded-lg overflow-hidden">
-      <div className="px-3 py-2 text-sm">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-yellow-400">{'\u26A0\uFE0F'}</span>
-          <span className="font-medium">Permission Required: {tool}</span>
-        </div>
+    <div
+      className="overflow-hidden"
+      style={{
+        margin: '4px 0 20px 0',
+        background: 'rgba(252, 188, 0, 0.1)',
+        border: '1px solid rgba(252, 188, 0, 0.3)',
+        borderRadius: 'var(--radius-md)',
+        padding: '16px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        animation: 'slideUp 0.3s ease',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3" style={{ fontWeight: 600 }}>
+        <span style={{ fontSize: '16px' }}>{'\u26A0\uFE0F'}</span>
+        <span className="text-sm">Permission Required: {tool}</span>
 
-        {decisionReason && (
-          <div className="text-xs opacity-60 mb-1">{decisionReason}</div>
-        )}
-
-        {getSummary() && (
-          <div className="font-mono text-xs opacity-70 bg-[var(--vscode-editor-background)] rounded px-2 py-1 my-1.5 break-all">
-            {getSummary()}
-          </div>
-        )}
-
-        {/* Show raw input */}
-        {input && (
-          <button
-            onClick={() => setShowRawInput(!showRawInput)}
-            className="text-[10px] opacity-40 hover:opacity-70 cursor-pointer bg-transparent border-none text-inherit mt-1"
-          >
-            {showRawInput ? 'Hide details' : 'Show details'}
-          </button>
-        )}
-        {showRawInput && input && (
-          <pre className="text-[10px] opacity-50 mt-1 p-2 rounded bg-[var(--vscode-editor-background)] overflow-auto max-h-32 m-0">
-            {JSON.stringify(input, null, 2)}
-          </pre>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 px-3 py-2 border-t border-yellow-500/20">
-        <button
-          onClick={() => handleRespond(true)}
-          className="px-3 py-1 text-xs rounded bg-green-700 text-white hover:bg-green-600 cursor-pointer border-none"
-        >
-          Allow
-        </button>
-        <button
-          onClick={() => handleRespond(true, true)}
-          className="px-3 py-1 text-xs rounded bg-green-900 text-green-200 hover:bg-green-800 cursor-pointer border-none"
-        >
-          Always Allow
-        </button>
-        <button
-          onClick={() => handleRespond(false)}
-          className="px-3 py-1 text-xs rounded bg-red-700 text-white hover:bg-red-600 cursor-pointer border-none"
-        >
-          Deny
-        </button>
-
-        {/* More options dropdown */}
+        {/* More menu */}
         <div className="relative ml-auto">
           <button
             onClick={() => setShowMore(!showMore)}
-            className="px-2 py-1 text-[10px] opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit"
+            className="cursor-pointer border-none"
+            style={{
+              background: 'none',
+              color: 'var(--vscode-descriptionForeground)',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none'
+            }}
           >
-            More...
+            &#8943;
           </button>
           {showMore && (
-            <div className="absolute bottom-full right-0 mb-1 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded-lg shadow-lg z-50 min-w-[160px]">
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                background: 'var(--vscode-menu-background, var(--vscode-editor-background))',
+                border: '1px solid var(--vscode-menu-border, var(--vscode-panel-border))',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                zIndex: 1000,
+                minWidth: '220px',
+                padding: '4px 0',
+                marginTop: '4px',
+              }}
+            >
               <button
                 onClick={() => { handleEnableYolo(); setShowMore(false) }}
-                className="w-full text-left px-3 py-1.5 text-xs cursor-pointer bg-transparent border-none text-inherit hover:bg-[var(--vscode-list-hoverBackground)]"
+                className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
+                style={{
+                  padding: '12px 16px',
+                  background: 'transparent',
+                  fontSize: '13px',
+                  transition: 'background-color 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
                 Enable YOLO Mode
               </button>
               <button
                 onClick={() => { handleRespond(true, true); setShowMore(false) }}
-                className="w-full text-left px-3 py-1.5 text-xs cursor-pointer bg-transparent border-none text-inherit hover:bg-[var(--vscode-list-hoverBackground)]"
+                className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
+                style={{
+                  padding: '12px 16px',
+                  background: 'transparent',
+                  fontSize: '13px',
+                  transition: 'background-color 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
                 Allow this tool always
               </button>
             </div>
           )}
         </div>
+      </div>
+
+      {decisionReason && (
+        <div className="text-xs opacity-60 mb-2">{decisionReason}</div>
+      )}
+
+      {getSummary() && (
+        <div
+          className="font-mono text-xs break-all"
+          style={{
+            opacity: 0.7,
+            background: 'var(--vscode-editor-background)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '8px 12px',
+            margin: '6px 0',
+          }}
+        >
+          {getSummary()}
+        </div>
+      )}
+
+      {input && (
+        <button
+          onClick={() => setShowRawInput(!showRawInput)}
+          className="text-[10px] opacity-40 hover:opacity-70 cursor-pointer bg-transparent border-none text-inherit mt-1"
+        >
+          {showRawInput ? 'Hide details' : 'Show details'}
+        </button>
+      )}
+      {showRawInput && input && (
+        <pre className="text-[10px] opacity-50 mt-1 p-2 rounded m-0 overflow-auto max-h-32" style={{ background: 'var(--vscode-editor-background)' }}>
+          {JSON.stringify(input, null, 2)}
+        </pre>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-2 flex-wrap mt-2" style={{ justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => handleRespond(false)}
+          className="cursor-pointer text-xs"
+          style={{
+            background: 'transparent',
+            color: 'var(--vscode-foreground)',
+            border: '1px solid var(--vscode-panel-border)',
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-sm)',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+            e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
+          }}
+        >
+          Deny
+        </button>
+        <button
+          onClick={() => handleRespond(true, true)}
+          className="cursor-pointer text-xs"
+          style={{
+            background: 'rgba(0, 122, 204, 0.1)',
+            color: 'var(--vscode-charts-blue, #007acc)',
+            border: '1px solid rgba(0, 122, 204, 0.3)',
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-sm)',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 122, 204, 0.2)'
+            e.currentTarget.style.borderColor = 'rgba(0, 122, 204, 0.5)'
+            e.currentTarget.style.transform = 'translateY(-1px)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 122, 204, 0.1)'
+            e.currentTarget.style.borderColor = 'rgba(0, 122, 204, 0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
+          }}
+        >
+          Always Allow
+        </button>
+        <button
+          onClick={() => handleRespond(true)}
+          className="cursor-pointer text-xs"
+          style={{
+            background: 'var(--vscode-button-background)',
+            color: 'var(--vscode-button-foreground)',
+            border: 'none',
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-sm)',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--vscode-button-background)' }}
+        >
+          Allow
+        </button>
       </div>
     </div>
   )

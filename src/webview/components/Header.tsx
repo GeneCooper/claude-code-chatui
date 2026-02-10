@@ -3,6 +3,24 @@ import { useChatStore } from '../stores/chatStore'
 import { useUIStore } from '../stores/uiStore'
 import { postMessage } from '../lib/vscode'
 
+function LogoSVG({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+      <defs>
+        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ed6e1d" />
+          <stop offset="100%" stopColor="#de5513" />
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" rx="22" fill="url(#logoGrad)" />
+      <path d="M30 35 L50 25 L70 35 L70 55 L50 65 L30 55Z" stroke="white" strokeWidth="5" fill="none" strokeLinejoin="round" />
+      <circle cx="50" cy="45" r="6" fill="white" />
+    </svg>
+  )
+}
+
+export { LogoSVG }
+
 export function Header() {
   const { sessionId, isProcessing, totals } = useChatStore()
   const { activeView, setActiveView, requestStartTime } = useUIStore()
@@ -17,9 +35,19 @@ export function Header() {
   }
 
   return (
-    <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)]">
+    <div
+      className="flex items-center justify-between px-4 py-3"
+      style={{
+        borderBottom: '1px solid var(--chatui-glass-border)',
+        backgroundColor: 'var(--chatui-glass-bg)',
+        backdropFilter: 'blur(12px)',
+      }}
+    >
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium opacity-80">Claude Code</span>
+        <LogoSVG size={20} />
+        <h2 className="m-0" style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>
+          Claude Code ChatUI
+        </h2>
         {sessionId && (
           <span className="text-[10px] opacity-40 font-mono">
             {sessionId.substring(0, 8)}
@@ -27,7 +55,14 @@ export function Header() {
         )}
         {isProcessing && (
           <>
-            <span className="inline-block w-2 h-2 rounded-full bg-[#ed6e1d] animate-pulse" />
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{
+                background: '#ff9500',
+                boxShadow: '0 0 6px rgba(255, 149, 0, 0.5)',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
             {requestStartTime && <RequestTimer startTime={requestStartTime} />}
           </>
         )}
@@ -38,29 +73,28 @@ export function Header() {
           <span className="text-[11px] opacity-50">{formatCost(totals.totalCost)}</span>
         )}
 
-        <NavButton
-          label="History"
+        <HeaderIconButton
+          title="History"
           active={activeView === 'history'}
           onClick={() => setActiveView(activeView === 'history' ? 'chat' : 'history')}
-        />
-        <NavButton
-          label="Settings"
-          active={activeView === 'settings'}
-          onClick={() => setActiveView(activeView === 'settings' ? 'chat' : 'settings')}
-        />
-        <NavButton
-          label="MCP"
-          active={activeView === 'mcp'}
-          onClick={() => setActiveView(activeView === 'mcp' ? 'chat' : 'mcp')}
-        />
-
-        <button
-          onClick={handleNewSession}
-          className="text-xs px-2 py-1 rounded bg-transparent border border-[var(--vscode-input-border)] hover:bg-[var(--vscode-button-background)] hover:text-[var(--vscode-button-foreground)] transition-colors cursor-pointer"
-          title="New Session"
         >
-          + New
-        </button>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </HeaderIconButton>
+
+        <span style={{ color: 'var(--vscode-panel-border)', opacity: 0.5, margin: '0 4px' }}>|</span>
+
+        <HeaderIconButton
+          title="New Chat"
+          onClick={handleNewSession}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </HeaderIconButton>
       </div>
     </div>
   )
@@ -88,17 +122,34 @@ function RequestTimer({ startTime }: { startTime: number }) {
   )
 }
 
-function NavButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function HeaderIconButton({
+  title,
+  active,
+  onClick,
+  children,
+}: {
+  title: string
+  active?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
-      className={`text-[11px] px-1.5 py-0.5 rounded cursor-pointer border-none transition-colors ${
-        active
-          ? 'bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)]'
-          : 'bg-transparent opacity-50 hover:opacity-80 text-inherit'
-      }`}
+      title={title}
+      className="cursor-pointer border-none flex items-center justify-center"
+      style={{
+        background: 'transparent',
+        padding: '4px 8px',
+        borderRadius: 'var(--radius-sm)',
+        opacity: active ? 1 : 0.75,
+        color: active ? 'var(--chatui-accent)' : 'inherit',
+        transition: 'all 0.2s ease',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = '0.75' }}
     >
-      {label}
+      {children}
     </button>
   )
 }

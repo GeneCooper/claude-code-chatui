@@ -4,6 +4,7 @@ import { useChatStore } from '../stores/chatStore'
 export function StatusBar() {
   const tokens = useChatStore((s) => s.tokens)
   const totals = useChatStore((s) => s.totals)
+  const isProcessing = useChatStore((s) => s.isProcessing)
   const [showDetails, setShowDetails] = useState(false)
 
   const formatTokens = (n: number) => {
@@ -18,83 +19,83 @@ export function StatusBar() {
     return `$${cost.toFixed(2)}`
   }
 
-  // Don't render if no data yet
-  if (totals.requestCount === 0 && tokens.totalTokensInput === 0) {
-    return null
-  }
-
-  const cacheTotal = tokens.cacheReadTokens + tokens.cacheCreationTokens
-  const cachePercent = tokens.totalTokensInput > 0
-    ? Math.round((tokens.cacheReadTokens / tokens.totalTokensInput) * 100)
-    : 0
+  const statusClass = isProcessing ? 'processing' : 'ready'
+  const statusText = isProcessing ? 'Processing...' : 'Ready'
 
   return (
-    <div className="border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)]">
+    <div
+      style={{
+        padding: '8px 12px',
+        background: 'linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%)',
+        color: '#e1e1e1',
+        fontSize: '12px',
+        borderTop: '1px solid var(--vscode-panel-border)',
+        fontWeight: 500,
+      }}
+    >
+      {/* Main status row */}
       <div
-        className="flex items-center gap-3 px-3 py-1 text-[10px] opacity-60 cursor-pointer hover:opacity-80"
+        className="flex items-center gap-2 cursor-pointer"
         onClick={() => setShowDetails(!showDetails)}
       >
-        {totals.requestCount > 0 && (
-          <span title="Total requests">
-            {totals.requestCount} req{totals.requestCount !== 1 ? 's' : ''}
-          </span>
-        )}
+        {/* Status indicator */}
+        <div
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            flexShrink: 0,
+            background: isProcessing ? '#ff9500' : '#00d26a',
+            boxShadow: isProcessing
+              ? '0 0 6px rgba(255, 149, 0, 0.5)'
+              : '0 0 6px rgba(0, 210, 106, 0.5)',
+            animation: isProcessing ? 'pulse 1.5s ease-in-out infinite' : 'none',
+          }}
+        />
+
+        <span className="flex-1">{statusText}</span>
 
         {totals.totalCost > 0 && (
-          <span title="Total cost">{formatCost(totals.totalCost)}</span>
+          <span style={{ opacity: 0.7 }}>{formatCost(totals.totalCost)}</span>
         )}
 
         {tokens.totalTokensInput > 0 && (
-          <span title="Input tokens">
-            {formatTokens(tokens.totalTokensInput)} in
-          </span>
+          <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensInput)} in</span>
         )}
 
         {tokens.totalTokensOutput > 0 && (
-          <span title="Output tokens">
-            {formatTokens(tokens.totalTokensOutput)} out
-          </span>
+          <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
         )}
-
-        {tokens.cacheReadTokens > 0 && (
-          <span title="Cache read tokens" className="text-[var(--vscode-charts-green,#4ec9b0)]">
-            {formatTokens(tokens.cacheReadTokens)} cached ({cachePercent}%)
-          </span>
-        )}
-
-        <span className="ml-auto opacity-40">{showDetails ? '\u25B2' : '\u25BC'}</span>
       </div>
 
-      {showDetails && (
-        <div className="px-3 pb-2 text-[10px] opacity-50 space-y-0.5 border-t border-[var(--vscode-panel-border)] pt-1">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-            <span>Total Input:</span>
-            <span className="text-right">{formatTokens(tokens.totalTokensInput)}</span>
-            <span>Total Output:</span>
-            <span className="text-right">{formatTokens(tokens.totalTokensOutput)}</span>
-            <span>Current Input:</span>
-            <span className="text-right">{formatTokens(tokens.currentInputTokens)}</span>
-            <span>Current Output:</span>
-            <span className="text-right">{formatTokens(tokens.currentOutputTokens)}</span>
-            {tokens.cacheReadTokens > 0 && (
-              <>
-                <span className="text-[var(--vscode-charts-green,#4ec9b0)]">Cache Read:</span>
-                <span className="text-right text-[var(--vscode-charts-green,#4ec9b0)]">{formatTokens(tokens.cacheReadTokens)}</span>
-              </>
-            )}
-            {tokens.cacheCreationTokens > 0 && (
-              <>
-                <span className="text-[var(--vscode-charts-yellow,#cca700)]">Cache Create:</span>
-                <span className="text-right text-[var(--vscode-charts-yellow,#cca700)]">{formatTokens(tokens.cacheCreationTokens)}</span>
-              </>
-            )}
-            {cacheTotal > 0 && (
-              <>
-                <span>Cache Total:</span>
-                <span className="text-right">{formatTokens(cacheTotal)}</span>
-              </>
-            )}
-          </div>
+      {/* Details panel */}
+      {showDetails && totals.requestCount > 0 && (
+        <div
+          className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-2 pt-2"
+          style={{
+            fontSize: '10px',
+            opacity: 0.6,
+            borderTop: '1px solid var(--vscode-panel-border)',
+          }}
+        >
+          <span>Requests:</span>
+          <span className="text-right">{totals.requestCount}</span>
+          <span>Total Input:</span>
+          <span className="text-right">{formatTokens(tokens.totalTokensInput)}</span>
+          <span>Total Output:</span>
+          <span className="text-right">{formatTokens(tokens.totalTokensOutput)}</span>
+          {tokens.cacheReadTokens > 0 && (
+            <>
+              <span style={{ color: '#4ec9b0' }}>Cache Read:</span>
+              <span className="text-right" style={{ color: '#4ec9b0' }}>{formatTokens(tokens.cacheReadTokens)}</span>
+            </>
+          )}
+          {tokens.cacheCreationTokens > 0 && (
+            <>
+              <span style={{ color: '#cca700' }}>Cache Create:</span>
+              <span className="text-right" style={{ color: '#cca700' }}>{formatTokens(tokens.cacheCreationTokens)}</span>
+            </>
+          )}
         </div>
       )}
     </div>

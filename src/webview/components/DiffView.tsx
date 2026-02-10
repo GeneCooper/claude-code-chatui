@@ -20,11 +20,9 @@ function computeDiff(oldText: string, newText: string): DiffLine[] {
   const newLines = newText.split('\n')
   const result: DiffLine[] = []
 
-  // Simple LCS-based diff
   const m = oldLines.length
   const n = newLines.length
 
-  // Build LCS table
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
@@ -36,7 +34,6 @@ function computeDiff(oldText: string, newText: string): DiffLine[] {
     }
   }
 
-  // Backtrack to get diff
   const diffOps: Array<{ type: 'keep' | 'add' | 'remove'; line: string; oldIdx?: number; newIdx?: number }> = []
   let i = m
   let j = n
@@ -79,7 +76,6 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
   const addCount = diffLines.filter((l) => l.type === 'add').length
   const removeCount = diffLines.filter((l) => l.type === 'remove').length
 
-  // Only show lines near changes (context window)
   const CONTEXT = 3
   const changedIndices = new Set<number>()
   diffLines.forEach((line, idx) => {
@@ -90,27 +86,39 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
     }
   })
 
-  if (addCount === 0 && removeCount === 0) {
-    return null
-  }
+  if (addCount === 0 && removeCount === 0) return null
 
   return (
-    <div className="border border-[var(--vscode-panel-border)] rounded-lg overflow-hidden text-xs my-1">
+    <div
+      className="my-1 overflow-hidden"
+      style={{
+        border: '1px solid var(--vscode-panel-border)',
+        borderRadius: 'var(--radius-sm)',
+      }}
+    >
+      {/* Diff header */}
       <div
-        className="flex items-center gap-2 px-3 py-1.5 bg-[var(--vscode-sideBar-background)] cursor-pointer select-none"
+        className="flex items-center gap-2 cursor-pointer select-none"
+        style={{
+          padding: '8px 12px',
+          background: 'var(--vscode-panel-background)',
+          fontSize: '11px',
+          fontWeight: 600,
+          borderBottom: collapsed ? 'none' : '1px solid var(--vscode-panel-border)',
+        }}
         onClick={() => setCollapsed(!collapsed)}
       >
-        <span className="opacity-60">{collapsed ? '▶' : '▼'}</span>
+        <span className="opacity-60">{collapsed ? '\u25B6' : '\u25BC'}</span>
         <span className="font-mono opacity-80">{fileName}</span>
         {startLine && <span className="opacity-40">L{startLine}</span>}
         <span className="ml-auto flex gap-2">
           {addCount > 0 && (
-            <span className="text-[var(--vscode-gitDecoration-addedResourceForeground)]">
+            <span style={{ color: 'var(--vscode-gitDecoration-addedResourceForeground, rgba(76, 175, 80, 0.9))' }}>
               +{addCount}
             </span>
           )}
           {removeCount > 0 && (
-            <span className="text-[var(--vscode-gitDecoration-deletedResourceForeground)]">
+            <span style={{ color: 'var(--vscode-gitDecoration-deletedResourceForeground, rgba(244, 67, 54, 0.9))' }}>
               -{removeCount}
             </span>
           )}
@@ -119,11 +127,10 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
 
       {!collapsed && (
         <div className="overflow-x-auto max-h-60 overflow-y-auto">
-          <table className="w-full border-collapse font-mono text-[11px] leading-[1.4]">
+          <table className="w-full border-collapse" style={{ fontFamily: "'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace", fontSize: '12px', lineHeight: 1.5 }}>
             <tbody>
               {diffLines.map((line, idx) => {
                 if (!changedIndices.has(idx)) {
-                  // Show separator for skipped context
                   const prevShown = idx > 0 && changedIndices.has(idx - 1)
                   if (prevShown) {
                     return (
@@ -137,25 +144,32 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
                   return null
                 }
 
-                const bgClass =
+                const bgStyle: React.CSSProperties =
                   line.type === 'add'
-                    ? 'bg-[rgba(40,167,69,0.15)]'
+                    ? { background: 'rgba(76, 175, 80, 0.1)' }
                     : line.type === 'remove'
-                      ? 'bg-[rgba(215,58,73,0.15)]'
-                      : ''
+                      ? { background: 'rgba(244, 67, 54, 0.1)' }
+                      : { opacity: 0.8 }
+
+                const textColor =
+                  line.type === 'add'
+                    ? 'var(--vscode-gitDecoration-addedResourceForeground, rgba(76, 175, 80, 0.9))'
+                    : line.type === 'remove'
+                      ? 'var(--vscode-gitDecoration-deletedResourceForeground, rgba(244, 67, 54, 0.9))'
+                      : undefined
 
                 const prefix =
                   line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '
 
                 return (
-                  <tr key={idx} className={bgClass}>
-                    <td className="w-8 text-right pr-1 opacity-30 select-none">
+                  <tr key={idx} style={{ ...bgStyle, color: textColor }}>
+                    <td className="w-8 text-right pr-1 opacity-30 select-none" style={{ padding: '2px 4px' }}>
                       {line.oldLineNum ?? ''}
                     </td>
-                    <td className="w-8 text-right pr-1 opacity-30 select-none">
+                    <td className="w-8 text-right pr-1 opacity-30 select-none" style={{ padding: '2px 4px' }}>
                       {line.newLineNum ?? ''}
                     </td>
-                    <td className="px-2 whitespace-pre">
+                    <td style={{ padding: '2px 12px', whiteSpace: 'pre' }}>
                       <span className="opacity-50 select-none">{prefix}</span>
                       {line.content}
                     </td>

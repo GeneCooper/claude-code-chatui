@@ -6,10 +6,10 @@ import { SlashCommandPicker } from './SlashCommandPicker'
 import { FilePicker } from './FilePicker'
 
 const MODELS = [
-  { value: 'default', label: 'Default' },
-  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-  { value: 'claude-opus-4-6', label: 'Opus 4.6' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
+  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
+  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '◆' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '●' },
+  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '○' },
 ]
 
 export function InputArea() {
@@ -24,26 +24,18 @@ export function InputArea() {
   const isProcessing = useChatStore((s) => s.isProcessing)
   const { showSlashPicker, showFilePicker, setShowSlashPicker, setShowFilePicker, draftText, setDraftText } = useUIStore()
 
-  // Track slash command filter text
   const [slashFilter, setSlashFilter] = useState('')
 
-  // Restore draft from webview state on mount
   useEffect(() => {
     const saved = getState<{ draft?: string; model?: string }>()
-    if (saved?.draft) {
-      setText(saved.draft)
-    }
-    if (saved?.model) {
-      setSelectedModel(saved.model)
-    }
+    if (saved?.draft) setText(saved.draft)
+    if (saved?.model) setSelectedModel(saved.model)
   }, [])
 
-  // Save draft to webview state on change
   useEffect(() => {
     setState({ draft: text, model: selectedModel })
   }, [text, selectedModel])
 
-  // Pick up draft text from welcome screen hints
   useEffect(() => {
     if (draftText) {
       setText(draftText)
@@ -52,7 +44,6 @@ export function InputArea() {
     }
   }, [draftText, setDraftText])
 
-  // Auto-resize textarea
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
@@ -60,15 +51,12 @@ export function InputArea() {
     el.style.height = `${Math.min(el.scrollHeight, 150)}px`
   }, [])
 
-  useEffect(() => {
-    adjustHeight()
-  }, [text, adjustHeight])
+  useEffect(() => { adjustHeight() }, [text, adjustHeight])
 
   const handleSend = () => {
     const trimmed = text.trim()
     if (!trimmed || isProcessing) return
 
-    // Check if it's a slash command
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
       postMessage({ type: 'executeSlashCommand', command: cmd })
@@ -77,7 +65,6 @@ export function InputArea() {
       return
     }
 
-    // Attach image data if present
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
     postMessage({
       type: 'sendMessage',
@@ -92,14 +79,10 @@ export function InputArea() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
-  const handleStop = () => {
-    postMessage({ type: 'stopRequest' })
-  }
+  const handleStop = () => { postMessage({ type: 'stopRequest' }) }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Don't handle Enter when pickers are open
     if (showSlashPicker || showFilePicker) return
-
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -110,7 +93,6 @@ export function InputArea() {
     const value = e.target.value
     setText(value)
 
-    // Check for slash command trigger
     if (value === '/' || (value.startsWith('/') && !value.includes(' '))) {
       setSlashFilter(value.substring(1))
       setShowSlashPicker(true)
@@ -119,7 +101,6 @@ export function InputArea() {
       setShowSlashPicker(false)
     }
 
-    // Check for @ file reference trigger
     const cursorPos = e.target.selectionStart || 0
     const textBefore = value.substring(0, cursorPos)
     const atMatch = textBefore.match(/@(\S*)$/)
@@ -131,7 +112,6 @@ export function InputArea() {
     }
   }
 
-  // Handle paste for images
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
     for (const item of items) {
@@ -144,20 +124,15 @@ export function InputArea() {
     }
   }
 
-  // Handle drag and drop
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const files = e.dataTransfer.files
     for (const file of files) {
-      if (file.type.startsWith('image/')) {
-        addImageFile(file)
-      }
+      if (file.type.startsWith('image/')) addImageFile(file)
     }
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault() }
 
   const addImageFile = (file: File) => {
     const reader = new FileReader()
@@ -174,11 +149,9 @@ export function InputArea() {
 
   const handleSlashSelect = (command: string, category: 'snippet' | 'native') => {
     if (category === 'native') {
-      // Execute native command directly
       postMessage({ type: 'executeSlashCommand', command })
       setText('')
     } else {
-      // Insert snippet command as message
       setText(`/${command} `)
     }
     setShowSlashPicker(false)
@@ -186,7 +159,6 @@ export function InputArea() {
   }
 
   const handleFileSelect = (filePath: string) => {
-    // Replace the @... with @filepath
     const el = textareaRef.current
     if (!el) return
 
@@ -210,11 +182,16 @@ export function InputArea() {
     postMessage({ type: 'selectModel', model })
   }
 
-  const currentModelLabel = MODELS.find((m) => m.value === selectedModel)?.label || 'Default'
+  const currentModel = MODELS.find((m) => m.value === selectedModel) || MODELS[3]
 
   return (
     <div
-      className="relative border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)]"
+      className="relative"
+      style={{
+        padding: '12px',
+        borderTop: '1px solid var(--vscode-panel-border)',
+        background: 'var(--vscode-panel-background)',
+      }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
@@ -224,13 +201,14 @@ export function InputArea() {
 
       {/* Image previews */}
       {images.length > 0 && (
-        <div className="flex gap-2 px-3 pt-2 flex-wrap">
+        <div className="flex gap-2 pb-2 flex-wrap">
           {images.map((img, idx) => (
             <div key={idx} className="relative group">
               <img
                 src={img.dataUrl}
                 alt={img.name}
-                className="w-12 h-12 rounded border border-[var(--vscode-panel-border)] object-cover"
+                className="w-12 h-12 rounded object-cover"
+                style={{ border: '1px solid var(--vscode-panel-border)' }}
               />
               <button
                 onClick={() => removeImage(idx)}
@@ -243,116 +221,344 @@ export function InputArea() {
         </div>
       )}
 
-      {/* Mode toggles + model selector */}
-      <div className="flex items-center gap-2 px-3 pt-2">
-        <ModeToggle
-          label="Plan"
-          active={planMode}
-          onClick={() => setPlanMode(!planMode)}
-        />
-        <ModeToggle
-          label="Think"
-          active={thinkingMode}
-          onClick={() => setThinkingMode(!thinkingMode)}
-        />
-
-        {/* Model selector */}
-        <div className="relative ml-auto">
-          <button
-            onClick={() => setShowModelPicker(!showModelPicker)}
-            className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--vscode-input-border)] cursor-pointer bg-transparent text-inherit opacity-50 hover:opacity-80"
-          >
-            {currentModelLabel}
-          </button>
-          {showModelPicker && (
-            <div className="absolute bottom-full right-0 mb-1 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded-lg shadow-lg z-50 min-w-[140px]">
-              {MODELS.map((model) => (
-                <button
-                  key={model.value}
-                  onClick={() => handleModelChange(model.value)}
-                  className={`w-full text-left px-3 py-1.5 text-xs cursor-pointer border-none text-inherit ${
-                    model.value === selectedModel
-                      ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]'
-                      : 'bg-transparent hover:bg-[var(--vscode-list-hoverBackground)]'
-                  }`}
-                >
-                  {model.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Image upload button */}
+      {/* Mode toggles */}
+      <div className="flex items-center gap-2 pb-2" style={{ fontSize: '11px' }}>
         <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--vscode-input-border)] cursor-pointer bg-transparent text-inherit opacity-50 hover:opacity-80"
-          title="Upload image"
-        >
-          IMG
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files
-            if (files) {
-              for (const file of files) addImageFile(file)
-            }
-            e.target.value = ''
+          onClick={() => setThinkingMode(!thinkingMode)}
+          className="flex items-center gap-1 cursor-pointer border-none"
+          style={{
+            padding: '2px 10px',
+            borderRadius: '12px',
+            border: `1px solid ${thinkingMode ? 'var(--chatui-accent)' : 'var(--vscode-panel-border)'}`,
+            background: 'transparent',
+            color: thinkingMode ? 'var(--chatui-accent)' : 'inherit',
+            opacity: thinkingMode ? 1 : 0.7,
+            transition: 'all 0.2s ease',
           }}
-        />
+          title="Thinking mode"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4l2 2" />
+          </svg>
+          <span>{thinkingMode ? 'Think' : 'Think'}</span>
+        </button>
+
+        <div className="flex items-center gap-1" style={{ opacity: planMode ? 1 : 0.7, cursor: 'pointer' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+            <rect x="9" y="3" width="6" height="4" rx="2" />
+          </svg>
+          <span onClick={() => setPlanMode(!planMode)} style={{ color: planMode ? 'var(--chatui-accent)' : 'inherit' }}>
+            Plan
+          </span>
+          <div
+            className={`mode-switch ${planMode ? 'active' : ''}`}
+            onClick={() => setPlanMode(!planMode)}
+          />
+        </div>
       </div>
 
-      {/* Input row */}
-      <div className="flex items-end gap-2 px-3 py-2">
+      {/* Textarea container */}
+      <div
+        className="textarea-glow"
+        style={{
+          background: 'var(--vscode-input-background)',
+          border: '1px solid rgba(237, 110, 29, 0.3)',
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+        }}
+      >
         <textarea
           ref={textareaRef}
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder="Message Claude... (/ for commands, @ for files)"
+          placeholder="Type your message to Claude Code..."
           rows={1}
-          className="flex-1 resize-none rounded-md px-3 py-2 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground,inherit)] focus:outline-none focus:border-[var(--vscode-focusBorder)] placeholder:opacity-40"
+          className="w-full resize-none border-none focus:outline-none"
+          style={{
+            background: 'transparent',
+            color: 'var(--vscode-input-foreground)',
+            padding: '12px',
+            fontFamily: 'var(--vscode-editor-font-family)',
+            fontSize: '13px',
+            minHeight: '68px',
+            lineHeight: 1.4,
+          }}
           disabled={isProcessing}
         />
 
-        {isProcessing ? (
-          <button
-            onClick={handleStop}
-            className="px-3 py-2 rounded-md text-sm bg-red-700 text-white hover:bg-red-600 cursor-pointer border-none shrink-0"
-          >
-            Stop
-          </button>
-        ) : (
-          <button
-            onClick={handleSend}
-            disabled={!text.trim() && images.length === 0}
-            className="px-3 py-2 rounded-md text-sm bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:bg-[var(--vscode-button-hoverBackground)] cursor-pointer border-none shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
-        )}
+        {/* Input controls row */}
+        <div
+          className="flex items-center justify-between"
+          style={{
+            padding: '2px 4px',
+            borderTop: '1px solid var(--vscode-panel-border)',
+            background: 'var(--vscode-input-background)',
+          }}
+        >
+          {/* Left controls */}
+          <div className="flex items-center gap-1">
+            {/* Model selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowModelPicker(!showModelPicker)}
+                className="cursor-pointer border-none flex items-center gap-1"
+                style={{
+                  background: 'transparent',
+                  padding: '2px 4px',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  opacity: 0.7,
+                  color: currentModel.color,
+                  transition: 'all 0.2s ease',
+                }}
+                title="Select model"
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24" />
+                </svg>
+                <span>{currentModel.label}</span>
+              </button>
+
+              {/* Model popup panel */}
+              {showModelPicker && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 8px)',
+                    left: 0,
+                    width: '260px',
+                    background: 'var(--vscode-editor-background)',
+                    border: '1px solid var(--vscode-panel-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: '16px',
+                    zIndex: 1000,
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '12px', opacity: 0.7 }}>
+                    Select Model
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {MODELS.map((model) => (
+                      <button
+                        key={model.value}
+                        onClick={() => handleModelChange(model.value)}
+                        className="flex items-center gap-2.5 cursor-pointer border-none text-left text-inherit"
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: model.value === selectedModel ? `1px solid ${model.color}` : '1px solid transparent',
+                          background: model.value === selectedModel ? `${model.color}15` : 'rgba(128, 128, 128, 0.04)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (model.value !== selectedModel) {
+                            e.currentTarget.style.background = 'rgba(128, 128, 128, 0.1)'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (model.value !== selectedModel) {
+                            e.currentTarget.style.background = 'rgba(128, 128, 128, 0.04)'
+                          }
+                        }}
+                      >
+                        <div
+                          className="flex items-center justify-center shrink-0"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: `${model.color}20`,
+                            color: model.color,
+                            fontSize: '14px',
+                          }}
+                        >
+                          {model.icon}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 600 }}>{model.label}</div>
+                          <div style={{ fontSize: '10px', opacity: 0.7 }}>{model.desc}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* MCP button */}
+            <button
+              onClick={() => useUIStore.getState().setActiveView('mcp')}
+              className="cursor-pointer border-none"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontSize: '11px',
+                fontWeight: 500,
+                opacity: 0.7,
+                color: 'inherit',
+                transition: 'all 0.2s ease',
+              }}
+              title="Configure MCP servers"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
+            >
+              MCP
+            </button>
+          </div>
+
+          {/* Right controls */}
+          <div className="flex items-center gap-0.5">
+            {/* Slash command button */}
+            <button
+              onClick={() => { setShowSlashPicker(true); setSlashFilter('') }}
+              className="cursor-pointer border-none"
+              style={{
+                background: 'transparent',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+              title="Slash commands"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              /
+            </button>
+
+            {/* File reference button */}
+            <button
+              onClick={() => setShowFilePicker(true)}
+              className="cursor-pointer border-none"
+              style={{
+                background: 'transparent',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+              title="Reference files"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              @
+            </button>
+
+            {/* Image button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="cursor-pointer border-none flex items-center justify-center"
+              style={{
+                background: 'transparent',
+                padding: '4px',
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--radius-sm)',
+                color: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+              title="Attach images"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = e.target.files
+                if (files) {
+                  for (const file of files) addImageFile(file)
+                }
+                e.target.value = ''
+              }}
+            />
+
+            {/* Send / Stop button */}
+            {isProcessing ? (
+              <button
+                onClick={handleStop}
+                className="cursor-pointer border-none flex items-center gap-1 shrink-0"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--vscode-descriptionForeground)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  borderRadius: 'var(--radius-md)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
+                  e.currentTarget.style.color = '#e74c3c'
+                  e.currentTarget.style.borderColor = 'rgba(231, 76, 60, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--vscode-descriptionForeground)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!text.trim() && images.length === 0}
+                className="cursor-pointer border-none flex items-center gap-1 shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, var(--chatui-accent) 0%, var(--chatui-accent-dark) 100%)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '12px',
+                  boxShadow: '0 2px 8px rgba(237, 110, 29, 0.3)',
+                  transition: 'all 0.2s ease',
+                  opacity: (!text.trim() && images.length === 0) ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (text.trim() || images.length > 0) {
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(237, 110, 29, 0.4)'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(237, 110, 29, 0.3)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }}
+              >
+                <span>Send</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  )
-}
-
-function ModeToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-[11px] px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${
-        active
-          ? 'bg-[#ed6e1d] text-white border-[#ed6e1d]'
-          : 'bg-transparent border-[var(--vscode-input-border)] opacity-50 hover:opacity-80 text-inherit'
-      }`}
-    >
-      {label}
-    </button>
   )
 }

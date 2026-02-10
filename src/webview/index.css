@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* ===== Design Tokens ===== */
+:root {
+  --chatui-accent: #ed6e1d;
+  --chatui-accent-dark: #de5513;
+  --chatui-accent-glow: rgba(237, 110, 29, 0.25);
+  --chatui-accent-subtle: rgba(237, 110, 29, 0.12);
+  --chatui-glass-bg: rgba(30, 30, 30, 0.4);
+  --chatui-glass-border: rgba(255, 255, 255, 0.08);
+  --chatui-surface-1: rgba(255, 255, 255, 0.03);
+  --chatui-surface-2: rgba(255, 255, 255, 0.06);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* VS Code theme integration */
 @theme {
   --color-vscode-bg: var(--vscode-editor-background);
@@ -18,6 +35,7 @@
   --color-accent-dark: #de5513;
 }
 
+/* ===== Base ===== */
 body {
   margin: 0;
   padding: 0;
@@ -35,7 +53,7 @@ body {
   flex-direction: column;
 }
 
-/* Scrollbar */
+/* ===== Scrollbar ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -46,10 +64,258 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--vscode-scrollbarSlider-background);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--vscode-scrollbarSlider-hoverBackground);
+  background: rgba(255, 255, 255, 0.25);
 }
+
+/* ===== Text Selection ===== */
+::selection {
+  background: rgba(237, 110, 29, 0.3);
+  color: white;
+}
+
+/* ===== Keyframe Animations ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes bounceDot {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes installFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes installSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== Message Side Bars (pseudo-elements) ===== */
+.message-bar-user {
+  position: relative;
+}
+.message-bar-user::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(180deg, var(--chatui-accent) 0%, var(--chatui-accent-dark) 100%);
+}
+
+.message-bar-claude {
+  position: relative;
+}
+.message-bar-claude::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(180deg, var(--chatui-accent) 0%, #ff9500 100%);
+}
+
+.message-bar-tool {
+  position: relative;
+}
+.message-bar-tool::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  background: linear-gradient(180deg, #7c8bed 0%, #5d6fe1 100%);
+}
+
+.message-bar-result {
+  position: relative;
+}
+.message-bar-result::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  background: linear-gradient(180deg, #1cc08c 0%, #16a974 100%);
+}
+
+.message-bar-error {
+  position: relative;
+}
+.message-bar-error::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.message-bar-thinking {
+  position: relative;
+}
+.message-bar-thinking::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  background: linear-gradient(180deg, #ba55d3 0%, #9932cc 100%);
+}
+
+/* ===== Mode Switch ===== */
+.mode-switch {
+  width: 26px;
+  height: 14px;
+  background: var(--vscode-panel-border);
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+.mode-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+.mode-switch.active {
+  background: var(--chatui-accent);
+}
+.mode-switch.active::after {
+  transform: translateX(12px);
+}
+
+/* ===== Textarea Focus Glow ===== */
+.textarea-glow {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.textarea-glow:focus-within {
+  border-color: var(--chatui-accent) !important;
+  box-shadow: 0 0 0 1px var(--chatui-accent-glow), 0 0 12px var(--chatui-accent-glow), 0 0 24px rgba(237, 110, 29, 0.1);
+}
+
+/* ===== Markdown Content ===== */
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+}
+.markdown-content h1 { font-size: 1.5em; }
+.markdown-content h2 { font-size: 1.3em; }
+.markdown-content h3 { font-size: 1.1em; }
+.markdown-content h4 { font-size: 1.05em; }
+.markdown-content h1,
+.markdown-content h2 {
+  border-bottom: 1px solid var(--chatui-glass-border);
+  padding-bottom: 0.3em;
+}
+.markdown-content strong {
+  font-weight: 600;
+  color: var(--vscode-terminal-ansiBrightWhite, #fff);
+}
+.markdown-content em {
+  font-style: italic;
+}
+.markdown-content p {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0.6em 0;
+  padding-left: 1.5em;
+}
+.markdown-content li {
+  margin: 0.3em 0;
+  line-height: 1.4;
+}
+
+/* ===== Loading Dots ===== */
+.loading-dot {
+  animation: bounceDot 1.4s ease-in-out infinite both;
+}
+.loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+.loading-dot:nth-child(3) { animation-delay: 0s; }

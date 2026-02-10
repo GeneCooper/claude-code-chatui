@@ -1,10 +1,10 @@
+import { LogoSVG } from './Header'
+
 const HINTS = [
-  { label: 'Fix a bug', prompt: 'Help me fix a bug in ' },
-  { label: 'Write tests', prompt: 'Write comprehensive tests for ' },
-  { label: 'Explain code', prompt: 'Explain how this code works: ' },
-  { label: 'Refactor', prompt: 'Refactor this code for better readability: ' },
-  { label: 'Code review', prompt: 'Review this code for issues: ' },
-  { label: 'Performance', prompt: 'Analyze this code for performance issues: ' },
+  { icon: '🐛', label: 'Fix a bug', prompt: 'Help me fix a bug in ' },
+  { icon: '🧪', label: 'Write tests', prompt: 'Write comprehensive tests for ' },
+  { icon: '📖', label: 'Explain code', prompt: 'Explain how this code works: ' },
+  { icon: '✨', label: 'Refactor', prompt: 'Refactor this code for better readability: ' },
 ]
 
 interface Props {
@@ -13,28 +13,68 @@ interface Props {
 
 export function WelcomeScreen({ onHintClick }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 gap-6">
-      <div className="text-center">
-        <div className="text-3xl mb-2 opacity-20">{'{ }'}</div>
-        <h2 className="text-base font-medium opacity-70 m-0">Claude Code</h2>
-        <p className="text-xs opacity-40 mt-1">AI-powered coding assistant</p>
+    <div
+      className="flex flex-col items-center justify-center px-6 text-center"
+      style={{
+        flex: 1,
+        minHeight: '50vh',
+        padding: '60px 24px',
+        animation: 'fadeIn 0.5s ease',
+      }}
+    >
+      <div
+        className="mb-4"
+        style={{
+          opacity: 0.9,
+          filter: 'drop-shadow(0 4px 12px rgba(237, 110, 29, 0.3))',
+        }}
+      >
+        <LogoSVG size={48} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 w-full max-w-[280px]">
+      <h2
+        className="m-0"
+        style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '8px' }}
+      >
+        Claude Code ChatUI
+      </h2>
+
+      <p className="m-0" style={{ fontSize: '13px', opacity: 0.7, marginBottom: '32px' }}>
+        AI-powered coding assistant
+      </p>
+
+      <div
+        className="grid grid-cols-2 gap-2 w-full"
+        style={{ maxWidth: '380px', margin: '0 auto' }}
+      >
         {HINTS.map((hint) => (
           <button
             key={hint.label}
             onClick={() => onHintClick(hint.prompt)}
-            className="px-3 py-2 text-[11px] rounded-lg border border-[var(--vscode-panel-border)] bg-transparent text-inherit opacity-60 hover:opacity-100 hover:border-[var(--vscode-focusBorder)] cursor-pointer transition-all text-left"
+            className="flex items-center gap-2 text-left cursor-pointer text-inherit"
+            style={{
+              padding: '10px 12px',
+              border: '1px solid var(--vscode-panel-border)',
+              background: 'rgba(128, 128, 128, 0.05)',
+              borderRadius: 'var(--radius-md)',
+              transition: 'all 0.2s ease',
+              fontSize: '12px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--chatui-accent)'
+              e.currentTarget.style.color = 'var(--chatui-accent)'
+              e.currentTarget.style.background = 'rgba(237, 110, 29, 0.06)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
+              e.currentTarget.style.color = 'inherit'
+              e.currentTarget.style.background = 'rgba(128, 128, 128, 0.05)'
+            }}
           >
-            {hint.label}
+            <span style={{ fontSize: '14px' }}>{hint.icon}</span>
+            <span style={{ fontWeight: 500 }}>{hint.label}</span>
           </button>
         ))}
-      </div>
-
-      <div className="text-center text-[10px] opacity-30 space-y-1">
-        <p>Type <span className="font-mono">/</span> for commands, <span className="font-mono">@</span> for files</p>
-        <p>Shift+Enter for new line</p>
       </div>
     </div>
   )

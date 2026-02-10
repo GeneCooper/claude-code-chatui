@@ -8,21 +8,13 @@ interface Props {
   data: Record<string, unknown>
 }
 
-/** Guess a syntax language from tool name and content */
 function guessLanguage(toolName?: string, content?: string): string | undefined {
   if (!content) return undefined
-
   if (toolName === 'Bash') return 'bash'
-
-  // Try to detect JSON
   const trimmed = content.trim()
   if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
     try { JSON.parse(trimmed); return 'json' } catch { /* not JSON */ }
   }
-
-  // File content from Read tool - guess from extension in content or tool input
-  if (toolName === 'Read' || toolName === 'Grep' || toolName === 'Glob') return undefined
-
   return undefined
 }
 
@@ -39,12 +31,7 @@ export function ToolResultBlock({ data }: Props) {
   const startLine = data.startLine as number | undefined
   const startLines = data.startLines as number[] | undefined
 
-  const hasDiff =
-    fileContentBefore !== undefined &&
-    fileContentAfter !== undefined &&
-    filePath !== undefined
-
-  // Truncate long content
+  const hasDiff = fileContentBefore !== undefined && fileContentAfter !== undefined && filePath !== undefined
   const isLong = content.length > 300
   const displayContent = expanded ? content : content.substring(0, 300)
   const language = guessLanguage(toolName, content)
@@ -55,17 +42,29 @@ export function ToolResultBlock({ data }: Props) {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const barClass = isError ? 'message-bar-error' : 'message-bar-result'
+
   return (
     <div
-      className={`border rounded-lg overflow-hidden text-xs ${
-        isError
-          ? 'border-[var(--vscode-inputValidation-errorBorder)] bg-[var(--vscode-inputValidation-errorBackground)]'
-          : 'border-[var(--vscode-panel-border)]'
-      }`}
+      className={`${barClass} overflow-hidden text-xs`}
+      style={{
+        border: isError
+          ? '1px solid rgba(231, 76, 60, 0.3)'
+          : '1px solid rgba(28, 192, 140, 0.2)',
+        borderRadius: 'var(--radius-md)',
+        animation: 'fadeInUp 0.3s var(--ease-out-expo)',
+      }}
     >
-      <div className="flex items-center gap-2 px-3 py-1 bg-[var(--vscode-sideBar-background)]">
-        <span>{isError ? '❌' : '✅'}</span>
-        <span className="opacity-60">
+      <div
+        className="flex items-center gap-2"
+        style={{
+          padding: '6px 12px',
+          paddingLeft: '16px',
+          background: 'var(--chatui-surface-1)',
+        }}
+      >
+        <span>{isError ? '\u274C' : '\u2705'}</span>
+        <span style={{ opacity: 0.6 }}>
           {toolName ? `${toolName} result` : 'Result'}
         </span>
         {content && (
@@ -95,7 +94,7 @@ export function ToolResultBlock({ data }: Props) {
       </div>
 
       {hasDiff && (
-        <div className="border-t border-[var(--vscode-panel-border)]">
+        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <DiffView
             oldContent={fileContentBefore!}
             newContent={fileContentAfter!}
@@ -107,7 +106,7 @@ export function ToolResultBlock({ data }: Props) {
       )}
 
       {!hasDiff && content && content !== 'Tool executed successfully' && (
-        <div className="border-t border-[var(--vscode-panel-border)]">
+        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
           {language ? (
             <SyntaxHighlighter
               style={vscDarkPlus}
@@ -116,6 +115,7 @@ export function ToolResultBlock({ data }: Props) {
               customStyle={{
                 margin: 0,
                 padding: '8px 12px',
+                paddingLeft: '16px',
                 fontSize: '11px',
                 background: 'transparent',
                 maxHeight: expanded ? 'none' : '200px',
@@ -125,7 +125,15 @@ export function ToolResultBlock({ data }: Props) {
               {displayContent + (isLong && !expanded ? '...' : '')}
             </SyntaxHighlighter>
           ) : (
-            <pre className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0 px-3 py-2" style={{ maxHeight: expanded ? 'none' : '200px', overflow: expanded ? 'visible' : 'auto' }}>
+            <pre
+              className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0"
+              style={{
+                padding: '8px 12px',
+                paddingLeft: '16px',
+                maxHeight: expanded ? 'none' : '200px',
+                overflow: expanded ? 'visible' : 'auto',
+              }}
+            >
               {displayContent}
               {isLong && !expanded && '...'}
             </pre>
