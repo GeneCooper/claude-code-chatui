@@ -1,21 +1,55 @@
 {
   "name": "claude-code-chatui",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "displayName": "Claude Code Chat UI",
+  "description": "A GUI wrapper for Claude Code CLI inside VS Code",
+  "version": "0.1.0",
+  "publisher": "GeneCooper",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.109.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claude-code-chatui",
+          "title": "Claude Code",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "claude-code-chatui": [
+        {
+          "type": "webview",
+          "id": "claude-code-chatui.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "claude-code-chatui.openChat",
+        "title": "Open Claude Code Chat"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile && npm run build:webview",
+    "compile": "tsc -p tsconfig.json",
+    "watch": "tsc -watch -p tsconfig.json",
+    "build:webview": "cd webview-ui && npm run build",
+    "dev:webview": "cd webview-ui && npm run dev",
+    "package": "vsce package",
+    "lint": "eslint src/"
+  },
   "devDependencies": {
     "@types/node": "^25.2.2",
     "@types/vscode": "^1.109.0",
     "@vscode/vsce": "^3.7.1",
-    "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
   }
 }
