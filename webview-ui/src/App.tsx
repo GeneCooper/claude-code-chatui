@@ -13,13 +13,18 @@ export default function App() {
   useVSCode()
 
   const activeView = useUIStore((s) => s.activeView)
+  const setDraftText = useUIStore((s) => s.setDraftText)
+
+  const handleHintClick = (text: string) => {
+    setDraftText(text)
+  }
 
   return (
     <div className="flex flex-col h-screen">
       <Header />
       {activeView === 'chat' && (
         <>
-          <ChatView />
+          <ChatView onHintClick={handleHintClick} />
           <StatusBar />
           <InputArea />
         </>

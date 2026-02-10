@@ -4,6 +4,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useConversationStore } from '../stores/conversationStore';
 import { useMCPStore } from '../stores/mcpStore';
+import { useUIStore } from '../stores/uiStore';
 
 /**
  * Hook that listens for messages from the extension host
@@ -55,13 +56,22 @@ export function useVSCode(): void {
           addMessage({ type: 'error', data: msg.data });
           break;
 
-        case 'setProcessing':
-          setProcessing((msg.data as { isProcessing: boolean }).isProcessing);
+        case 'setProcessing': {
+          const isProcessing = (msg.data as { isProcessing: boolean }).isProcessing;
+          setProcessing(isProcessing);
+          // Track request timer
+          if (isProcessing) {
+            useUIStore.getState().setRequestStartTime(Date.now());
+          } else {
+            useUIStore.getState().setRequestStartTime(null);
+          }
           break;
+        }
 
         case 'sessionCleared':
           clearMessages();
           setSessionId(null);
+          useUIStore.getState().setRequestStartTime(null);
           break;
 
         case 'sessionInfo': {
@@ -118,6 +128,15 @@ export function useVSCode(): void {
           addMessage({ type: 'error', data: 'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code' });
           break;
 
+        case 'showLoginRequired': {
+          const loginData = msg.data as { message: string };
+          addMessage({
+            type: 'error',
+            data: `Authentication required: ${loginData.message}\n\nRun "claude login" in your terminal or use the /login command.`,
+          });
+          break;
+        }
+
         // Phase 3: Settings
         case 'settingsData':
           useSettingsStore.getState().updateSettings(msg.data as { thinkingIntensity: string; yoloMode: boolean });
@@ -151,7 +170,7 @@ export function useVSCode(): void {
 
         // Phase 3: Restore points
         case 'restorePoint':
-          addMessage({ type: 'restorePoint' as 'toolResult', data: msg.data });
+          addMessage({ type: 'restorePoint', data: msg.data });
           break;
       }
     });

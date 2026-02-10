@@ -3,6 +3,51 @@ import { postMessage } from '../lib/vscode'
 import { useMCPStore } from '../stores/mcpStore'
 import { useUIStore } from '../stores/uiStore'
 
+const POPULAR_SERVERS = [
+  {
+    name: 'filesystem',
+    description: 'Read/write local files',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
+  },
+  {
+    name: 'github',
+    description: 'GitHub API access',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-github'],
+  },
+  {
+    name: 'postgres',
+    description: 'PostgreSQL database',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost/mydb'],
+  },
+  {
+    name: 'brave-search',
+    description: 'Brave web search',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-brave-search'],
+  },
+  {
+    name: 'puppeteer',
+    description: 'Browser automation',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-puppeteer'],
+  },
+  {
+    name: 'memory',
+    description: 'Persistent memory/knowledge',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-memory'],
+  },
+]
+
 export function MCPPanel() {
   const { servers, editingServer } = useMCPStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
@@ -57,6 +102,14 @@ export function MCPPanel() {
     postMessage({ type: 'deleteMCPServer', name: serverName })
   }
 
+  const handleQuickAdd = (server: typeof POPULAR_SERVERS[number]) => {
+    setName(server.name)
+    setServerType(server.type)
+    setCommand(server.command)
+    setArgs(server.args.join(' '))
+    setUrl('')
+  }
+
   const serverEntries = Object.entries(servers)
 
   return (
@@ -108,6 +161,32 @@ export function MCPPanel() {
             </div>
           </div>
         )}
+
+        {/* Popular servers */}
+        <div className="border-t border-[var(--vscode-panel-border)] pt-3">
+          <label className="text-xs font-medium block mb-1.5">Popular Servers</label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {POPULAR_SERVERS.map((server) => {
+              const isInstalled = server.name in servers
+              return (
+                <button
+                  key={server.name}
+                  onClick={() => !isInstalled && handleQuickAdd(server)}
+                  disabled={isInstalled}
+                  className={`text-left px-2 py-1.5 text-[11px] rounded border cursor-pointer transition-colors ${
+                    isInstalled
+                      ? 'border-green-600/30 bg-green-900/10 opacity-60 cursor-default'
+                      : 'border-[var(--vscode-panel-border)] bg-transparent hover:border-[var(--vscode-focusBorder)] text-inherit'
+                  }`}
+                >
+                  <div className="font-medium">{server.name}</div>
+                  <div className="opacity-40 text-[10px]">{server.description}</div>
+                  {isInstalled && <div className="text-[9px] text-green-500 mt-0.5">Installed</div>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Add/Edit form */}
         <div className="border-t border-[var(--vscode-panel-border)] pt-3">

@@ -11,6 +11,10 @@ export interface SendMessageOptions {
   yoloMode?: boolean;
   model?: string;
   mcpConfigPath?: string;
+  images?: string[];
+  allowedTools?: string[];
+  disallowedTools?: string[];
+  continueConversation?: boolean;
 }
 
 interface PendingPermission {
@@ -80,6 +84,22 @@ export class ClaudeService implements vscode.Disposable {
       args.push('--model', options.model);
     }
 
+    if (options.allowedTools?.length) {
+      for (const tool of options.allowedTools) {
+        args.push('--allowedTools', tool);
+      }
+    }
+
+    if (options.disallowedTools?.length) {
+      for (const tool of options.disallowedTools) {
+        args.push('--disallowedTools', tool);
+      }
+    }
+
+    if (options.continueConversation && this._sessionId) {
+      args.push('--continue');
+    }
+
     if (this._sessionId) {
       args.push('--resume', this._sessionId);
     }
@@ -100,12 +120,32 @@ export class ClaudeService implements vscode.Disposable {
 
     // Send user message to stdin
     if (claudeProcess.stdin) {
+      // Build content blocks: text + optional images
+      const contentBlocks: unknown[] = [{ type: 'text', text: actualMessage }];
+
+      if (options.images?.length) {
+        for (const dataUrl of options.images) {
+          // Parse data URL: data:image/png;base64,xxxxx
+          const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (match) {
+            contentBlocks.push({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: match[1],
+                data: match[2],
+              },
+            });
+          }
+        }
+      }
+
       const userMsg = {
         type: 'user',
         session_id: this._sessionId || '',
         message: {
           role: 'user',
-          content: [{ type: 'text', text: actualMessage }],
+          content: contentBlocks,
         },
         parent_tool_use_id: null,
       };

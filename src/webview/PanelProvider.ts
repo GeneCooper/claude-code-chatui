@@ -74,8 +74,23 @@ export class PanelProvider {
 
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });
+      } else if (error.includes('authentication') || error.includes('login') || error.includes('API key') || error.includes('unauthorized') || error.includes('401')) {
+        this._postMessage({
+          type: 'showLoginRequired',
+          data: { message: error },
+        });
       } else {
         this._postMessage({ type: 'error', data: error });
+        // Suggest YOLO if it's a permission error
+        if (error.includes('permission') || error.includes('denied')) {
+          const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+          if (!config.get<boolean>('permissions.yoloMode', false)) {
+            this._postMessage({
+              type: 'error',
+              data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.',
+            });
+          }
+        }
       }
     });
 
@@ -220,7 +235,12 @@ export class PanelProvider {
   private _handleWebviewMessage(message: WebviewToExtensionMessage): void {
     switch (message.type) {
       case 'sendMessage':
-        this._handleSendMessage(message.text, message.planMode, message.thinkingMode);
+        // Use model from message if provided, otherwise use saved model
+        if (message.model) {
+          this._selectedModel = message.model;
+          void this._context.workspaceState.update('claude.selectedModel', message.model);
+        }
+        this._handleSendMessage(message.text, message.planMode, message.thinkingMode, message.images);
         return;
       case 'newSession':
         void this.newSession();
@@ -247,6 +267,9 @@ export class PanelProvider {
         return;
       case 'openFile':
         this._openFile(message.filePath);
+        return;
+      case 'openExternal':
+        void vscode.env.openExternal(vscode.Uri.parse((message as { url: string }).url));
         return;
       case 'openDiff':
         void DiffContentProvider.openDiff(message.oldContent, message.newContent, message.filePath);
@@ -303,7 +326,7 @@ export class PanelProvider {
     }
   }
 
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean): void {
+  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
     if (this._isProcessing) return;
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -343,6 +366,7 @@ export class PanelProvider {
       yoloMode,
       model: this._selectedModel !== 'default' ? this._selectedModel : undefined,
       mcpConfigPath,
+      images,
     });
   }
 

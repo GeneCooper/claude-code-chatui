@@ -7,8 +7,13 @@ import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { RestorePoint } from './RestorePoint'
+import { WelcomeScreen } from './WelcomeScreen'
 
-export function ChatView() {
+interface ChatViewProps {
+  onHintClick?: (text: string) => void
+}
+
+export function ChatView({ onHintClick }: ChatViewProps) {
   const messages = useChatStore((s) => s.messages)
   const scrollRef = useAutoScroll<HTMLDivElement>([messages])
 
@@ -18,9 +23,7 @@ export function ChatView() {
       className="flex-1 overflow-y-auto px-3 py-4 space-y-3"
     >
       {messages.length === 0 && (
-        <div className="flex items-center justify-center h-full opacity-40 text-sm">
-          Start a conversation with Claude
-        </div>
+        <WelcomeScreen onHintClick={onHintClick || (() => {})} />
       )}
 
       {messages.map((msg) => (

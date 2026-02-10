@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useUIStore } from '../stores/uiStore'
+import { useSettingsStore } from '../stores/settingsStore'
 
 interface SlashCommand {
   command: string
   description: string
-  category: 'snippet' | 'native'
+  category: 'snippet' | 'native' | 'custom'
 }
 
-// Commands defined inline to avoid importing from backend shared
-const COMMANDS: SlashCommand[] = [
+// Built-in commands
+const BUILTIN_COMMANDS: SlashCommand[] = [
   { command: 'performance-analysis', description: 'Analyze code for performance issues', category: 'snippet' },
   { command: 'security-review', description: 'Review code for security vulnerabilities', category: 'snippet' },
   { command: 'implementation-review', description: 'Review implementation details', category: 'snippet' },
@@ -41,9 +42,20 @@ interface Props {
 export function SlashCommandPicker({ filter, onSelect }: Props) {
   const show = useUIStore((s) => s.showSlashPicker)
   const setShow = useUIStore((s) => s.setShowSlashPicker)
+  const customSnippets = useSettingsStore((s) => s.customSnippets)
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  const filtered = COMMANDS.filter((cmd) =>
+  // Merge built-in commands with custom snippets
+  const allCommands = useMemo(() => {
+    const custom: SlashCommand[] = customSnippets.map((s) => ({
+      command: s.command,
+      description: s.description,
+      category: 'custom' as const,
+    }))
+    return [...custom, ...BUILTIN_COMMANDS]
+  }, [customSnippets])
+
+  const filtered = allCommands.filter((cmd) =>
     cmd.command.toLowerCase().includes(filter.toLowerCase()),
   )
 
@@ -64,7 +76,8 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
         const cmd = filtered[selectedIndex]
-        onSelect(cmd.command, cmd.category)
+        // Custom snippets behave like regular snippets
+        onSelect(cmd.command, cmd.category === 'custom' ? 'snippet' : cmd.category)
         setShow(false)
       } else if (e.key === 'Escape') {
         e.preventDefault()
@@ -81,34 +94,47 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
 
   if (!show || filtered.length === 0) return null
 
+  const customs = filtered.filter((c) => c.category === 'custom')
   const snippets = filtered.filter((c) => c.category === 'snippet')
   const natives = filtered.filter((c) => c.category === 'native')
 
   let globalIndex = 0
 
+  const renderItem = (cmd: SlashCommand) => {
+    const idx = globalIndex++
+    const effectiveCategory = cmd.category === 'custom' ? 'snippet' : cmd.category
+    return (
+      <button
+        key={`${cmd.category}-${cmd.command}`}
+        onClick={() => {
+          onSelect(cmd.command, effectiveCategory)
+          setShow(false)
+        }}
+        className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer bg-transparent border-none text-inherit ${
+          idx === selectedIndex ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
+        }`}
+      >
+        <span className="font-mono opacity-60">/{cmd.command}</span>
+        <span className="opacity-40 truncate">{cmd.description}</span>
+      </button>
+    )
+  }
+
   return (
     <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+      {customs.length > 0 && (
+        <>
+          <div className="px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider">Custom Prompts</div>
+          {customs.map(renderItem)}
+        </>
+      )}
+
       {snippets.length > 0 && (
         <>
-          <div className="px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider">Prompts</div>
-          {snippets.map((cmd) => {
-            const idx = globalIndex++
-            return (
-              <button
-                key={cmd.command}
-                onClick={() => {
-                  onSelect(cmd.command, cmd.category)
-                  setShow(false)
-                }}
-                className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer bg-transparent border-none text-inherit ${
-                  idx === selectedIndex ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
-                }`}
-              >
-                <span className="font-mono opacity-60">/{cmd.command}</span>
-                <span className="opacity-40 truncate">{cmd.description}</span>
-              </button>
-            )
-          })}
+          <div className={`px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider ${customs.length > 0 ? 'border-t border-[var(--vscode-panel-border)]' : ''}`}>
+            Prompts
+          </div>
+          {snippets.map(renderItem)}
         </>
       )}
 
@@ -117,24 +143,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
           <div className="px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider border-t border-[var(--vscode-panel-border)]">
             Commands
           </div>
-          {natives.map((cmd) => {
-            const idx = globalIndex++
-            return (
-              <button
-                key={cmd.command}
-                onClick={() => {
-                  onSelect(cmd.command, cmd.category)
-                  setShow(false)
-                }}
-                className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer bg-transparent border-none text-inherit ${
-                  idx === selectedIndex ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
-                }`}
-              >
-                <span className="font-mono opacity-60">/{cmd.command}</span>
-                <span className="opacity-40 truncate">{cmd.description}</span>
-              </button>
-            )
-          })}
+          {natives.map(renderItem)}
         </>
       )}
     </div>

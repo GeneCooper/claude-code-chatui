@@ -208,7 +208,7 @@ export interface SlashCommand {
 
 /** Messages from Webview to Extension */
 export type WebviewToExtensionMessage =
-  | { type: 'sendMessage'; text: string; planMode?: boolean; thinkingMode?: boolean }
+  | { type: 'sendMessage'; text: string; planMode?: boolean; thinkingMode?: boolean; model?: string; images?: string[] }
   | { type: 'newSession' }
   | { type: 'stopRequest' }
   | { type: 'ready' }
@@ -216,6 +216,7 @@ export type WebviewToExtensionMessage =
   | { type: 'getConversationList' }
   | { type: 'loadConversation'; filename: string }
   | { type: 'openFile'; filePath: string }
+  | { type: 'openExternal'; url: string }
   | { type: 'openDiff'; oldContent: string; newContent: string; filePath: string }
   | { type: 'getSettings' }
   | { type: 'updateSettings'; settings: Record<string, unknown> }
@@ -259,7 +260,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'mcpServerDeleted'; data: { name: string } }
   | { type: 'mcpServerError'; data: { error: string } }
   | { type: 'restorePoint'; data: BackupCommit }
-  | { type: 'slashCommands'; data: SlashCommand[] };
+  | { type: 'slashCommands'; data: SlashCommand[] }
+  | { type: 'showLoginRequired'; data: { message: string } };
 
 export interface SettingsData {
   thinkingIntensity: string;

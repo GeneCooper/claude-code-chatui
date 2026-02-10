@@ -1,10 +1,11 @@
+import { useState, useEffect } from 'react'
 import { useChatStore } from '../stores/chatStore'
 import { useUIStore } from '../stores/uiStore'
 import { postMessage } from '../lib/vscode'
 
 export function Header() {
   const { sessionId, isProcessing, totals } = useChatStore()
-  const { activeView, setActiveView } = useUIStore()
+  const { activeView, setActiveView, requestStartTime } = useUIStore()
 
   const handleNewSession = () => {
     postMessage({ type: 'newSession' })
@@ -25,7 +26,10 @@ export function Header() {
           </span>
         )}
         {isProcessing && (
-          <span className="inline-block w-2 h-2 rounded-full bg-[#ed6e1d] animate-pulse" />
+          <>
+            <span className="inline-block w-2 h-2 rounded-full bg-[#ed6e1d] animate-pulse" />
+            {requestStartTime && <RequestTimer startTime={requestStartTime} />}
+          </>
         )}
       </div>
 
@@ -59,6 +63,28 @@ export function Header() {
         </button>
       </div>
     </div>
+  )
+}
+
+function RequestTimer({ startTime }: { startTime: number }) {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [startTime])
+
+  const formatTime = (s: number) => {
+    if (s < 60) return `${s}s`
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${m}m${sec.toString().padStart(2, '0')}s`
+  }
+
+  return (
+    <span className="text-[10px] opacity-40 font-mono">{formatTime(elapsed)}</span>
   )
 }
 

@@ -6,6 +6,13 @@ interface Props {
 
 export function ThinkingBlock({ text }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   return (
     <div className="border border-[var(--vscode-panel-border)] rounded-lg overflow-hidden">
@@ -20,8 +27,16 @@ export function ThinkingBlock({ text }: Props) {
         </span>
       </button>
       {expanded && (
-        <div className="px-3 py-2 text-xs opacity-70 whitespace-pre-wrap border-t border-[var(--vscode-panel-border)] max-h-60 overflow-y-auto">
-          {text}
+        <div className="relative border-t border-[var(--vscode-panel-border)]">
+          <button
+            onClick={handleCopy}
+            className="absolute right-2 top-1 opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px] z-10"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <div className="px-3 py-2 text-xs opacity-70 whitespace-pre-wrap max-h-60 overflow-y-auto">
+            {text}
+          </div>
         </div>
       )}
     </div>

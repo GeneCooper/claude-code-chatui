@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { DiffView } from './DiffView'
 import { postMessage } from '../lib/vscode'
 
@@ -6,8 +8,27 @@ interface Props {
   data: Record<string, unknown>
 }
 
+/** Guess a syntax language from tool name and content */
+function guessLanguage(toolName?: string, content?: string): string | undefined {
+  if (!content) return undefined
+
+  if (toolName === 'Bash') return 'bash'
+
+  // Try to detect JSON
+  const trimmed = content.trim()
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try { JSON.parse(trimmed); return 'json' } catch { /* not JSON */ }
+  }
+
+  // File content from Read tool - guess from extension in content or tool input
+  if (toolName === 'Read' || toolName === 'Grep' || toolName === 'Glob') return undefined
+
+  return undefined
+}
+
 export function ToolResultBlock({ data }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
   const isError = data.isError as boolean
   const content = String(data.content || '')
   const toolName = data.toolName as string | undefined
@@ -26,6 +47,13 @@ export function ToolResultBlock({ data }: Props) {
   // Truncate long content
   const isLong = content.length > 300
   const displayContent = expanded ? content : content.substring(0, 300)
+  const language = guessLanguage(toolName, content)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   return (
     <div
@@ -40,6 +68,14 @@ export function ToolResultBlock({ data }: Props) {
         <span className="opacity-60">
           {toolName ? `${toolName} result` : 'Result'}
         </span>
+        {content && (
+          <button
+            onClick={handleCopy}
+            className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        )}
         {hasDiff && (
           <button
             onClick={(e) => {
@@ -71,15 +107,33 @@ export function ToolResultBlock({ data }: Props) {
       )}
 
       {!hasDiff && content && content !== 'Tool executed successfully' && (
-        <div className="px-3 py-2 border-t border-[var(--vscode-panel-border)]">
-          <pre className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0">
-            {displayContent}
-            {isLong && !expanded && '...'}
-          </pre>
+        <div className="border-t border-[var(--vscode-panel-border)]">
+          {language ? (
+            <SyntaxHighlighter
+              style={vscDarkPlus}
+              language={language}
+              PreTag="div"
+              customStyle={{
+                margin: 0,
+                padding: '8px 12px',
+                fontSize: '11px',
+                background: 'transparent',
+                maxHeight: expanded ? 'none' : '200px',
+                overflow: expanded ? 'visible' : 'auto',
+              }}
+            >
+              {displayContent + (isLong && !expanded ? '...' : '')}
+            </SyntaxHighlighter>
+          ) : (
+            <pre className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0 px-3 py-2" style={{ maxHeight: expanded ? 'none' : '200px', overflow: expanded ? 'visible' : 'auto' }}>
+              {displayContent}
+              {isLong && !expanded && '...'}
+            </pre>
+          )}
           {isLong && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="mt-1 text-[10px] opacity-50 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit"
+              className="px-3 py-1 text-[10px] opacity-50 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit"
             >
               {expanded ? 'Show less' : 'Show more'}
             </button>
