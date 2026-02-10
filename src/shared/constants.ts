@@ -20,12 +20,12 @@ export const FILE_EDIT_TOOLS: string[] = [TOOL_NAMES.Edit, TOOL_NAMES.MultiEdit,
 /** Tools whose results are hidden by default (unless error) */
 export const HIDDEN_RESULT_TOOLS: string[] = [TOOL_NAMES.Read, TOOL_NAMES.TodoWrite];
 
-/** Thinking intensity levels */
+/** Thinking intensity levels — each includes output constraints to avoid token waste */
 export const THINKING_INTENSITIES = {
-  think: 'THINK',
-  'think-hard': 'THINK HARD',
-  'think-harder': 'THINK HARDER',
-  ultrathink: 'ULTRATHINK',
+  think: 'Think briefly, then give a concise and actionable answer.',
+  'think-hard': 'THINK HARD about this step by step. Be thorough but keep your response focused. Prefer code over explanation.',
+  'think-harder': 'THINK HARDER THROUGH THIS STEP BY STEP. Analyze carefully and consider edge cases, but converge on a precise, actionable solution. Avoid over-explaining — show, don\'t tell.',
+  ultrathink: 'ULTRATHINK: Perform deep analysis. Consider all approaches, trade-offs, and edge cases. Then provide the optimal solution with clear but concise reasoning. Prioritize correctness and code over verbose explanation.',
 } as const;
 
 export type ThinkingIntensity = keyof typeof THINKING_INTENSITIES;

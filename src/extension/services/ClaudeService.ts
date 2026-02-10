@@ -59,12 +59,18 @@ export class ClaudeService implements vscode.Disposable {
     if (options.thinkingMode) {
       const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
       const intensity = config.get<ThinkingIntensity>('thinking.intensity', 'think');
-      const prompt = THINKING_INTENSITIES[intensity] || 'THINK';
-      actualMessage = `${prompt} THROUGH THIS STEP BY STEP: \n${actualMessage}`;
+      const prompt = THINKING_INTENSITIES[intensity] || THINKING_INTENSITIES.think;
+      actualMessage = `${prompt}\n\n${actualMessage}`;
     }
 
     // Build CLI arguments
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
+
+    // Append efficiency system prompt to reduce token waste
+    args.push(
+      '--append-system-prompt',
+      'Respond concisely. Prefer showing code over explaining it. Avoid repeating the question or restating what you are about to do. Get straight to the solution.',
+    );
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
