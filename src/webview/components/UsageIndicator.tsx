@@ -49,20 +49,26 @@ export function UsageIndicator() {
 
       {/* Expanded panel */}
       {showPanel && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            width: '260px',
-            background: 'var(--vscode-editor-background)',
-            border: '1px solid var(--vscode-panel-border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '16px',
-            zIndex: 1000,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-          }}
-        >
+        <>
+          {/* Click-outside overlay */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+            onClick={() => setShowPanel(false)}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              width: '260px',
+              background: 'var(--vscode-editor-background)',
+              border: '1px solid var(--vscode-panel-border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '16px',
+              zIndex: 1000,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            }}
+          >
           <div className="flex items-center justify-between" style={{ marginBottom: '14px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600 }}>API Usage</span>
             <button
@@ -96,7 +102,8 @@ export function UsageIndicator() {
             percent={weeklyPercent}
             resetTime={usageData.weekly.resetsAt}
           />
-        </div>
+          </div>
+        </>
       )}
     </div>
   )

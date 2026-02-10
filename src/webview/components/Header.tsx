@@ -42,6 +42,8 @@ export function Header() {
         borderBottom: '1px solid var(--chatui-glass-border)',
         backgroundColor: 'var(--chatui-glass-bg)',
         backdropFilter: 'blur(12px)',
+        position: 'relative',
+        zIndex: 100,
       }}
     >
       <div className="flex items-center gap-2">
