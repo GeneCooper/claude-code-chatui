@@ -302,7 +302,6 @@ export function InputArea() {
           background: 'var(--vscode-input-background)',
           border: '1px solid rgba(237, 110, 29, 0.3)',
           borderRadius: 'var(--radius-md)',
-          overflow: 'hidden',
         }}
       >
         <textarea
@@ -364,6 +363,11 @@ export function InputArea() {
 
               {/* Model popup panel */}
               {showModelPicker && (
+                <>
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+                  onClick={() => setShowModelPicker(false)}
+                />
                 <div
                   style={{
                     position: 'absolute',
@@ -426,6 +430,7 @@ export function InputArea() {
                     ))}
                   </div>
                 </div>
+                </>
               )}
             </div>
 
