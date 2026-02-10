@@ -24,6 +24,7 @@ export function InputArea() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
+  const yoloMode = useSettingsStore((s) => s.yoloMode)
   const { showSlashPicker, showFilePicker, setShowSlashPicker, setShowFilePicker, draftText, setDraftText } = useUIStore()
 
   const [slashFilter, setSlashFilter] = useState('')
@@ -266,6 +267,31 @@ export function InputArea() {
             <rect x="9" y="3" width="6" height="4" rx="2" />
           </svg>
           <span>Plan</span>
+        </button>
+
+        <button
+          onClick={() => {
+            const next = !yoloMode
+            postMessage({ type: 'updateSettings', settings: { 'permissions.yoloMode': next } })
+            useSettingsStore.getState().updateSettings({ yoloMode: next })
+          }}
+          className="flex items-center gap-1 cursor-pointer border-none"
+          style={{
+            padding: '2px 10px',
+            borderRadius: '12px',
+            border: `1px solid ${yoloMode ? '#ef4444' : 'var(--vscode-panel-border)'}`,
+            background: yoloMode ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+            color: yoloMode ? '#ef4444' : 'inherit',
+            opacity: yoloMode ? 1 : 0.7,
+            transition: 'all 0.2s ease',
+            boxShadow: yoloMode ? '0 0 8px rgba(239, 68, 68, 0.3)' : 'none',
+          }}
+          title="YOLO mode - Skip all permission checks (dangerous!)"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+          <span>YOLO</span>
         </button>
       </div>
 
