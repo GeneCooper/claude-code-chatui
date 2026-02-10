@@ -241,6 +241,7 @@ export type WebviewToExtensionMessage =
   | { type: 'updateSettings'; settings: Record<string, unknown> }
   | { type: 'selectModel'; model: string }
   | { type: 'openModelTerminal' }
+  | { type: 'runInstallCommand' }
   | { type: 'saveInputText'; text: string }
   | { type: 'executeSlashCommand'; command: string }
   | { type: 'getWorkspaceFiles'; searchTerm?: string }
@@ -285,7 +286,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'showLoginRequired'; data: { message: string } }
   | { type: 'usageUpdate'; data: UsageData }
   | { type: 'usageError'; data: string }
-  | { type: 'todosUpdate'; data: { todos: TodoItem[] } };
+  | { type: 'todosUpdate'; data: { todos: TodoItem[] } }
+  | { type: 'installComplete'; data: { success: boolean; error?: string } };
 
 export interface SettingsData {
   thinkingIntensity: string;

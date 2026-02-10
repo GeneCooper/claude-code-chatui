@@ -8,6 +8,8 @@ import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { MCPPanel } from './components/MCPPanel'
+import { InstallModal } from './components/InstallModal'
+import { LoginModal } from './components/LoginModal'
 
 export default function App() {
   // Connect to VS Code extension host
@@ -34,6 +36,8 @@ export default function App() {
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
       <MCPPanel />
+      <InstallModal />
+      <LoginModal />
     </div>
   )
 }

@@ -125,15 +125,20 @@ export function useVSCode(): void {
           break;
 
         case 'showInstallModal':
-          addMessage({ type: 'error', data: 'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code' });
+          useUIStore.getState().setShowInstallModal(true);
           break;
 
         case 'showLoginRequired': {
           const loginData = msg.data as { message: string };
-          addMessage({
-            type: 'error',
-            data: `Authentication required: ${loginData.message}\n\nRun "claude login" in your terminal or use the /login command.`,
-          });
+          useUIStore.getState().setLoginErrorMessage(loginData.message || '');
+          useUIStore.getState().setShowLoginModal(true);
+          break;
+        }
+
+        case 'installComplete': {
+          const installResult = msg.data as { success: boolean; error?: string };
+          const cb = (window as unknown as { __installCallback?: (success: boolean, error?: string) => void }).__installCallback;
+          if (cb) cb(installResult.success, installResult.error);
           break;
         }
 

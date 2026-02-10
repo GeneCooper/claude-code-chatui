@@ -261,6 +261,7 @@ export class PanelProvider {
         return;
       case 'ready':
         this._postMessage({ type: 'ready', data: 'Extension ready' });
+        this._checkCliAvailable();
         return;
       case 'permissionResponse':
         this._claudeService.sendPermissionResponse(message.id, message.approved, message.alwaysAllow);
@@ -282,6 +283,9 @@ export class PanelProvider {
         terminal.show();
         return;
       }
+      case 'runInstallCommand':
+        this._runInstallCommand();
+        return;
       case 'saveInputText':
         this._draftMessage = message.text;
         return;
@@ -390,6 +394,47 @@ export class PanelProvider {
       model: this._selectedModel !== 'default' ? this._selectedModel : undefined,
       mcpConfigPath,
       images,
+    });
+  }
+
+  private _checkCliAvailable(): void {
+    const { exec } = require('child_process') as typeof import('child_process');
+    const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
+    exec('claude --version', { shell, timeout: 5000 }, (error: Error | null) => {
+      if (error) {
+        this._postMessage({ type: 'showInstallModal' });
+      }
+    });
+  }
+
+  private _runInstallCommand(): void {
+    const { exec } = require('child_process') as typeof import('child_process');
+    const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
+
+    exec('node --version', { shell }, (nodeErr: Error | null, nodeStdout: string) => {
+      let command: string;
+      const nodeOk = !nodeErr && nodeStdout && (() => {
+        const m = nodeStdout.trim().match(/^v(\d+)/);
+        return m && parseInt(m[1], 10) >= 18;
+      })();
+
+      if (nodeOk) {
+        command = 'npm install -g @anthropic-ai/claude-code';
+      } else if (process.platform === 'win32') {
+        command = 'irm https://claude.ai/install.ps1 | iex';
+      } else {
+        command = 'curl -fsSL https://claude.ai/install.sh | sh';
+      }
+
+      exec(command, { shell }, (error: Error | null, _stdout: string, stderr: string) => {
+        this._postMessage({
+          type: 'installComplete',
+          data: {
+            success: !error,
+            error: error ? (stderr || error.message) : undefined,
+          },
+        });
+      });
     });
   }
 
