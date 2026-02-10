@@ -48,7 +48,7 @@ export function SettingsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--vscode-panel-border)]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-(--vscode-panel-border)">
         <span className="font-medium text-sm">Settings</span>
         <button
           onClick={() => setActiveView('chat')}
@@ -65,7 +65,7 @@ export function SettingsPanel() {
           <select
             value={thinkingIntensity}
             onChange={(e) => updateSetting('thinking.intensity', e.target.value)}
-            className="w-full px-2 py-1.5 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border)] rounded"
+            className="w-full px-2 py-1.5 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
           >
             <option value="think">Think</option>
             <option value="think-hard">Think Hard</option>
@@ -82,7 +82,7 @@ export function SettingsPanel() {
               type="checkbox"
               checked={yoloMode}
               onChange={(e) => updateSetting('permissions.yoloMode', e.target.checked)}
-              className="accent-[var(--vscode-focusBorder)]"
+              className="accent-(--vscode-focusBorder)"
             />
             <span className="text-xs font-medium">YOLO Mode</span>
           </label>
@@ -92,42 +92,42 @@ export function SettingsPanel() {
         </div>
 
         {/* Custom Prompt Snippets */}
-        <div className="border-t border-[var(--vscode-panel-border)] pt-3">
+        <div className="border-t border-(--vscode-panel-border) pt-3">
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-medium">Custom Prompt Snippets</label>
             <button
               onClick={() => setShowSnippetForm(!showSnippetForm)}
-              className="text-[10px] px-2 py-0.5 rounded bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] cursor-pointer border-none"
+              className="text-[10px] px-2 py-0.5 rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
             >
               {showSnippetForm ? 'Cancel' : '+ Add'}
             </button>
           </div>
 
           {showSnippetForm && (
-            <div className="space-y-2 mb-3 p-2 rounded border border-[var(--vscode-panel-border)]">
+            <div className="space-y-2 mb-3 p-2 rounded border border-(--vscode-panel-border)">
               <input
                 value={snippetCmd}
                 onChange={(e) => setSnippetCmd(e.target.value)}
                 placeholder="Command name (e.g. my-review)"
-                className="w-full px-2 py-1 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border)] rounded"
+                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
               />
               <input
                 value={snippetDesc}
                 onChange={(e) => setSnippetDesc(e.target.value)}
                 placeholder="Description (optional)"
-                className="w-full px-2 py-1 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border)] rounded"
+                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
               />
               <textarea
                 value={snippetPrompt}
                 onChange={(e) => setSnippetPrompt(e.target.value)}
                 placeholder="Prompt template..."
                 rows={3}
-                className="w-full px-2 py-1 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border)] rounded resize-none"
+                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded resize-none"
               />
               <button
                 onClick={handleSaveSnippet}
                 disabled={!snippetCmd.trim() || !snippetPrompt.trim()}
-                className="px-3 py-1 text-xs rounded bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] cursor-pointer border-none disabled:opacity-50"
+                className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none disabled:opacity-50"
               >
                 Save Snippet
               </button>
@@ -139,7 +139,7 @@ export function SettingsPanel() {
               {customSnippets.map((snippet) => (
                 <div
                   key={snippet.command}
-                  className="flex items-center justify-between px-2 py-1.5 rounded border border-[var(--vscode-panel-border)] text-xs"
+                  className="flex items-center justify-between px-2 py-1.5 rounded border border-(--vscode-panel-border) text-xs"
                 >
                   <div className="truncate flex-1">
                     <span className="font-mono opacity-60">/{snippet.command}</span>
@@ -147,7 +147,7 @@ export function SettingsPanel() {
                   </div>
                   <button
                     onClick={() => handleDeleteSnippet(snippet.command)}
-                    className="px-1.5 py-0.5 text-[10px] opacity-50 hover:opacity-100 cursor-pointer bg-transparent border-none text-[var(--vscode-errorForeground)]"
+                    className="px-1.5 py-0.5 text-[10px] opacity-50 hover:opacity-100 cursor-pointer bg-transparent border-none text-(--vscode-errorForeground)"
                   >
                     Delete
                   </button>
@@ -160,18 +160,18 @@ export function SettingsPanel() {
         </div>
 
         {/* Navigation shortcuts */}
-        <div className="border-t border-[var(--vscode-panel-border)] pt-3">
+        <div className="border-t border-(--vscode-panel-border) pt-3">
           <label className="text-xs font-medium block mb-2">Quick Links</label>
           <div className="space-y-1.5">
             <button
               onClick={() => { useUIStore.getState().setShowMCPModal(true); setActiveView('chat') }}
-              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-[var(--vscode-list-hoverBackground)] cursor-pointer bg-transparent border-none text-inherit"
+              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-(--vscode-list-hoverBackground) cursor-pointer bg-transparent border-none text-inherit"
             >
               MCP Server Management
             </button>
             <button
               onClick={() => setActiveView('history')}
-              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-[var(--vscode-list-hoverBackground)] cursor-pointer bg-transparent border-none text-inherit"
+              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-(--vscode-list-hoverBackground) cursor-pointer bg-transparent border-none text-inherit"
             >
               Conversation History
             </button>

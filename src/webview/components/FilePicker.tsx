@@ -86,14 +86,14 @@ export function FilePicker({ onSelect }: Props) {
       style={{ position: 'fixed', inset: 0, zIndex: 49 }}
       onClick={() => { setShow(false); setSearch('') }}
     />
-    <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded-lg shadow-lg z-50">
-      <div className="px-3 py-2 border-b border-[var(--vscode-panel-border)]">
+    <div className="absolute bottom-full left-0 right-0 mb-1 bg-(--vscode-editorWidget-background) border border-(--vscode-editorWidget-border) rounded-lg shadow-lg z-50">
+      <div className="px-3 py-2 border-b border-(--vscode-panel-border)">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search files..."
           autoFocus
-          className="w-full px-2 py-1 text-xs bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-[var(--vscode-input-border)] rounded outline-none"
+          className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded outline-none"
         />
       </div>
 
@@ -111,8 +111,8 @@ export function FilePicker({ onSelect }: Props) {
               }}
               className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer bg-transparent border-none text-inherit ${
                 idx === selectedIndex
-                  ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]'
-                  : 'hover:bg-[var(--vscode-list-hoverBackground)]'
+                  ? 'bg-(--vscode-list-activeSelectionBackground) text-(--vscode-list-activeSelectionForeground)'
+                  : 'hover:bg-(--vscode-list-hoverBackground)'
               }`}
             >
               <span className="opacity-40 font-mono text-[10px] w-6 text-center">{getFileIcon(file.name)}</span>

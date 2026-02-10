@@ -343,7 +343,7 @@ function MessageRenderer({ message }: { message: ChatMessage }) {
 
     case 'error':
       return (
-        <div className="px-3 py-2 rounded-lg bg-[var(--vscode-inputValidation-errorBackground,rgba(255,0,0,0.1))] border border-[var(--vscode-inputValidation-errorBorder,#be1100)] text-sm">
+        <div className="px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: 'var(--vscode-inputValidation-errorBackground, rgba(255,0,0,0.1))', borderColor: 'var(--vscode-inputValidation-errorBorder, #be1100)' }}>
           {String(message.data)}
         </div>
       )
@@ -363,7 +363,7 @@ function MessageRenderer({ message }: { message: ChatMessage }) {
 
     case 'compactBoundary':
       return (
-        <div className="text-center text-xs opacity-40 py-1 border-t border-dashed border-[var(--vscode-panel-border)]">
+        <div className="text-center text-xs opacity-40 py-1 border-t border-dashed border-(--vscode-panel-border)">
           Conversation compacted
         </div>
       )

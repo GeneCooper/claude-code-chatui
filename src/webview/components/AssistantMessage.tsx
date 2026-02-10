@@ -69,7 +69,7 @@ export function AssistantMessage({ text }: Props) {
         </span>
         <button
           onClick={handleCopyMessage}
-          className="ml-auto opacity-0 group-hover:opacity-60 hover:!opacity-100 cursor-pointer bg-transparent border-none text-inherit"
+          className="ml-auto opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none text-inherit"
           style={{
             padding: '4px',
             borderRadius: 'var(--radius-sm)',
@@ -117,7 +117,7 @@ function LinkComponent({ href, children, ...props }: ComponentPropsWithoutRef<'a
     <a
       href={href}
       onClick={handleClick}
-      className="text-[var(--vscode-textLink-foreground)] hover:underline cursor-pointer"
+      className="text-(--vscode-textLink-foreground) hover:underline cursor-pointer"
       {...props}
     >
       {children}
@@ -165,7 +165,7 @@ function linkifyFilePaths(text: string): React.ReactNode {
       <span
         key={startIndex}
         onClick={() => postMessage({ type: 'openFile', filePath: cleanPath })}
-        className="text-[var(--vscode-textLink-foreground)] hover:underline cursor-pointer"
+        className="text-(--vscode-textLink-foreground) hover:underline cursor-pointer"
         title={`Open ${cleanPath}`}
       >
         {path}

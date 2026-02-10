@@ -63,7 +63,7 @@ export function UserMessage({ text }: Props) {
           </span>
           <button
             onClick={handleCopy}
-            className="ml-auto opacity-0 group-hover:opacity-60 hover:!opacity-100 cursor-pointer bg-transparent border-none text-inherit"
+            className="ml-auto opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none text-inherit"
             style={{
               padding: '4px',
               borderRadius: 'var(--radius-sm)',
@@ -77,7 +77,7 @@ export function UserMessage({ text }: Props) {
         </div>
 
         {/* Message content */}
-        <div className="text-sm whitespace-pre-wrap break-words" style={{ paddingLeft: '8px' }}>
+        <div className="text-sm whitespace-pre-wrap wrap-break-word" style={{ paddingLeft: '8px' }}>
           {text}
         </div>
       </div>
