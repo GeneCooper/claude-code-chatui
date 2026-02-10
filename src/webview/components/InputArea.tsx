@@ -429,10 +429,37 @@ export function InputArea() {
                       </button>
                     ))}
                   </div>
+                  {/* Configure in Terminal footer */}
+                  <div
+                    className="flex items-center gap-1.5 cursor-pointer"
+                    style={{
+                      marginTop: '8px',
+                      paddingTop: '8px',
+                      borderTop: '1px solid var(--vscode-panel-border)',
+                      fontSize: '11px',
+                      opacity: 0.7,
+                      transition: 'all 0.2s ease',
+                    }}
+                    onClick={() => {
+                      postMessage({ type: 'openModelTerminal' })
+                      setShowModelPicker(false)
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="4 17 10 11 4 5" />
+                      <line x1="12" y1="19" x2="20" y2="19" />
+                    </svg>
+                    <span>Configure in Terminal</span>
+                  </div>
                 </div>
                 </>
               )}
             </div>
+
+            {/* Separator */}
+            <span style={{ color: 'var(--vscode-panel-border)', fontSize: '11px', userSelect: 'none' }}>|</span>
 
             {/* MCP button */}
             <button

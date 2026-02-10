@@ -273,6 +273,15 @@ export class PanelProvider {
         this._selectedModel = message.model;
         void this._context.workspaceState.update('claude.selectedModel', message.model);
         return;
+      case 'openModelTerminal': {
+        const terminal = vscode.window.createTerminal({
+          name: 'Claude Model Selection',
+          location: { viewColumn: vscode.ViewColumn.One },
+        });
+        terminal.sendText('claude /model');
+        terminal.show();
+        return;
+      }
       case 'saveInputText':
         this._draftMessage = message.text;
         return;

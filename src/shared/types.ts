@@ -240,6 +240,7 @@ export type WebviewToExtensionMessage =
   | { type: 'getSettings' }
   | { type: 'updateSettings'; settings: Record<string, unknown> }
   | { type: 'selectModel'; model: string }
+  | { type: 'openModelTerminal' }
   | { type: 'saveInputText'; text: string }
   | { type: 'executeSlashCommand'; command: string }
   | { type: 'getWorkspaceFiles'; searchTerm?: string }
