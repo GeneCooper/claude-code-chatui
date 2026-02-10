@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { postMessage } from '../lib/vscode'
 import { useChatStore } from '../stores/chatStore'
+import { useUIStore } from '../stores/uiStore'
+import { SlashCommandPicker } from './SlashCommandPicker'
+import { FilePicker } from './FilePicker'
 
 export function InputArea() {
   const [text, setText] = useState('')
@@ -8,6 +11,10 @@ export function InputArea() {
   const [thinkingMode, setThinkingMode] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
+  const { showSlashPicker, showFilePicker, setShowSlashPicker, setShowFilePicker } = useUIStore()
+
+  // Track slash command filter text
+  const [slashFilter, setSlashFilter] = useState('')
 
   // Auto-resize textarea
   const adjustHeight = useCallback(() => {
@@ -24,12 +31,19 @@ export function InputArea() {
   const handleSend = () => {
     const trimmed = text.trim()
     if (!trimmed || isProcessing) return
+
+    // Check if it's a slash command
+    if (trimmed.startsWith('/')) {
+      const cmd = trimmed.substring(1).split(/\s+/)[0]
+      postMessage({ type: 'executeSlashCommand', command: cmd })
+      setText('')
+      if (textareaRef.current) textareaRef.current.style.height = 'auto'
+      return
+    }
+
     postMessage({ type: 'sendMessage', text: trimmed, planMode, thinkingMode })
     setText('')
-    // Reset height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
   const handleStop = () => {
@@ -37,14 +51,78 @@ export function InputArea() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Don't handle Enter when pickers are open
+    if (showSlashPicker || showFilePicker) return
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    setText(value)
+
+    // Check for slash command trigger
+    if (value === '/' || (value.startsWith('/') && !value.includes(' '))) {
+      setSlashFilter(value.substring(1))
+      setShowSlashPicker(true)
+      setShowFilePicker(false)
+    } else if (!value.startsWith('/')) {
+      setShowSlashPicker(false)
+    }
+
+    // Check for @ file reference trigger
+    const cursorPos = e.target.selectionStart || 0
+    const textBefore = value.substring(0, cursorPos)
+    const atMatch = textBefore.match(/@(\S*)$/)
+    if (atMatch) {
+      setShowFilePicker(true)
+      setShowSlashPicker(false)
+    } else {
+      setShowFilePicker(false)
+    }
+  }
+
+  const handleSlashSelect = (command: string, category: 'snippet' | 'native') => {
+    if (category === 'native') {
+      // Execute native command directly
+      postMessage({ type: 'executeSlashCommand', command })
+      setText('')
+    } else {
+      // Insert snippet command as message
+      setText(`/${command} `)
+    }
+    setShowSlashPicker(false)
+    textareaRef.current?.focus()
+  }
+
+  const handleFileSelect = (filePath: string) => {
+    // Replace the @... with @filepath
+    const el = textareaRef.current
+    if (!el) return
+
+    const cursorPos = el.selectionStart || 0
+    const textBefore = text.substring(0, cursorPos)
+    const textAfter = text.substring(cursorPos)
+
+    const atIndex = textBefore.lastIndexOf('@')
+    if (atIndex >= 0) {
+      const newText = textBefore.substring(0, atIndex) + `@${filePath} ` + textAfter
+      setText(newText)
+    }
+
+    setShowFilePicker(false)
+    el.focus()
+  }
+
   return (
-    <div className="border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)]">
+    <div className="relative border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)]">
+      {/* Pickers */}
+      <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
+      <FilePicker onSelect={handleFileSelect} />
+
       {/* Mode toggles */}
       <div className="flex items-center gap-2 px-3 pt-2">
         <ModeToggle
@@ -64,9 +142,9 @@ export function InputArea() {
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Message Claude..."
+          placeholder="Message Claude... (/ for commands, @ for files)"
           rows={1}
           className="flex-1 resize-none rounded-md px-3 py-2 text-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground,inherit)] focus:outline-none focus:border-[var(--vscode-focusBorder)] placeholder:opacity-40"
           disabled={isProcessing}

@@ -6,6 +6,7 @@ import { ThinkingBlock } from './ThinkingBlock'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
+import { RestorePoint } from './RestorePoint'
 
 export function ChatView() {
   const messages = useChatStore((s) => s.messages)
@@ -78,6 +79,9 @@ function MessageRenderer({ message }: { message: ChatMessage }) {
           Conversation compacted
         </div>
       )
+
+    case 'restorePoint':
+      return <RestorePoint data={message.data as { sha: string; message: string; timestamp: string }} />
 
     default:
       return null

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export interface ChatMessage {
   id: string;
-  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest';
+  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint';
   data: unknown;
   timestamp: string;
 }

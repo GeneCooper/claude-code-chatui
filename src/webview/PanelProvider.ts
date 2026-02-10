@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from '../services/ClaudeService';
 import { ConversationService } from '../services/ConversationService';
+import { MCPService } from '../services/MCPService';
+import { BackupService } from '../services/BackupService';
 import { DiffContentProvider } from '../providers/DiffContentProvider';
 import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
 import { getWebviewHtml } from './html';
+import { FILE_SEARCH_EXCLUDES } from '../shared/constants';
 import type { ClaudeMessage, WebviewToExtensionMessage } from '../shared/types';
 
 /**
@@ -28,6 +31,8 @@ export class PanelProvider {
     private readonly _context: vscode.ExtensionContext,
     private readonly _claudeService: ClaudeService,
     private readonly _conversationService: ConversationService,
+    private readonly _mcpService: MCPService,
+    private readonly _backupService: BackupService,
   ) {
     // Load saved preferences
     this._selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
@@ -261,6 +266,40 @@ export class PanelProvider {
       case 'updateSettings':
         this._updateSettings(message.settings);
         return;
+      // Phase 3: Slash commands
+      case 'executeSlashCommand':
+        this._executeSlashCommand(message.command);
+        return;
+      // Phase 3: File picker
+      case 'getWorkspaceFiles':
+        void this._sendWorkspaceFiles(message.searchTerm);
+        return;
+      // Phase 3: MCP
+      case 'loadMCPServers':
+        this._postMessage({ type: 'mcpServers', data: this._mcpService.loadServers() });
+        return;
+      case 'saveMCPServer':
+        try {
+          this._mcpService.saveServer(message.name, message.config);
+          this._postMessage({ type: 'mcpServerSaved', data: { name: message.name } });
+        } catch {
+          this._postMessage({ type: 'mcpServerError', data: { error: 'Failed to save MCP server' } });
+        }
+        return;
+      case 'deleteMCPServer':
+        if (this._mcpService.deleteServer(message.name)) {
+          this._postMessage({ type: 'mcpServerDeleted', data: { name: message.name } });
+        } else {
+          this._postMessage({ type: 'mcpServerError', data: { error: `Server "${message.name}" not found` } });
+        }
+        return;
+      // Phase 3: Backup
+      case 'createBackup':
+        void this._createBackup(message.message);
+        return;
+      case 'restoreBackup':
+        void this._restoreBackup(message.commitSha);
+        return;
     }
   }
 
@@ -272,6 +311,13 @@ export class PanelProvider {
 
     this._isProcessing = true;
     this._draftMessage = '';
+
+    // Create backup checkpoint before sending
+    void this._backupService.createCheckpoint(text).then((commit) => {
+      if (commit) {
+        this._postMessage({ type: 'restorePoint', data: commit });
+      }
+    });
 
     // Show user message in chat
     this._postMessage({ type: 'userInput', data: text });
@@ -286,12 +332,17 @@ export class PanelProvider {
     const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
     const yoloMode = config.get<boolean>('permissions.yoloMode', false);
 
+    // Pass MCP config path if servers are configured
+    const mcpServers = this._mcpService.loadServers();
+    const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
+
     void this._claudeService.sendMessage(text, {
       cwd,
       planMode,
       thinkingMode,
       yoloMode,
       model: this._selectedModel !== 'default' ? this._selectedModel : undefined,
+      mcpConfigPath,
     });
   }
 
@@ -319,7 +370,7 @@ export class PanelProvider {
   private _sendCurrentSettings(): void {
     const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
     this._postMessage({
-      type: 'settings' as string,
+      type: 'settingsData',
       data: {
         thinkingIntensity: config.get('thinking.intensity', 'think'),
         yoloMode: config.get('permissions.yoloMode', false),
@@ -331,6 +382,69 @@ export class PanelProvider {
     const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
     for (const [key, value] of Object.entries(settings)) {
       void config.update(key, value, vscode.ConfigurationTarget.Global);
+    }
+  }
+
+  private _executeSlashCommand(command: string): void {
+    if (command === 'compact') {
+      // Compact runs in chat, not terminal
+      this._handleSendMessage('/compact');
+      return;
+    }
+    if (command === 'clear') {
+      void this.newSession();
+      return;
+    }
+
+    // Open terminal for native commands
+    const sessionId = this._claudeService.sessionId;
+    const args = sessionId ? `/${command} --resume ${sessionId}` : `/${command}`;
+    const terminal = vscode.window.createTerminal({ name: `Claude: /${command}` });
+    terminal.sendText(`claude ${args}`);
+    terminal.show();
+  }
+
+  private async _sendWorkspaceFiles(searchTerm?: string): Promise<void> {
+    const excludePattern = FILE_SEARCH_EXCLUDES;
+    try {
+      const uris = await vscode.workspace.findFiles('**/*', excludePattern, 500);
+      let files = uris.map((uri) => {
+        const relativePath = vscode.workspace.asRelativePath(uri, false);
+        const name = relativePath.split(/[\\/]/).pop() || '';
+        return { name, path: relativePath, fsPath: uri.fsPath };
+      });
+
+      // Filter by search term
+      if (searchTerm) {
+        const lower = searchTerm.toLowerCase();
+        files = files.filter((f) =>
+          f.name.toLowerCase().includes(lower) || f.path.toLowerCase().includes(lower),
+        );
+      }
+
+      // Sort and limit
+      files.sort((a, b) => a.path.localeCompare(b.path));
+      files = files.slice(0, 50);
+
+      this._postMessage({ type: 'workspaceFiles', data: files });
+    } catch {
+      this._postMessage({ type: 'workspaceFiles', data: [] });
+    }
+  }
+
+  private async _createBackup(message: string): Promise<void> {
+    const commit = await this._backupService.createCheckpoint(message);
+    if (commit) {
+      this._postMessage({ type: 'restorePoint', data: commit });
+    }
+  }
+
+  private async _restoreBackup(commitSha: string): Promise<void> {
+    const success = await this._backupService.restoreToCommit(commitSha);
+    if (success) {
+      this._postMessage({ type: 'output', data: 'Workspace restored to checkpoint successfully.' });
+    } else {
+      this._postMessage({ type: 'error', data: 'Failed to restore checkpoint.' });
     }
   }
 

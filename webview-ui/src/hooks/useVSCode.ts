@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
 import { onMessage, postMessage } from '../lib/vscode';
 import { useChatStore } from '../stores/chatStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useConversationStore } from '../stores/conversationStore';
+import { useMCPStore } from '../stores/mcpStore';
 
 /**
  * Hook that listens for messages from the extension host
- * and dispatches them to the chat store.
+ * and dispatches them to the appropriate stores.
  */
 export function useVSCode(): void {
   const {
@@ -113,6 +116,42 @@ export function useVSCode(): void {
 
         case 'showInstallModal':
           addMessage({ type: 'error', data: 'Claude CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code' });
+          break;
+
+        // Phase 3: Settings
+        case 'settingsData':
+          useSettingsStore.getState().updateSettings(msg.data as { thinkingIntensity: string; yoloMode: boolean });
+          break;
+
+        // Phase 3: Conversation history
+        case 'conversationList':
+          useConversationStore.getState().setConversations(msg.data as Array<{
+            filename: string; sessionId: string; startTime: string; endTime: string;
+            messageCount: number; totalCost: number; firstUserMessage: string; lastUserMessage: string;
+          }>);
+          break;
+
+        // Phase 3: MCP servers
+        case 'mcpServers':
+          useMCPStore.getState().setServers(msg.data as Record<string, { type: 'stdio' | 'http' | 'sse'; command?: string; url?: string; args?: string[] }>);
+          break;
+
+        case 'mcpServerSaved':
+          // Reload server list after save
+          postMessage({ type: 'loadMCPServers' });
+          break;
+
+        case 'mcpServerDeleted':
+          useMCPStore.getState().removeServer((msg.data as { name: string }).name);
+          break;
+
+        case 'mcpServerError':
+          addMessage({ type: 'error', data: (msg.data as { error: string }).error });
+          break;
+
+        // Phase 3: Restore points
+        case 'restorePoint':
+          addMessage({ type: 'restorePoint' as 'toolResult', data: msg.data });
           break;
       }
     });

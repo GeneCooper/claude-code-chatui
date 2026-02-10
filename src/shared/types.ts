@@ -156,6 +156,53 @@ export interface ConversationIndexEntry {
 }
 
 // ============================================================================
+// MCP types
+// ============================================================================
+
+export interface MCPServerConfig {
+  type: 'stdio' | 'http' | 'sse';
+  command?: string;
+  url?: string;
+  args?: string[];
+  headers?: Record<string, string>;
+}
+
+export interface MCPConfig {
+  mcpServers: Record<string, MCPServerConfig>;
+}
+
+// ============================================================================
+// Backup types
+// ============================================================================
+
+export interface BackupCommit {
+  id: string;
+  sha: string;
+  message: string;
+  timestamp: string;
+}
+
+// ============================================================================
+// File picker types
+// ============================================================================
+
+export interface WorkspaceFile {
+  name: string;
+  path: string;
+  fsPath: string;
+}
+
+// ============================================================================
+// Slash command types
+// ============================================================================
+
+export interface SlashCommand {
+  command: string;
+  description: string;
+  category: 'snippet' | 'native';
+}
+
+// ============================================================================
 // Webview communication types
 // ============================================================================
 
@@ -173,7 +220,14 @@ export type WebviewToExtensionMessage =
   | { type: 'getSettings' }
   | { type: 'updateSettings'; settings: Record<string, unknown> }
   | { type: 'selectModel'; model: string }
-  | { type: 'saveInputText'; text: string };
+  | { type: 'saveInputText'; text: string }
+  | { type: 'executeSlashCommand'; command: string }
+  | { type: 'getWorkspaceFiles'; searchTerm?: string }
+  | { type: 'loadMCPServers' }
+  | { type: 'saveMCPServer'; name: string; config: MCPServerConfig }
+  | { type: 'deleteMCPServer'; name: string }
+  | { type: 'createBackup'; message: string }
+  | { type: 'restoreBackup'; commitSha: string };
 
 /** Messages from Extension to Webview */
 export type ExtensionToWebviewMessage =
@@ -197,7 +251,20 @@ export type ExtensionToWebviewMessage =
   | { type: 'compactBoundary'; data: { trigger?: string; preTokens?: number } }
   | { type: 'showInstallModal' }
   | { type: 'restoreState'; state: unknown }
-  | { type: 'conversationList'; data: ConversationIndexEntry[] };
+  | { type: 'conversationList'; data: ConversationIndexEntry[] }
+  | { type: 'settingsData'; data: SettingsData }
+  | { type: 'workspaceFiles'; data: WorkspaceFile[] }
+  | { type: 'mcpServers'; data: Record<string, MCPServerConfig> }
+  | { type: 'mcpServerSaved'; data: { name: string } }
+  | { type: 'mcpServerDeleted'; data: { name: string } }
+  | { type: 'mcpServerError'; data: { error: string } }
+  | { type: 'restorePoint'; data: BackupCommit }
+  | { type: 'slashCommands'; data: SlashCommand[] };
+
+export interface SettingsData {
+  thinkingIntensity: string;
+  yoloMode: boolean;
+}
 
 export interface TotalsData {
   totalCost: number;

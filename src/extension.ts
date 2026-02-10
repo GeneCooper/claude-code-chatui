@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './services/ClaudeService';
 import { ConversationService } from './services/ConversationService';
+import { MCPService } from './services/MCPService';
+import { BackupService } from './services/BackupService';
 import { DiffContentProvider } from './providers/DiffContentProvider';
 import { PanelProvider } from './webview/PanelProvider';
 import { WebviewProvider } from './webview/WebviewProvider';
@@ -11,6 +13,11 @@ export function activate(context: vscode.ExtensionContext): void {
   // Initialize services
   const claudeService = new ClaudeService(context);
   const conversationService = new ConversationService(context);
+  const mcpService = new MCPService(context);
+  const backupService = new BackupService(context);
+
+  // Initialize backup repo in background
+  void backupService.initialize();
 
   // Register diff content provider
   const diffProvider = vscode.workspace.registerTextDocumentContentProvider(
@@ -19,7 +26,10 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // Create the main panel provider
-  const panelProvider = new PanelProvider(context.extensionUri, context, claudeService, conversationService);
+  const panelProvider = new PanelProvider(
+    context.extensionUri, context, claudeService,
+    conversationService, mcpService, backupService,
+  );
 
   // Create sidebar webview provider
   const webviewProvider = new WebviewProvider(context.extensionUri, context, panelProvider);
