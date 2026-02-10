@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { ConversationData, ConversationMessage, ConversationIndexEntry } from '../shared/types';
+import type { ConversationData, ConversationMessage, ConversationIndexEntry } from '../../shared/types';
 
 /**
  * Manages conversation persistence: save/load/index conversations to disk.

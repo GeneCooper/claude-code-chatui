@@ -5,8 +5,9 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  root: resolve(__dirname, 'src/webview'),
   build: {
-    outDir: 'dist',
+    outDir: resolve(__dirname, 'out/webview'),
     emptyOutDir: true,
     rollupOptions: {
       output: {

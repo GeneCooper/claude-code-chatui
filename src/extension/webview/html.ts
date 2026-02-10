@@ -5,10 +5,10 @@ import * as vscode from 'vscode';
  */
 export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
   const scriptUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'webview-ui', 'dist', 'assets', 'main.js')
+    vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'assets', 'main.js')
   );
   const styleUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'webview-ui', 'dist', 'assets', 'style.css')
+    vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'assets', 'style.css')
   );
 
   const nonce = getNonce();

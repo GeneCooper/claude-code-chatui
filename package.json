@@ -10,7 +10,7 @@
   },
   "categories": ["Other"],
   "activationEvents": [],
-  "main": "./out/extension.js",
+  "main": "./out/extension/extension.js",
   "contributes": {
     "commands": [
       {
@@ -77,17 +77,34 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile && npm run build:webview",
-    "compile": "tsc -p tsconfig.json",
-    "watch": "tsc -watch -p tsconfig.json",
-    "build:webview": "cd webview-ui && npm run build",
-    "dev:webview": "cd webview-ui && npm run dev",
+    "compile": "tsc -p tsconfig.extension.json",
+    "watch": "tsc -watch -p tsconfig.extension.json",
+    "build:webview": "vite build",
+    "dev:webview": "vite dev",
     "package": "vsce package",
     "lint": "eslint src/"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.11",
+    "lucide-react": "^0.563.0",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.2.2",
     "@types/vscode": "^1.109.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@tailwindcss/vite": "^4.1.18",
     "@vscode/vsce": "^3.7.1",
-    "typescript": "^5.9.3"
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

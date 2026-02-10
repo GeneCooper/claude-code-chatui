@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { MCPServerConfig, MCPConfig } from '../shared/types';
+import type { MCPServerConfig, MCPConfig } from '../../shared/types';
 
 /**
  * Manages MCP (Model Context Protocol) server configurations.

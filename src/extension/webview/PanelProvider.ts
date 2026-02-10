@@ -6,8 +6,8 @@ import { BackupService } from '../services/BackupService';
 import { DiffContentProvider } from '../providers/DiffContentProvider';
 import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
 import { getWebviewHtml } from './html';
-import { FILE_SEARCH_EXCLUDES } from '../shared/constants';
-import type { ClaudeMessage, WebviewToExtensionMessage } from '../shared/types';
+import { FILE_SEARCH_EXCLUDES } from '../../shared/constants';
+import type { ClaudeMessage, WebviewToExtensionMessage } from '../../shared/types';
 
 /**
  * Manages the webview panel lifecycle, message routing, and Claude CLI interaction.

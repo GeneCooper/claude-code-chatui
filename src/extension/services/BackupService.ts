@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { BackupCommit } from '../shared/types';
+import type { BackupCommit } from '../../shared/types';
 
 /**
  * Manages git-based backup checkpoints for workspace files.

@@ -3,8 +3,8 @@ import type {
   ClaudeMessage,
   ConversationMessage,
   ToolUseData,
-} from '../shared/types';
-import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
+} from '../../shared/types';
+import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../../shared/constants';
 
 export interface MessagePoster {
   postMessage(msg: Record<string, unknown>): void;

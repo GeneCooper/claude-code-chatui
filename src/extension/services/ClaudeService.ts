@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { EventEmitter } from 'events';
-import type { ClaudeMessage, PermissionRequest } from '../shared/types';
-import { THINKING_INTENSITIES, type ThinkingIntensity } from '../shared/constants';
+import type { ClaudeMessage, PermissionRequest } from '../../shared/types';
+import { THINKING_INTENSITIES, type ThinkingIntensity } from '../../shared/constants';
 
 export interface SendMessageOptions {
   cwd: string;
