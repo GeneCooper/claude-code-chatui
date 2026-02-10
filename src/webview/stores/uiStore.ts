@@ -2,6 +2,15 @@ import { create } from 'zustand'
 import type { UsageData } from '../../shared/types'
 
 type ActiveView = 'chat' | 'history' | 'settings'
+type NotificationType = 'info' | 'success' | 'warning' | 'error'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message?: string
+  timestamp: number
+}
 
 interface UIState {
   activeView: ActiveView
@@ -15,6 +24,7 @@ interface UIState {
   draftText: string
   requestStartTime: number | null
   usageData: UsageData | null
+  notifications: Notification[]
 
   setActiveView: (view: ActiveView) => void
   setShowSlashPicker: (show: boolean) => void
@@ -27,9 +37,13 @@ interface UIState {
   setDraftText: (text: string) => void
   setRequestStartTime: (time: number | null) => void
   setUsageData: (data: UsageData | null) => void
+  showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
+  dismissNotification: (id: string) => void
 }
 
-export const useUIStore = create<UIState>((set) => ({
+let notifCounter = 0
+
+export const useUIStore = create<UIState>((set, get) => ({
   activeView: 'chat',
   showSlashPicker: false,
   showFilePicker: false,
@@ -41,6 +55,7 @@ export const useUIStore = create<UIState>((set) => ({
   draftText: '',
   requestStartTime: null,
   usageData: null,
+  notifications: [],
 
   setActiveView: (view) => set({ activeView: view }),
   setShowSlashPicker: (show) => set({ showSlashPicker: show }),
@@ -53,4 +68,18 @@ export const useUIStore = create<UIState>((set) => ({
   setDraftText: (text) => set({ draftText: text }),
   setRequestStartTime: (time) => set({ requestStartTime: time }),
   setUsageData: (data) => set({ usageData: data }),
+
+  showNotification: (type, title, message, timeout = 5000) => {
+    const id = `notif-${++notifCounter}`
+    const notification: Notification = { id, type, title, message, timestamp: Date.now() }
+    set({ notifications: [...get().notifications, notification] })
+
+    if (timeout > 0) {
+      setTimeout(() => get().dismissNotification(id), timeout)
+    }
+  },
+
+  dismissNotification: (id) => {
+    set({ notifications: get().notifications.filter((n) => n.id !== id) })
+  },
 }))

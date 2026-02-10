@@ -279,6 +279,19 @@ const handleRemovePermission: MessageHandler = async (msg, ctx) => {
     ctx.postMessage({ type: 'permissions', data: permissions });
 };
 
+const handleRevertFile: MessageHandler = async (msg, ctx) => {
+    try {
+        const uri = vscode.Uri.file(msg.filePath as string);
+        const content = new TextEncoder().encode(msg.oldContent as string);
+        await vscode.workspace.fs.writeFile(uri, content);
+        const fileName = (msg.filePath as string).split(/[\\/]/).pop() || 'file';
+        vscode.window.showInformationMessage(`Reverted: ${fileName}`);
+        ctx.postMessage({ type: 'fileReverted', data: { filePath: msg.filePath, success: true } });
+    } catch {
+        ctx.postMessage({ type: 'error', data: 'Failed to revert file' });
+    }
+};
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -331,6 +344,7 @@ export const messageHandlers: MessageHandlerMap = {
     getPermissions: handleGetPermissions,
     addPermission: handleAddPermission,
     removePermission: handleRemovePermission,
+    revertFile: handleRevertFile,
 };
 
 /**
