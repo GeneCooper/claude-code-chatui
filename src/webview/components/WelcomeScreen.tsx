@@ -1,4 +1,4 @@
-import { LogoSVG } from './Header'
+import { LogoIcon } from './Header'
 
 const HINTS = [
   { icon: '🐛', label: 'Fix a bug', prompt: 'Help me fix a bug in ' },
@@ -29,7 +29,7 @@ export function WelcomeScreen({ onHintClick }: Props) {
           filter: 'drop-shadow(0 4px 12px rgba(237, 110, 29, 0.3))',
         }}
       >
-        <LogoSVG size={48} />
+        <LogoIcon size={48} />
       </div>
 
       <h2
@@ -44,21 +44,21 @@ export function WelcomeScreen({ onHintClick }: Props) {
       </p>
 
       <div
-        className="grid grid-cols-2 gap-2 w-full"
-        style={{ maxWidth: '380px', margin: '0 auto' }}
+        className="grid grid-cols-2 gap-3 w-full"
+        style={{ maxWidth: '440px', margin: '0 auto' }}
       >
         {HINTS.map((hint) => (
           <button
             key={hint.label}
             onClick={() => onHintClick(hint.prompt)}
-            className="flex items-center gap-2 text-left cursor-pointer text-inherit"
+            className="flex items-center gap-3 text-left cursor-pointer text-inherit"
             style={{
-              padding: '10px 12px',
+              padding: '16px 20px',
               border: '1px solid var(--vscode-panel-border)',
               background: 'rgba(128, 128, 128, 0.05)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 'var(--radius-lg)',
               transition: 'all 0.2s ease',
-              fontSize: '12px',
+              fontSize: '14px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = 'var(--chatui-accent)'
@@ -71,8 +71,8 @@ export function WelcomeScreen({ onHintClick }: Props) {
               e.currentTarget.style.background = 'rgba(128, 128, 128, 0.05)'
             }}
           >
-            <span style={{ fontSize: '14px' }}>{hint.icon}</span>
-            <span style={{ fontWeight: 500 }}>{hint.label}</span>
+            <span style={{ fontSize: '18px' }}>{hint.icon}</span>
+            <span style={{ fontWeight: 500, fontSize: '14px' }}>{hint.label}</span>
           </button>
         ))}
       </div>

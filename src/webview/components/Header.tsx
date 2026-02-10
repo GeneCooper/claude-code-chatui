@@ -4,23 +4,25 @@ import { useUIStore } from '../stores/uiStore'
 import { postMessage } from '../lib/vscode'
 import { UsageIndicator } from './UsageIndicator'
 
-function LogoSVG({ size = 20 }: { size?: number }) {
+declare global {
+  interface Window { __ICON_URI__?: string }
+}
+
+function LogoIcon({ size = 20 }: { size?: number }) {
+  const iconUri = window.__ICON_URI__
+  if (!iconUri) return null
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ed6e1d" />
-          <stop offset="100%" stopColor="#de5513" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" rx="22" fill="url(#logoGrad)" />
-      <path d="M30 35 L50 25 L70 35 L70 55 L50 65 L30 55Z" stroke="white" strokeWidth="5" fill="none" strokeLinejoin="round" />
-      <circle cx="50" cy="45" r="6" fill="white" />
-    </svg>
+    <img
+      src={iconUri}
+      alt="Logo"
+      width={size}
+      height={size}
+      style={{ objectFit: 'contain' }}
+    />
   )
 }
 
-export { LogoSVG }
+export { LogoIcon }
 
 export function Header() {
   const { sessionId, isProcessing, totals } = useChatStore()
@@ -47,7 +49,7 @@ export function Header() {
       }}
     >
       <div className="flex items-center gap-2">
-        <LogoSVG size={20} />
+        <LogoIcon size={20} />
         <h2 className="m-0" style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>
           Claude Code ChatUI
         </h2>

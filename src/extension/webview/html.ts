@@ -10,6 +10,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
   const styleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'assets', 'style.css')
   );
+  const iconUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, 'media', 'icon.png')
+  );
 
   const nonce = getNonce();
 
@@ -70,6 +73,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
       <div>Loading...</div>
     </div>
   </div>
+  <script nonce="${nonce}">window.__ICON_URI__="${iconUri}";</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
