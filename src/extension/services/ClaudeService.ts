@@ -272,12 +272,10 @@ export class ClaudeService implements vscode.Disposable {
 
     this._pendingPermissions.set(requestId, { requestId, toolName, input, suggestions, toolUseId });
 
-    // Generate bash command pattern
+    // Generate bash command pattern with wildcard matching
     let pattern: string | undefined;
     if (toolName === 'Bash' && input.command) {
-      const cmd = String(input.command).trim();
-      const firstWord = cmd.split(/\s+/)[0];
-      pattern = firstWord || cmd;
+      pattern = this._getCommandPattern(String(input.command).trim());
     }
 
     this._permissionRequestEmitter.emit('request', {
@@ -290,6 +288,54 @@ export class ClaudeService implements vscode.Disposable {
       blockedPath: (request as { blocked_path?: string }).blocked_path,
       pattern,
     });
+  }
+
+  // Common command patterns: [firstWord, subcommand] → wildcard pattern
+  private static readonly COMMAND_PATTERNS: [string, string, string][] = [
+    ['npm', 'install', 'npm install *'],
+    ['npm', 'i', 'npm i *'],
+    ['npm', 'run', 'npm run *'],
+    ['npm', 'test', 'npm test *'],
+    ['npx', '', 'npx *'],
+    ['git', 'add', 'git add *'],
+    ['git', 'commit', 'git commit *'],
+    ['git', 'checkout', 'git checkout *'],
+    ['git', 'branch', 'git branch *'],
+    ['git', 'diff', 'git diff *'],
+    ['git', 'log', 'git log *'],
+    ['git', 'status', 'git status'],
+    ['pip', 'install', 'pip install *'],
+    ['pip3', 'install', 'pip3 install *'],
+    ['cargo', 'build', 'cargo build *'],
+    ['cargo', 'test', 'cargo test *'],
+    ['go', 'build', 'go build *'],
+    ['go', 'test', 'go test *'],
+    ['pnpm', 'install', 'pnpm install *'],
+    ['pnpm', 'add', 'pnpm add *'],
+    ['yarn', 'add', 'yarn add *'],
+    ['bun', 'install', 'bun install *'],
+    ['bun', 'add', 'bun add *'],
+    ['make', '', 'make *'],
+    ['mkdir', '', 'mkdir *'],
+    ['cat', '', 'cat *'],
+    ['ls', '', 'ls *'],
+    ['cd', '', 'cd *'],
+  ];
+
+  private _getCommandPattern(command: string): string {
+    const parts = command.split(/\s+/);
+    const firstWord = parts[0] || command;
+    const subCommand = parts[1] || '';
+
+    // Try to match known patterns
+    for (const [cmd, sub, pattern] of ClaudeService.COMMAND_PATTERNS) {
+      if (firstWord === cmd && (sub === '' || subCommand === sub)) {
+        return pattern;
+      }
+    }
+
+    // Fallback: use first word + wildcard
+    return parts.length > 1 ? `${firstWord} *` : firstWord;
   }
 
   private _cancelPendingPermissions(): void {

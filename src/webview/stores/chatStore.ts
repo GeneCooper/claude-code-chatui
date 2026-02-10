@@ -1,8 +1,14 @@
 import { create } from 'zustand';
 
+export interface TodoItem {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm?: string;
+}
+
 export interface ChatMessage {
   id: string;
-  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint';
+  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint' | 'todosUpdate';
   data: unknown;
   timestamp: string;
 }
@@ -29,6 +35,7 @@ interface ChatState {
   sessionId: string | null;
   tokens: TokenState;
   totals: TotalsState;
+  todos: TodoItem[];
 
   // Actions
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -39,6 +46,7 @@ interface ChatState {
   updateTokens: (tokens: Partial<TokenState>) => void;
   updateTotals: (totals: Partial<TotalsState>) => void;
   updatePermissionStatus: (id: string, status: string) => void;
+  updateTodos: (todos: TodoItem[]) => void;
   restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void;
 }
 
@@ -48,6 +56,7 @@ export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   isProcessing: false,
   sessionId: null,
+  todos: [],
   tokens: {
     totalTokensInput: 0,
     totalTokensOutput: 0,
@@ -109,10 +118,13 @@ export const useChatStore = create<ChatState>((set) => ({
       }),
     })),
 
+  updateTodos: (todos) => set({ todos }),
+
   restoreState: (restored) =>
     set({
       messages: restored.messages || [],
       sessionId: restored.sessionId || null,
+      todos: [],
       totals: {
         totalCost: restored.totalCost || 0,
         totalTokensInput: 0,

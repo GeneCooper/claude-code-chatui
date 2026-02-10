@@ -203,6 +203,25 @@ export interface SlashCommand {
 }
 
 // ============================================================================
+// Usage types
+// ============================================================================
+
+export interface UsageData {
+  currentSession: { usageCost: number; costLimit: number; resetsIn: string };
+  weekly: { costLikely: number; costLimit: number; resetsAt: string };
+}
+
+// ============================================================================
+// Todo types
+// ============================================================================
+
+export interface TodoItem {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm?: string;
+}
+
+// ============================================================================
 // Webview communication types
 // ============================================================================
 
@@ -228,7 +247,8 @@ export type WebviewToExtensionMessage =
   | { type: 'saveMCPServer'; name: string; config: MCPServerConfig }
   | { type: 'deleteMCPServer'; name: string }
   | { type: 'createBackup'; message: string }
-  | { type: 'restoreBackup'; commitSha: string };
+  | { type: 'restoreBackup'; commitSha: string }
+  | { type: 'refreshUsage' };
 
 /** Messages from Extension to Webview */
 export type ExtensionToWebviewMessage =
@@ -261,7 +281,10 @@ export type ExtensionToWebviewMessage =
   | { type: 'mcpServerError'; data: { error: string } }
   | { type: 'restorePoint'; data: BackupCommit }
   | { type: 'slashCommands'; data: SlashCommand[] }
-  | { type: 'showLoginRequired'; data: { message: string } };
+  | { type: 'showLoginRequired'; data: { message: string } }
+  | { type: 'usageUpdate'; data: UsageData }
+  | { type: 'usageError'; data: string }
+  | { type: 'todosUpdate'; data: { todos: TodoItem[] } };
 
 export interface SettingsData {
   thinkingIntensity: string;

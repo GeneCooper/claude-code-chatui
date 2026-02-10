@@ -172,6 +172,21 @@ export function useVSCode(): void {
         case 'restorePoint':
           addMessage({ type: 'restorePoint', data: msg.data });
           break;
+
+        // Usage updates
+        case 'usageUpdate':
+          useUIStore.getState().setUsageData(msg.data as import('../../shared/types').UsageData);
+          break;
+
+        case 'usageError':
+          break; // Silent - don't interrupt user
+
+        // Todo updates
+        case 'todosUpdate': {
+          const todosData = msg.data as { todos: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }> };
+          useChatStore.getState().updateTodos(todosData.todos);
+          break;
+        }
       }
     });
 

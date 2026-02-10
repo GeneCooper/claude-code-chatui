@@ -146,6 +146,11 @@ export class ClaudeMessageProcessor {
         const icon = todo.status === 'completed' ? '✅' : todo.status === 'in_progress' ? '🔄' : '⏳';
         toolInput += `\n${icon} ${todo.content}`;
       }
+      // Send todosUpdate to webview for live todo display
+      this._poster.postMessage({
+        type: 'todosUpdate',
+        data: { todos: input.todos },
+      });
     }
 
     // Read file content before edit (for diff)

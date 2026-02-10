@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useChatStore } from '../stores/chatStore'
 import { useUIStore } from '../stores/uiStore'
 import { postMessage } from '../lib/vscode'
+import { UsageIndicator } from './UsageIndicator'
 
 function LogoSVG({ size = 20 }: { size?: number }) {
   return (
@@ -72,6 +73,8 @@ export function Header() {
         {totals.totalCost > 0 && (
           <span className="text-[11px] opacity-50">{formatCost(totals.totalCost)}</span>
         )}
+
+        <UsageIndicator />
 
         <HeaderIconButton
           title="History"

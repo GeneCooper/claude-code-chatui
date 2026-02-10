@@ -3,6 +3,7 @@ import { ClaudeService } from '../services/ClaudeService';
 import { ConversationService } from '../services/ConversationService';
 import { MCPService } from '../services/MCPService';
 import { BackupService } from '../services/BackupService';
+import { UsageService } from '../services/UsageService';
 import { DiffContentProvider } from '../providers/DiffContentProvider';
 import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
 import { getWebviewHtml } from './html';
@@ -33,6 +34,7 @@ export class PanelProvider {
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
     private readonly _backupService: BackupService,
+    private readonly _usageService: UsageService,
   ) {
     // Load saved preferences
     this._selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
@@ -54,6 +56,14 @@ export class PanelProvider {
 
     // Wire up Claude service events
     this._setupClaudeServiceHandlers();
+
+    // Wire up usage service events
+    this._usageService.onUsageUpdate((data) => {
+      this._postMessage({ type: 'usageUpdate', data });
+    });
+    this._usageService.onError((err) => {
+      this._postMessage({ type: 'usageError', data: err });
+    });
   }
 
   private _setupClaudeServiceHandlers(): void {
@@ -65,6 +75,7 @@ export class PanelProvider {
       this._isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+      this._usageService.onClaudeSessionEnd();
     });
 
     this._claudeService.onError((error) => {
@@ -322,6 +333,9 @@ export class PanelProvider {
         return;
       case 'restoreBackup':
         void this._restoreBackup(message.commitSha);
+        return;
+      case 'refreshUsage':
+        void this._usageService.fetchUsageData();
         return;
     }
   }

@@ -4,6 +4,7 @@ import { Header } from './components/Header'
 import { ChatView } from './components/ChatView'
 import { InputArea } from './components/InputArea'
 import { StatusBar } from './components/StatusBar'
+import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { MCPPanel } from './components/MCPPanel'
@@ -25,6 +26,7 @@ export default function App() {
       {activeView === 'chat' && (
         <>
           <ChatView onHintClick={handleHintClick} />
+          <TodoDisplay />
           <StatusBar />
           <InputArea />
         </>

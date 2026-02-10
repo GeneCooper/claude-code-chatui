@@ -21,12 +21,22 @@ export class MCPService {
     return this._configPath;
   }
 
+  private static readonly DEFAULT_SERVERS: Record<string, MCPServerConfig> = {
+    'context7': { type: 'http', url: 'https://context7.liam.sh/mcp' },
+    'sequential-thinking': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
+    'memory': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
+    'fetch': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
+    'filesystem': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+  };
+
   private _ensureConfigDir(): void {
     if (!fs.existsSync(this._configDir)) {
       fs.mkdirSync(this._configDir, { recursive: true });
     }
     if (!fs.existsSync(this._configPath)) {
-      fs.writeFileSync(this._configPath, JSON.stringify({ mcpServers: {} }, null, 2), 'utf8');
+      // First run: seed with default MCP servers
+      const config: MCPConfig = { mcpServers: { ...MCPService.DEFAULT_SERVERS } };
+      fs.writeFileSync(this._configPath, JSON.stringify(config, null, 2), 'utf8');
     }
   }
 

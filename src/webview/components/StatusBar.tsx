@@ -19,8 +19,14 @@ export function StatusBar() {
     return `$${cost.toFixed(2)}`
   }
 
-  const statusClass = isProcessing ? 'processing' : 'ready'
   const statusText = isProcessing ? 'Processing...' : 'Ready'
+
+  // Calculate cache savings percentage
+  const totalInput = tokens.totalTokensInput
+  const cacheTotal = tokens.cacheReadTokens + tokens.cacheCreationTokens
+  const cacheSavingsPercent = totalInput > 0 && cacheTotal > 0
+    ? Math.round((tokens.cacheReadTokens / (totalInput + cacheTotal)) * 100)
+    : 0
 
   return (
     <div
@@ -66,6 +72,12 @@ export function StatusBar() {
         {tokens.totalTokensOutput > 0 && (
           <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
         )}
+
+        {cacheSavingsPercent > 0 && (
+          <span style={{ opacity: 0.5, color: '#4ec9b0', fontSize: '10px' }}>
+            {cacheSavingsPercent}% cached
+          </span>
+        )}
       </div>
 
       {/* Details panel */}
@@ -80,10 +92,40 @@ export function StatusBar() {
         >
           <span>Requests:</span>
           <span className="text-right">{totals.requestCount}</span>
-          <span>Total Input:</span>
+          <span>Total Cost:</span>
+          <span className="text-right" style={{ fontWeight: 600 }}>{formatCost(totals.totalCost)}</span>
+
+          {/* Token breakdown */}
+          <span style={{ marginTop: '4px', gridColumn: '1 / -1', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '4px', fontWeight: 600 }}>
+            Tokens
+          </span>
+          <span>Input:</span>
           <span className="text-right">{formatTokens(tokens.totalTokensInput)}</span>
-          <span>Total Output:</span>
+          <span>Output:</span>
           <span className="text-right">{formatTokens(tokens.totalTokensOutput)}</span>
+
+          {/* Current request tokens */}
+          {tokens.currentInputTokens > 0 && (
+            <>
+              <span style={{ opacity: 0.7 }}>Last Input:</span>
+              <span className="text-right" style={{ opacity: 0.7 }}>{formatTokens(tokens.currentInputTokens)}</span>
+            </>
+          )}
+          {tokens.currentOutputTokens > 0 && (
+            <>
+              <span style={{ opacity: 0.7 }}>Last Output:</span>
+              <span className="text-right" style={{ opacity: 0.7 }}>{formatTokens(tokens.currentOutputTokens)}</span>
+            </>
+          )}
+
+          {/* Cache breakdown */}
+          {(tokens.cacheReadTokens > 0 || tokens.cacheCreationTokens > 0) && (
+            <>
+              <span style={{ marginTop: '4px', gridColumn: '1 / -1', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '4px', fontWeight: 600 }}>
+                Cache
+              </span>
+            </>
+          )}
           {tokens.cacheReadTokens > 0 && (
             <>
               <span style={{ color: '#4ec9b0' }}>Cache Read:</span>
@@ -94,6 +136,12 @@ export function StatusBar() {
             <>
               <span style={{ color: '#cca700' }}>Cache Create:</span>
               <span className="text-right" style={{ color: '#cca700' }}>{formatTokens(tokens.cacheCreationTokens)}</span>
+            </>
+          )}
+          {cacheSavingsPercent > 0 && (
+            <>
+              <span style={{ color: '#4ec9b0' }}>Cache Savings:</span>
+              <span className="text-right" style={{ color: '#4ec9b0' }}>{cacheSavingsPercent}%</span>
             </>
           )}
         </div>
