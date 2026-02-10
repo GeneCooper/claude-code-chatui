@@ -595,30 +595,28 @@ export function InputArea() {
               <button
                 onClick={handleSend}
                 disabled={!text.trim() && images.length === 0}
-                className="cursor-pointer border-none flex items-center gap-1 shrink-0"
+                className="cursor-pointer border-none flex items-center justify-center shrink-0"
                 style={{
-                  background: 'linear-gradient(135deg, var(--chatui-accent) 0%, var(--chatui-accent-dark) 100%)',
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '12px',
-                  boxShadow: '0 2px 8px rgba(237, 110, 29, 0.3)',
-                  transition: 'all 0.2s ease',
-                  opacity: (!text.trim() && images.length === 0) ? 0.5 : 1,
+                  background: 'transparent',
+                  padding: '4px',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: 'var(--radius-sm)',
+                  color: (text.trim() || images.length > 0) ? 'var(--chatui-accent)' : 'inherit',
+                  opacity: (text.trim() || images.length > 0) ? 1 : 0.3,
+                  transition: 'all 0.15s ease',
                 }}
+                title="Send message"
                 onMouseEnter={(e) => {
                   if (text.trim() || images.length > 0) {
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(237, 110, 29, 0.4)'
-                    e.currentTarget.style.transform = 'translateY(-1px)'
+                    e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(237, 110, 29, 0.3)'
-                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.background = 'transparent'
                 }}
               >
-                <span>Send</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>

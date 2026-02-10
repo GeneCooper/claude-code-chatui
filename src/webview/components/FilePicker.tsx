@@ -81,6 +81,11 @@ export function FilePicker({ onSelect }: Props) {
   }
 
   return (
+    <>
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 49 }}
+      onClick={() => { setShow(false); setSearch('') }}
+    />
     <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded-lg shadow-lg z-50">
       <div className="px-3 py-2 border-b border-[var(--vscode-panel-border)]">
         <input
@@ -118,5 +123,6 @@ export function FilePicker({ onSelect }: Props) {
         )}
       </div>
     </div>
+    </>
   )
 }
