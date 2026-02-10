@@ -44,6 +44,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
   const setShow = useUIStore((s) => s.setShowSlashPicker)
   const customSnippets = useSettingsStore((s) => s.customSnippets)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [searchText, setSearchText] = useState('')
 
   // Merge built-in commands with custom snippets
   const allCommands = useMemo(() => {
@@ -55,13 +56,21 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
     return [...custom, ...BUILTIN_COMMANDS]
   }, [customSnippets])
 
+  const effectiveFilter = searchText || filter
+
   const filtered = allCommands.filter((cmd) =>
-    cmd.command.toLowerCase().includes(filter.toLowerCase()),
+    cmd.command.toLowerCase().includes(effectiveFilter.toLowerCase()),
   )
 
   useEffect(() => {
     setSelectedIndex(0)
-  }, [filter])
+  }, [effectiveFilter])
+
+  useEffect(() => {
+    if (show) {
+      setSearchText(filter)
+    }
+  }, [show, filter])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -92,7 +101,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  if (!show || filtered.length === 0) return null
+  if (!show) return null
 
   const customs = filtered.filter((c) => c.category === 'custom')
   const snippets = filtered.filter((c) => c.category === 'snippet')
@@ -100,9 +109,51 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
 
   let globalIndex = 0
 
+  const getIcon = (cmd: SlashCommand) => {
+    if (cmd.category === 'custom') return '\u270F\uFE0F'
+    if (cmd.category === 'snippet') {
+      const icons: Record<string, string> = {
+        'performance-analysis': '\u26A1',
+        'security-review': '\uD83D\uDD12',
+        'implementation-review': '\uD83D\uDD0D',
+        'code-explanation': '\uD83D\uDCD6',
+        'bug-fix': '\uD83D\uDC1B',
+        'refactor': '\u267B\uFE0F',
+        'test-generation': '\uD83E\uddEA',
+        'documentation': '\uD83D\uDCDD',
+      }
+      return icons[cmd.command] || '\uD83D\uDCCB'
+    }
+    const nativeIcons: Record<string, string> = {
+      'clear': '\uD83D\uDDD1\uFE0F',
+      'compact': '\uD83D\uDCE6',
+      'config': '\u2699\uFE0F',
+      'cost': '\uD83D\uDCB0',
+      'doctor': '\uD83E\uDE7A',
+      'help': '\u2753',
+      'init': '\uD83D\uDE80',
+      'login': '\uD83D\uDD11',
+      'memory': '\uD83E\udDE0',
+      'model': '\uD83E\uDD16',
+      'permissions': '\uD83D\uDEE1\uFE0F',
+      'review': '\uD83D\uDCDD',
+      'status': '\uD83D\uDCCA',
+      'usage': '\uD83D\uDCC8',
+    }
+    return nativeIcons[cmd.command] || '\u25B6'
+  }
+
   const renderItem = (cmd: SlashCommand) => {
     const idx = globalIndex++
     const effectiveCategory = cmd.category === 'custom' ? 'snippet' : cmd.category
+    const isSelected = idx === selectedIndex
+
+    const itemClass = cmd.category === 'custom'
+      ? 'prompt-snippet-item'
+      : cmd.category === 'snippet'
+        ? 'prompt-snippet-item'
+        : ''
+
     return (
       <button
         key={`${cmd.category}-${cmd.command}`}
@@ -110,42 +161,233 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
           onSelect(cmd.command, effectiveCategory)
           setShow(false)
         }}
-        className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer bg-transparent border-none text-inherit ${
-          idx === selectedIndex ? 'bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
-        }`}
+        className="w-full text-left cursor-pointer border-none text-inherit"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px 16px',
+          borderRadius: 'var(--radius-sm)',
+          transition: 'all 0.15s ease',
+          border: '1px solid transparent',
+          background: isSelected
+            ? 'var(--vscode-list-activeSelectionBackground)'
+            : 'transparent',
+          color: isSelected
+            ? 'var(--vscode-list-activeSelectionForeground)'
+            : 'inherit',
+          borderLeft: cmd.category === 'custom' || cmd.category === 'snippet'
+            ? '2px solid var(--vscode-charts-blue, #007acc)'
+            : undefined,
+          backgroundColor: isSelected
+            ? 'var(--vscode-list-activeSelectionBackground)'
+            : (cmd.category === 'custom' || cmd.category === 'snippet')
+              ? 'rgba(0, 122, 204, 0.03)'
+              : 'transparent',
+        }}
+        onMouseEnter={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.background = (cmd.category === 'custom' || cmd.category === 'snippet')
+              ? 'rgba(0, 122, 204, 0.03)'
+              : 'transparent'
+          }
+        }}
       >
-        <span className="font-mono opacity-60">/{cmd.command}</span>
-        <span className="opacity-40 truncate">{cmd.description}</span>
+        <span style={{ fontSize: '16px', minWidth: '20px', textAlign: 'center', opacity: 0.8 }}>
+          {getIcon(cmd)}
+        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '2px' }}>
+            /{cmd.command}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', opacity: 0.7, lineHeight: 1.3 }}>
+            {cmd.description}
+          </div>
+        </div>
       </button>
     )
   }
 
   return (
-    <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--vscode-editorWidget-background)] border border-[var(--vscode-editorWidget-border)] rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
-      {customs.length > 0 && (
-        <>
-          <div className="px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider">Custom Prompts</div>
-          {customs.map(renderItem)}
-        </>
-      )}
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setShow(false)
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--vscode-editor-background)',
+          border: '1px solid var(--vscode-panel-border)',
+          borderRadius: 'var(--radius-lg)',
+          width: 'calc(100% - 32px)',
+          maxWidth: '480px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          overflow: 'hidden',
+          animation: 'installFadeIn 0.2s ease-out',
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: '16px',
+            borderBottom: '1px solid var(--vscode-panel-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Commands</span>
+          <button
+            onClick={() => setShow(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--vscode-foreground)',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '4px',
+              opacity: 0.6,
+            }}
+          >
+            {'\u2715'}
+          </button>
+        </div>
 
-      {snippets.length > 0 && (
-        <>
-          <div className={`px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider ${customs.length > 0 ? 'border-t border-[var(--vscode-panel-border)]' : ''}`}>
-            Prompts
+        {/* Search */}
+        <div
+          style={{
+            padding: '16px',
+            borderBottom: '1px solid var(--vscode-panel-border)',
+            position: 'sticky',
+            top: 0,
+            backgroundColor: 'var(--vscode-editor-background)',
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              border: '1px solid var(--vscode-input-border)',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--vscode-input-background)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '32px',
+                height: '32px',
+                backgroundColor: 'var(--vscode-button-secondaryBackground)',
+                color: 'var(--vscode-button-secondaryForeground)',
+                fontSize: '13px',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)',
+                borderRight: '1px solid var(--vscode-input-border)',
+              }}
+            >
+              /
+            </div>
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search commands..."
+              autoFocus
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--vscode-input-foreground)',
+                fontSize: '13px',
+                outline: 'none',
+              }}
+            />
           </div>
-          {snippets.map(renderItem)}
-        </>
-      )}
+        </div>
 
-      {natives.length > 0 && (
-        <>
-          <div className="px-3 py-1 text-[10px] opacity-40 uppercase tracking-wider border-t border-[var(--vscode-panel-border)]">
-            Commands
-          </div>
-          {natives.map(renderItem)}
-        </>
-      )}
+        {/* Command list */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vscode-descriptionForeground)', fontStyle: 'italic' }}>
+              No matching commands
+            </div>
+          ) : (
+            <>
+              {customs.length > 0 && (
+                <div style={{ marginBottom: '32px' }}>
+                  <h3 style={{ margin: '16px 20px 12px 20px', fontSize: '14px', fontWeight: 600 }}>
+                    Custom Commands
+                  </h3>
+                  <div style={{ display: 'grid', gap: '4px', padding: '0 16px' }}>
+                    {customs.map(renderItem)}
+                  </div>
+                </div>
+              )}
+
+              {snippets.length > 0 && (
+                <div style={{ marginBottom: '32px' }}>
+                  <h3 style={{ margin: '16px 20px 12px 20px', fontSize: '14px', fontWeight: 600 }}>
+                    Prompt Snippets
+                  </h3>
+                  <div
+                    style={{
+                      padding: '12px 20px',
+                      backgroundColor: 'rgba(255, 149, 0, 0.1)',
+                      border: '1px solid rgba(255, 149, 0, 0.2)',
+                      borderRadius: '4px',
+                      margin: '0 20px 16px 20px',
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: '11px', color: 'var(--vscode-descriptionForeground)', textAlign: 'center', opacity: 0.9 }}>
+                      Prompt snippets insert pre-defined prompts into your message
+                    </p>
+                  </div>
+                  <div style={{ display: 'grid', gap: '4px', padding: '0 16px' }}>
+                    {snippets.map(renderItem)}
+                  </div>
+                </div>
+              )}
+
+              {natives.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <h3 style={{ margin: '16px 20px 12px 20px', fontSize: '14px', fontWeight: 600 }}>
+                    Built-in Commands
+                  </h3>
+                  <div style={{ display: 'grid', gap: '4px', padding: '0 16px' }}>
+                    {natives.map(renderItem)}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
