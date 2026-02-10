@@ -247,19 +247,26 @@ export function InputArea() {
           <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
         </button>
 
-        <div className="flex items-center gap-1" style={{ opacity: planMode ? 1 : 0.7, cursor: 'pointer' }}>
+        <button
+          onClick={() => setPlanMode(!planMode)}
+          className="flex items-center gap-1 cursor-pointer border-none"
+          style={{
+            padding: '2px 10px',
+            borderRadius: '12px',
+            border: `1px solid ${planMode ? 'var(--chatui-accent)' : 'var(--vscode-panel-border)'}`,
+            background: 'transparent',
+            color: planMode ? 'var(--chatui-accent)' : 'inherit',
+            opacity: planMode ? 1 : 0.7,
+            transition: 'all 0.2s ease',
+          }}
+          title="Plan mode"
+        >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
             <rect x="9" y="3" width="6" height="4" rx="2" />
           </svg>
-          <span onClick={() => setPlanMode(!planMode)} style={{ color: planMode ? 'var(--chatui-accent)' : 'inherit' }}>
-            Plan
-          </span>
-          <div
-            className={`mode-switch ${planMode ? 'active' : ''}`}
-            onClick={() => setPlanMode(!planMode)}
-          />
-        </div>
+          <span>Plan</span>
+        </button>
       </div>
 
       {/* Textarea container */}
