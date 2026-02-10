@@ -1,0 +1,17 @@
+.vscode/**
+src/**
+webview-ui/src/**
+webview-ui/node_modules/**
+webview-ui/public/**
+webview-ui/*.json
+webview-ui/*.ts
+webview-ui/*.js
+webview-ui/*.mjs
+sample/**
+reference/**
+node_modules/**
+.gitignore
+*.map
+**/*.ts
+!out/**/*.js
+!webview-ui/dist/**

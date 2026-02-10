@@ -1,0 +1,50 @@
+import * as vscode from 'vscode';
+import { ClaudeService } from './services/ClaudeService';
+import { PanelProvider } from './webview/PanelProvider';
+import { WebviewProvider } from './webview/WebviewProvider';
+
+export function activate(context: vscode.ExtensionContext): void {
+  console.log('Claude Code ChatUI extension is being activated');
+
+  // Initialize services
+  const claudeService = new ClaudeService(context);
+
+  // Create the main panel provider
+  const panelProvider = new PanelProvider(context.extensionUri, context, claudeService);
+
+  // Create sidebar webview provider
+  const webviewProvider = new WebviewProvider(context.extensionUri, context, panelProvider);
+
+  // Register command to open chat
+  const openChatCmd = vscode.commands.registerCommand(
+    'claude-code-chatui.openChat',
+    (column?: vscode.ViewColumn) => {
+      panelProvider.show(column);
+    },
+  );
+
+  // Register sidebar webview provider
+  const webviewProviderReg = vscode.window.registerWebviewViewProvider(
+    'claude-code-chatui.chatView',
+    webviewProvider,
+  );
+
+  // Status bar item
+  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  statusBarItem.text = '$(comment-discussion) Claude';
+  statusBarItem.tooltip = 'Open Claude Code ChatUI (Ctrl+Shift+C)';
+  statusBarItem.command = 'claude-code-chatui.openChat';
+  statusBarItem.show();
+
+  context.subscriptions.push(
+    openChatCmd,
+    webviewProviderReg,
+    statusBarItem,
+    claudeService,
+    { dispose: () => panelProvider.disposeAll() },
+  );
+
+  console.log('Claude Code ChatUI extension activated successfully');
+}
+
+export function deactivate(): void {}

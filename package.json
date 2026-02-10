@@ -12,12 +12,27 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "claude-code-chatui.openChat",
+        "title": "Open Claude Code ChatUI",
+        "category": "Claude Code ChatUI",
+        "icon": "media/icon.png"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "claude-code-chatui.openChat",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "claude-code-chatui",
-          "title": "Claude Code",
-          "icon": "media/icon.svg"
+          "title": "Claude Code ChatUI",
+          "icon": "media/icon.png"
         }
       ]
     },
@@ -26,16 +41,39 @@
         {
           "type": "webview",
           "id": "claude-code-chatui.chatView",
-          "name": "Chat"
+          "name": "Chat",
+          "icon": "media/icon.png"
         }
       ]
     },
-    "commands": [
-      {
-        "command": "claude-code-chatui.openChat",
-        "title": "Open Claude Code Chat"
+    "menus": {
+      "commandPalette": [
+        { "command": "claude-code-chatui.openChat" }
+      ],
+      "editor/context": [
+        {
+          "command": "claude-code-chatui.openChat",
+          "group": "claude@1",
+          "when": "editorTextFocus"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Code ChatUI",
+      "properties": {
+        "claudeCodeChatUI.thinking.intensity": {
+          "type": "string",
+          "enum": ["think", "think-hard", "think-harder", "ultrathink"],
+          "default": "think",
+          "description": "Thinking mode intensity level"
+        },
+        "claudeCodeChatUI.permissions.yoloMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip all permission checks (use with caution)"
+        }
       }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile && npm run build:webview",
