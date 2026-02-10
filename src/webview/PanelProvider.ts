@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from '../services/ClaudeService';
+import { ConversationService } from '../services/ConversationService';
+import { DiffContentProvider } from '../providers/DiffContentProvider';
 import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
 import { getWebviewHtml } from './html';
 import type { ClaudeMessage, WebviewToExtensionMessage } from '../shared/types';
@@ -25,6 +27,7 @@ export class PanelProvider {
     private readonly _extensionUri: vscode.Uri,
     private readonly _context: vscode.ExtensionContext,
     private readonly _claudeService: ClaudeService,
+    private readonly _conversationService: ConversationService,
   ) {
     // Load saved preferences
     this._selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
@@ -39,8 +42,8 @@ export class PanelProvider {
       onSessionIdReceived: (sessionId) => {
         this._claudeService.setSessionId(sessionId);
       },
-      onProcessingComplete: () => {
-        // Conversation saving will be added in Phase 2
+      onProcessingComplete: (result) => {
+        this._saveConversation(result.sessionId);
       },
     });
 
@@ -142,6 +145,9 @@ export class PanelProvider {
   }
 
   async newSession(): Promise<void> {
+    // Save current conversation before clearing
+    this._saveConversation(this._claudeService.sessionId);
+
     this._isProcessing = false;
     this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
     this._postMessage({ type: 'clearLoading' });
@@ -153,8 +159,31 @@ export class PanelProvider {
     this._postMessage({ type: 'sessionCleared' });
   }
 
-  async loadConversation(_filename: string): Promise<void> {
-    // Will be implemented in Phase 2 with ConversationService
+  async loadConversation(filename: string): Promise<void> {
+    const conversation = this._conversationService.loadConversation(filename);
+    if (!conversation) {
+      this._postMessage({ type: 'error', data: 'Failed to load conversation' });
+      return;
+    }
+
+    // Stop current process and clear
+    await this._claudeService.stopProcess();
+    this._claudeService.setSessionId(conversation.sessionId);
+    this._messageProcessor.resetSession();
+
+    // Replay messages to webview
+    this._postMessage({ type: 'sessionCleared' });
+    for (const msg of conversation.messages) {
+      this._postMessage({ type: msg.messageType, data: msg.data } as Record<string, unknown>);
+    }
+
+    this._postMessage({
+      type: 'restoreState',
+      state: {
+        sessionId: conversation.sessionId,
+        totalCost: conversation.totalCost,
+      },
+    });
   }
 
   dispose(): void {
@@ -214,6 +243,24 @@ export class PanelProvider {
       case 'openFile':
         this._openFile(message.filePath);
         return;
+      case 'openDiff':
+        void DiffContentProvider.openDiff(message.oldContent, message.newContent, message.filePath);
+        return;
+      case 'getConversationList':
+        this._postMessage({
+          type: 'conversationList',
+          data: this._conversationService.getConversationList(),
+        });
+        return;
+      case 'loadConversation':
+        void this.loadConversation(message.filename);
+        return;
+      case 'getSettings':
+        this._sendCurrentSettings();
+        return;
+      case 'updateSettings':
+        this._updateSettings(message.settings);
+        return;
     }
   }
 
@@ -253,6 +300,38 @@ export class PanelProvider {
     vscode.workspace.openTextDocument(uri).then((doc) => {
       vscode.window.showTextDocument(doc, { preview: true });
     });
+  }
+
+  private _saveConversation(sessionId?: string): void {
+    if (!sessionId) return;
+    const conversation = this._messageProcessor.currentConversation;
+    if (conversation.length === 0) return;
+
+    void this._conversationService.saveConversation(
+      sessionId,
+      conversation,
+      this._messageProcessor.totalCost,
+      this._messageProcessor.totalTokensInput,
+      this._messageProcessor.totalTokensOutput,
+    );
+  }
+
+  private _sendCurrentSettings(): void {
+    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+    this._postMessage({
+      type: 'settings' as string,
+      data: {
+        thinkingIntensity: config.get('thinking.intensity', 'think'),
+        yoloMode: config.get('permissions.yoloMode', false),
+      },
+    });
+  }
+
+  private _updateSettings(settings: Record<string, unknown>): void {
+    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+    for (const [key, value] of Object.entries(settings)) {
+      void config.update(key, value, vscode.ConfigurationTarget.Global);
+    }
   }
 
   private _postMessage(message: Record<string, unknown>): void {

@@ -240,6 +240,7 @@ export class ClaudeMessageProcessor {
           toolUseId: content.tool_use_id,
           toolName,
           rawInput,
+          fileContentBefore: toolData?.fileContentBefore,
           fileContentAfter,
           startLine: toolData?.startLine,
           startLines: toolData?.startLines,

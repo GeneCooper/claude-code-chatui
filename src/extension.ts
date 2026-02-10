@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './services/ClaudeService';
+import { ConversationService } from './services/ConversationService';
+import { DiffContentProvider } from './providers/DiffContentProvider';
 import { PanelProvider } from './webview/PanelProvider';
 import { WebviewProvider } from './webview/WebviewProvider';
 
@@ -8,9 +10,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Initialize services
   const claudeService = new ClaudeService(context);
+  const conversationService = new ConversationService(context);
+
+  // Register diff content provider
+  const diffProvider = vscode.workspace.registerTextDocumentContentProvider(
+    DiffContentProvider.scheme,
+    new DiffContentProvider(),
+  );
 
   // Create the main panel provider
-  const panelProvider = new PanelProvider(context.extensionUri, context, claudeService);
+  const panelProvider = new PanelProvider(context.extensionUri, context, claudeService, conversationService);
 
   // Create sidebar webview provider
   const webviewProvider = new WebviewProvider(context.extensionUri, context, panelProvider);
@@ -39,6 +48,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     openChatCmd,
     webviewProviderReg,
+    diffProvider,
     statusBarItem,
     claudeService,
     { dispose: () => panelProvider.disposeAll() },

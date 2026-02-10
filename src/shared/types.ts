@@ -234,6 +234,7 @@ export interface ToolResultData {
   toolUseId?: string;
   toolName?: string;
   rawInput?: Record<string, unknown>;
+  fileContentBefore?: string;
   fileContentAfter?: string;
   startLine?: number;
   startLines?: number[];
