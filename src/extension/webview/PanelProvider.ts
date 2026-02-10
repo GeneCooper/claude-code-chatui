@@ -4,10 +4,12 @@ import { ConversationService } from '../services/ConversationService';
 import { MCPService } from '../services/MCPService';
 import { BackupService } from '../services/BackupService';
 import { UsageService } from '../services/UsageService';
-import { DiffContentProvider } from '../providers/DiffContentProvider';
+import { PermissionService } from '../services/PermissionService';
 import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
+import { SessionStateManager } from './SessionStateManager';
+import { SettingsManager } from './SettingsManager';
+import { handleWebviewMessage, type WebviewMessage } from './handlers';
 import { getWebviewHtml } from './html';
-import { FILE_SEARCH_EXCLUDES } from '../../shared/constants';
 import type { ClaudeMessage, WebviewToExtensionMessage } from '../../shared/types';
 
 /**
@@ -21,11 +23,8 @@ export class PanelProvider {
   private _messageHandlerDisposable: vscode.Disposable | undefined;
 
   private readonly _messageProcessor: ClaudeMessageProcessor;
-
-  // Session state
-  private _isProcessing = false;
-  private _selectedModel = 'default';
-  private _draftMessage = '';
+  private readonly _stateManager = new SessionStateManager();
+  private readonly _settingsManager = new SettingsManager();
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -35,9 +34,10 @@ export class PanelProvider {
     private readonly _mcpService: MCPService,
     private readonly _backupService: BackupService,
     private readonly _usageService: UsageService,
+    private readonly _permissionService: PermissionService,
   ) {
     // Load saved preferences
-    this._selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
+    this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
 
     // Create message processor
     const poster: MessagePoster = {
@@ -45,7 +45,7 @@ export class PanelProvider {
       sendAndSaveMessage: (msg) => this._postMessage(msg),
     };
 
-    this._messageProcessor = new ClaudeMessageProcessor(poster, {
+    this._messageProcessor = new ClaudeMessageProcessor(poster, this._stateManager, {
       onSessionIdReceived: (sessionId) => {
         this._claudeService.setSessionId(sessionId);
       },
@@ -72,14 +72,14 @@ export class PanelProvider {
     });
 
     this._claudeService.onProcessEnd(() => {
-      this._isProcessing = false;
+      this._stateManager.isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
     });
 
     this._claudeService.onError((error) => {
-      this._isProcessing = false;
+      this._stateManager.isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
 
@@ -94,8 +94,7 @@ export class PanelProvider {
         this._postMessage({ type: 'error', data: error });
         // Suggest YOLO if it's a permission error
         if (error.includes('permission') || error.includes('denied')) {
-          const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-          if (!config.get<boolean>('permissions.yoloMode', false)) {
+          if (!this._settingsManager.isYoloModeEnabled()) {
             this._postMessage({
               type: 'error',
               data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.',
@@ -179,13 +178,14 @@ export class PanelProvider {
     // Save current conversation before clearing
     this._saveConversation(this._claudeService.sessionId);
 
-    this._isProcessing = false;
+    this._stateManager.isProcessing = false;
     this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
     this._postMessage({ type: 'clearLoading' });
 
     await this._claudeService.stopProcess();
     this._claudeService.setSessionId(undefined);
     this._messageProcessor.resetSession();
+    this._stateManager.resetSession();
 
     this._postMessage({ type: 'sessionCleared' });
   }
@@ -201,6 +201,10 @@ export class PanelProvider {
     await this._claudeService.stopProcess();
     this._claudeService.setSessionId(conversation.sessionId);
     this._messageProcessor.resetSession();
+    this._stateManager.restoreFromConversation({
+      totalCost: conversation.totalCost,
+      totalTokens: conversation.totalTokens,
+    });
 
     // Replay messages to webview
     this._postMessage({ type: 'sessionCleared' });
@@ -237,130 +241,41 @@ export class PanelProvider {
   private _setupWebviewMessageHandler(webview: vscode.Webview): void {
     this._messageHandlerDisposable?.dispose();
     this._messageHandlerDisposable = webview.onDidReceiveMessage(
-      (message: WebviewToExtensionMessage) => this._handleWebviewMessage(message),
+      (message: WebviewToExtensionMessage) => {
+        handleWebviewMessage(message as unknown as WebviewMessage, this._createHandlerContext());
+      },
       null,
       this._disposables,
     );
   }
 
-  private _handleWebviewMessage(message: WebviewToExtensionMessage): void {
-    switch (message.type) {
-      case 'sendMessage':
-        // Use model from message if provided, otherwise use saved model
-        if (message.model) {
-          this._selectedModel = message.model;
-          void this._context.workspaceState.update('claude.selectedModel', message.model);
-        }
-        this._handleSendMessage(message.text, message.planMode, message.thinkingMode, message.images);
-        return;
-      case 'newSession':
-        void this.newSession();
-        return;
-      case 'stopRequest':
-        void this._claudeService.stopProcess();
-        return;
-      case 'ready':
-        this._postMessage({ type: 'ready', data: 'Extension ready' });
-        this._checkCliAvailable();
-        return;
-      case 'permissionResponse':
-        this._claudeService.sendPermissionResponse(message.id, message.approved, message.alwaysAllow);
-        this._postMessage({
-          type: 'updatePermissionStatus',
-          data: { id: message.id, status: message.approved ? 'approved' : 'denied' },
-        });
-        return;
-      case 'selectModel':
-        this._selectedModel = message.model;
-        void this._context.workspaceState.update('claude.selectedModel', message.model);
-        return;
-      case 'openModelTerminal': {
-        const terminal = vscode.window.createTerminal({
-          name: 'Claude Model Selection',
-          location: { viewColumn: vscode.ViewColumn.One },
-        });
-        terminal.sendText('claude /model');
-        terminal.show();
-        return;
-      }
-      case 'runInstallCommand':
-        this._runInstallCommand();
-        return;
-      case 'saveInputText':
-        this._draftMessage = message.text;
-        return;
-      case 'openFile':
-        this._openFile(message.filePath);
-        return;
-      case 'openExternal':
-        void vscode.env.openExternal(vscode.Uri.parse((message as { url: string }).url));
-        return;
-      case 'openDiff':
-        void DiffContentProvider.openDiff(message.oldContent, message.newContent, message.filePath);
-        return;
-      case 'getConversationList':
-        this._postMessage({
-          type: 'conversationList',
-          data: this._conversationService.getConversationList(),
-        });
-        return;
-      case 'loadConversation':
-        void this.loadConversation(message.filename);
-        return;
-      case 'getSettings':
-        this._sendCurrentSettings();
-        return;
-      case 'updateSettings':
-        this._updateSettings(message.settings);
-        return;
-      // Phase 3: Slash commands
-      case 'executeSlashCommand':
-        this._executeSlashCommand(message.command);
-        return;
-      // Phase 3: File picker
-      case 'getWorkspaceFiles':
-        void this._sendWorkspaceFiles(message.searchTerm);
-        return;
-      // Phase 3: MCP
-      case 'loadMCPServers':
-        this._postMessage({ type: 'mcpServers', data: this._mcpService.loadServers() });
-        return;
-      case 'saveMCPServer':
-        try {
-          this._mcpService.saveServer(message.name, message.config);
-          this._postMessage({ type: 'mcpServerSaved', data: { name: message.name } });
-        } catch {
-          this._postMessage({ type: 'mcpServerError', data: { error: 'Failed to save MCP server' } });
-        }
-        return;
-      case 'deleteMCPServer':
-        if (this._mcpService.deleteServer(message.name)) {
-          this._postMessage({ type: 'mcpServerDeleted', data: { name: message.name } });
-        } else {
-          this._postMessage({ type: 'mcpServerError', data: { error: `Server "${message.name}" not found` } });
-        }
-        return;
-      // Phase 3: Backup
-      case 'createBackup':
-        void this._createBackup(message.message);
-        return;
-      case 'restoreBackup':
-        void this._restoreBackup(message.commitSha);
-        return;
-      case 'refreshUsage':
-        void this._usageService.fetchUsageData();
-        return;
-    }
+  private _createHandlerContext() {
+    return {
+      claudeService: this._claudeService,
+      conversationService: this._conversationService,
+      mcpService: this._mcpService,
+      backupService: this._backupService,
+      usageService: this._usageService,
+      permissionService: this._permissionService,
+      stateManager: this._stateManager,
+      settingsManager: this._settingsManager,
+      extensionContext: this._context,
+      postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
+      newSession: () => this.newSession(),
+      loadConversation: (filename: string) => this.loadConversation(filename),
+      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
+        this._handleSendMessage(text, planMode, thinkingMode, images),
+    };
   }
 
   private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
-    if (this._isProcessing) return;
+    if (this._stateManager.isProcessing) return;
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
 
-    this._isProcessing = true;
-    this._draftMessage = '';
+    this._stateManager.isProcessing = true;
+    this._stateManager.draftMessage = '';
 
     // Create backup checkpoint before sending
     void this._backupService.createCheckpoint(text).then((commit) => {
@@ -378,9 +293,8 @@ export class PanelProvider {
     // Show loading
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
-    // Get yolo mode from settings
-    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-    const yoloMode = config.get<boolean>('permissions.yoloMode', false);
+    // Get yolo mode from settings manager
+    const yoloMode = this._settingsManager.isYoloModeEnabled();
 
     // Pass MCP config path if servers are configured
     const mcpServers = this._mcpService.loadServers();
@@ -391,57 +305,9 @@ export class PanelProvider {
       planMode,
       thinkingMode,
       yoloMode,
-      model: this._selectedModel !== 'default' ? this._selectedModel : undefined,
+      model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath,
       images,
-    });
-  }
-
-  private _checkCliAvailable(): void {
-    const { exec } = require('child_process') as typeof import('child_process');
-    const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
-    exec('claude --version', { shell, timeout: 5000 }, (error: Error | null) => {
-      if (error) {
-        this._postMessage({ type: 'showInstallModal' });
-      }
-    });
-  }
-
-  private _runInstallCommand(): void {
-    const { exec } = require('child_process') as typeof import('child_process');
-    const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
-
-    exec('node --version', { shell }, (nodeErr: Error | null, nodeStdout: string) => {
-      let command: string;
-      const nodeOk = !nodeErr && nodeStdout && (() => {
-        const m = nodeStdout.trim().match(/^v(\d+)/);
-        return m && parseInt(m[1], 10) >= 18;
-      })();
-
-      if (nodeOk) {
-        command = 'npm install -g @anthropic-ai/claude-code';
-      } else if (process.platform === 'win32') {
-        command = 'irm https://claude.ai/install.ps1 | iex';
-      } else {
-        command = 'curl -fsSL https://claude.ai/install.sh | sh';
-      }
-
-      exec(command, { shell }, (error: Error | null, _stdout: string, stderr: string) => {
-        this._postMessage({
-          type: 'installComplete',
-          data: {
-            success: !error,
-            error: error ? (stderr || error.message) : undefined,
-          },
-        });
-      });
-    });
-  }
-
-  private _openFile(filePath: string): void {
-    const uri = vscode.Uri.file(filePath);
-    vscode.workspace.openTextDocument(uri).then((doc) => {
-      vscode.window.showTextDocument(doc, { preview: true });
     });
   }
 
@@ -453,91 +319,10 @@ export class PanelProvider {
     void this._conversationService.saveConversation(
       sessionId,
       conversation,
-      this._messageProcessor.totalCost,
-      this._messageProcessor.totalTokensInput,
-      this._messageProcessor.totalTokensOutput,
+      this._stateManager.totalCost,
+      this._stateManager.totalTokensInput,
+      this._stateManager.totalTokensOutput,
     );
-  }
-
-  private _sendCurrentSettings(): void {
-    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-    this._postMessage({
-      type: 'settingsData',
-      data: {
-        thinkingIntensity: config.get('thinking.intensity', 'think'),
-        yoloMode: config.get('permissions.yoloMode', false),
-      },
-    });
-  }
-
-  private _updateSettings(settings: Record<string, unknown>): void {
-    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-    for (const [key, value] of Object.entries(settings)) {
-      void config.update(key, value, vscode.ConfigurationTarget.Global);
-    }
-  }
-
-  private _executeSlashCommand(command: string): void {
-    if (command === 'compact') {
-      // Compact runs in chat, not terminal
-      this._handleSendMessage('/compact');
-      return;
-    }
-    if (command === 'clear') {
-      void this.newSession();
-      return;
-    }
-
-    // Open terminal for native commands
-    const sessionId = this._claudeService.sessionId;
-    const args = sessionId ? `/${command} --resume ${sessionId}` : `/${command}`;
-    const terminal = vscode.window.createTerminal({ name: `Claude: /${command}` });
-    terminal.sendText(`claude ${args}`);
-    terminal.show();
-  }
-
-  private async _sendWorkspaceFiles(searchTerm?: string): Promise<void> {
-    const excludePattern = FILE_SEARCH_EXCLUDES;
-    try {
-      const uris = await vscode.workspace.findFiles('**/*', excludePattern, 500);
-      let files = uris.map((uri) => {
-        const relativePath = vscode.workspace.asRelativePath(uri, false);
-        const name = relativePath.split(/[\\/]/).pop() || '';
-        return { name, path: relativePath, fsPath: uri.fsPath };
-      });
-
-      // Filter by search term
-      if (searchTerm) {
-        const lower = searchTerm.toLowerCase();
-        files = files.filter((f) =>
-          f.name.toLowerCase().includes(lower) || f.path.toLowerCase().includes(lower),
-        );
-      }
-
-      // Sort and limit
-      files.sort((a, b) => a.path.localeCompare(b.path));
-      files = files.slice(0, 50);
-
-      this._postMessage({ type: 'workspaceFiles', data: files });
-    } catch {
-      this._postMessage({ type: 'workspaceFiles', data: [] });
-    }
-  }
-
-  private async _createBackup(message: string): Promise<void> {
-    const commit = await this._backupService.createCheckpoint(message);
-    if (commit) {
-      this._postMessage({ type: 'restorePoint', data: commit });
-    }
-  }
-
-  private async _restoreBackup(commitSha: string): Promise<void> {
-    const success = await this._backupService.restoreToCommit(commitSha);
-    if (success) {
-      this._postMessage({ type: 'output', data: 'Workspace restored to checkpoint successfully.' });
-    } else {
-      this._postMessage({ type: 'error', data: 'Failed to restore checkpoint.' });
-    }
   }
 
   private _postMessage(message: Record<string, unknown>): void {

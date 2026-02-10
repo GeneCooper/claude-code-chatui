@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
+import { computeLineDiff } from '../utils/diff'
+import { postMessage } from '../lib/vscode'
 
 interface Props {
   oldContent: string
@@ -8,83 +10,56 @@ interface Props {
   startLines?: number[]
 }
 
-interface DiffLine {
-  type: 'add' | 'remove' | 'context'
-  content: string
-  oldLineNum?: number
-  newLineNum?: number
-}
-
-function computeDiff(oldText: string, newText: string): DiffLine[] {
-  const oldLines = oldText.split('\n')
-  const newLines = newText.split('\n')
-  const result: DiffLine[] = []
-
-  const m = oldLines.length
-  const n = newLines.length
-
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (oldLines[i - 1] === newLines[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
-      }
-    }
-  }
-
-  const diffOps: Array<{ type: 'keep' | 'add' | 'remove'; line: string; oldIdx?: number; newIdx?: number }> = []
-  let i = m
-  let j = n
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      diffOps.unshift({ type: 'keep', line: oldLines[i - 1], oldIdx: i, newIdx: j })
-      i--
-      j--
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      diffOps.unshift({ type: 'add', line: newLines[j - 1], newIdx: j })
-      j--
-    } else {
-      diffOps.unshift({ type: 'remove', line: oldLines[i - 1], oldIdx: i })
-      i--
-    }
-  }
-
-  for (const op of diffOps) {
-    if (op.type === 'keep') {
-      result.push({ type: 'context', content: op.line, oldLineNum: op.oldIdx, newLineNum: op.newIdx })
-    } else if (op.type === 'add') {
-      result.push({ type: 'add', content: op.line, newLineNum: op.newIdx })
-    } else {
-      result.push({ type: 'remove', content: op.line, oldLineNum: op.oldIdx })
-    }
-  }
-
-  return result
-}
-
 export function DiffView({ oldContent, newContent, filePath, startLine }: Props) {
   const [collapsed, setCollapsed] = useState(false)
+  const [reverted, setReverted] = useState(false)
   const fileName = filePath.split(/[\\/]/).pop() || 'file'
 
-  const diffLines = useMemo(
-    () => computeDiff(oldContent, newContent),
+  const diff = useMemo(
+    () => computeLineDiff(oldContent, newContent),
     [oldContent, newContent],
   )
 
-  const addCount = diffLines.filter((l) => l.type === 'add').length
-  const removeCount = diffLines.filter((l) => l.type === 'remove').length
+  // Map diff lines to display format
+  const diffLines = useMemo(() => {
+    return diff.lines.map((line) => ({
+      type: line.type === 'insert' ? 'add' as const : line.type === 'delete' ? 'remove' as const : 'context' as const,
+      content: line.content,
+      oldLineNum: line.oldLineNumber,
+      newLineNum: line.newLineNumber,
+    }))
+  }, [diff])
+
+  const addCount = diff.additions
+  const removeCount = diff.deletions
 
   const CONTEXT = 3
-  const changedIndices = new Set<number>()
-  diffLines.forEach((line, idx) => {
-    if (line.type !== 'context') {
-      for (let c = Math.max(0, idx - CONTEXT); c <= Math.min(diffLines.length - 1, idx + CONTEXT); c++) {
-        changedIndices.add(c)
+  const changedIndices = useMemo(() => {
+    const indices = new Set<number>()
+    diffLines.forEach((line, idx) => {
+      if (line.type !== 'context') {
+        for (let c = Math.max(0, idx - CONTEXT); c <= Math.min(diffLines.length - 1, idx + CONTEXT); c++) {
+          indices.add(c)
+        }
       }
-    }
-  })
+    })
+    return indices
+  }, [diffLines])
+
+  const handleOpenFile = useCallback(() => {
+    postMessage({ type: 'openFile', filePath, line: startLine })
+  }, [filePath, startLine])
+
+  const handleOpenDiff = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    postMessage({ type: 'openDiff', oldContent, newContent, filePath })
+  }, [oldContent, newContent, filePath])
+
+  const handleRevert = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    postMessage({ type: 'revertFile', filePath, oldContent })
+    setReverted(true)
+  }, [filePath, oldContent])
 
   if (addCount === 0 && removeCount === 0) return null
 
@@ -94,6 +69,7 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
       style={{
         border: '1px solid var(--vscode-panel-border)',
         borderRadius: 'var(--radius-sm)',
+        opacity: reverted ? 0.5 : 1,
       }}
     >
       {/* Diff header */}
@@ -109,9 +85,16 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
         onClick={() => setCollapsed(!collapsed)}
       >
         <span className="opacity-60">{collapsed ? '\u25B6' : '\u25BC'}</span>
-        <span className="font-mono opacity-80">{fileName}</span>
+        <button
+          className="font-mono opacity-80 cursor-pointer border-none bg-transparent text-inherit p-0 hover:underline"
+          style={{ fontSize: 'inherit', fontWeight: 'inherit' }}
+          onClick={(e) => { e.stopPropagation(); handleOpenFile() }}
+          title={filePath}
+        >
+          {fileName}
+        </button>
         {startLine && <span className="opacity-40">L{startLine}</span>}
-        <span className="ml-auto flex gap-2">
+        <span className="ml-auto flex items-center gap-2">
           {addCount > 0 && (
             <span style={{ color: 'var(--vscode-gitDecoration-addedResourceForeground, rgba(76, 175, 80, 0.9))' }}>
               +{addCount}
@@ -121,6 +104,28 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
             <span style={{ color: 'var(--vscode-gitDecoration-deletedResourceForeground, rgba(244, 67, 54, 0.9))' }}>
               -{removeCount}
             </span>
+          )}
+          {/* Action buttons */}
+          <button
+            className="cursor-pointer border-none bg-transparent p-0 opacity-40 hover:opacity-100"
+            style={{ fontSize: '12px', color: 'inherit', lineHeight: 1 }}
+            onClick={handleOpenDiff}
+            title="Open in VS Code diff editor"
+          >
+            <span style={{ fontFamily: 'codicon', fontSize: '14px' }}>&#xEA61;</span>
+          </button>
+          {!reverted && (
+            <button
+              className="cursor-pointer border-none bg-transparent p-0 opacity-40 hover:opacity-100"
+              style={{ fontSize: '12px', color: 'inherit', lineHeight: 1 }}
+              onClick={handleRevert}
+              title="Revert changes"
+            >
+              <span style={{ fontFamily: 'codicon', fontSize: '14px' }}>&#xEB99;</span>
+            </button>
+          )}
+          {reverted && (
+            <span className="text-[10px] opacity-60">reverted</span>
           )}
         </span>
       </div>

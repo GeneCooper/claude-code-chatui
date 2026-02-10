@@ -5,6 +5,7 @@ import type {
   ToolUseData,
 } from '../../shared/types';
 import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../../shared/constants';
+import type { SessionStateManager } from './SessionStateManager';
 
 export interface MessagePoster {
   postMessage(msg: Record<string, unknown>): void;
@@ -20,29 +21,18 @@ export interface ProcessorCallbacks {
  * Processes Claude CLI JSON stream messages and dispatches to webview.
  */
 export class ClaudeMessageProcessor {
-  private _totalCost = 0;
-  private _totalTokensInput = 0;
-  private _totalTokensOutput = 0;
-  private _requestCount = 0;
   private _currentConversation: ConversationMessage[] = [];
 
   constructor(
     private readonly _poster: MessagePoster,
+    private readonly _stateManager: SessionStateManager,
     private readonly _callbacks: ProcessorCallbacks,
   ) {}
 
   // Accessors for state
-  get totalCost(): number { return this._totalCost; }
-  get totalTokensInput(): number { return this._totalTokensInput; }
-  get totalTokensOutput(): number { return this._totalTokensOutput; }
-  get requestCount(): number { return this._requestCount; }
   get currentConversation(): ConversationMessage[] { return this._currentConversation; }
 
   resetSession(): void {
-    this._totalCost = 0;
-    this._totalTokensInput = 0;
-    this._totalTokensOutput = 0;
-    this._requestCount = 0;
     this._currentConversation = [];
   }
 
@@ -85,8 +75,7 @@ export class ClaudeMessageProcessor {
         data: { isCompacting: sys.status === 'compacting' },
       });
     } else if (sys.subtype === 'compact_boundary') {
-      this._totalTokensInput = 0;
-      this._totalTokensOutput = 0;
+      this._stateManager.resetTokenCounts();
       this._sendAndSave({
         type: 'compactBoundary',
         data: {
@@ -104,14 +93,18 @@ export class ClaudeMessageProcessor {
     // Track token usage
     if (assistant.message.usage) {
       const u = assistant.message.usage;
-      this._totalTokensInput += u.input_tokens || 0;
-      this._totalTokensOutput += u.output_tokens || 0;
+      this._stateManager.addTokenUsage({
+        inputTokens: u.input_tokens || 0,
+        outputTokens: u.output_tokens || 0,
+        cacheReadTokens: u.cache_read_input_tokens || 0,
+        cacheCreationTokens: u.cache_creation_input_tokens || 0,
+      });
 
       this._sendAndSave({
         type: 'updateTokens',
         data: {
-          totalTokensInput: this._totalTokensInput,
-          totalTokensOutput: this._totalTokensOutput,
+          totalTokensInput: this._stateManager.totalTokensInput,
+          totalTokensOutput: this._stateManager.totalTokensOutput,
           currentInputTokens: u.input_tokens || 0,
           currentOutputTokens: u.output_tokens || 0,
           cacheCreationTokens: u.cache_creation_input_tokens || 0,
@@ -282,18 +275,18 @@ export class ClaudeMessageProcessor {
       });
     }
 
-    this._requestCount++;
+    this._stateManager.incrementRequestCount();
     if (result.total_cost_usd) {
-      this._totalCost += result.total_cost_usd;
+      this._stateManager.addCost(result.total_cost_usd);
     }
 
     this._poster.postMessage({
       type: 'updateTotals',
       data: {
-        totalCost: this._totalCost,
-        totalTokensInput: this._totalTokensInput,
-        totalTokensOutput: this._totalTokensOutput,
-        requestCount: this._requestCount,
+        totalCost: this._stateManager.totalCost,
+        totalTokensInput: this._stateManager.totalTokensInput,
+        totalTokensOutput: this._stateManager.totalTokensOutput,
+        requestCount: this._stateManager.requestCount,
         currentCost: result.total_cost_usd,
         currentDuration: result.duration_ms,
         currentTurns: result.num_turns,

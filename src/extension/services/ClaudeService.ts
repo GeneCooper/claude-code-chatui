@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../../shared/types';
-import { THINKING_INTENSITIES, type ThinkingIntensity } from '../../shared/constants';
+import { THINKING_INTENSITIES, ThinkingIntensity } from '../../shared/constants';
 
 export interface SendMessageOptions {
   cwd: string;
@@ -58,7 +58,7 @@ export class ClaudeService implements vscode.Disposable {
     let actualMessage = message;
     if (options.thinkingMode) {
       const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-      const intensity = config.get<ThinkingIntensity>('thinking.intensity', 'think');
+      const intensity = config.get<ThinkingIntensity>('thinking.intensity', ThinkingIntensity.Think);
       const prompt = THINKING_INTENSITIES[intensity] || THINKING_INTENSITIES.think;
       actualMessage = `${prompt}\n\n${actualMessage}`;
     }

@@ -86,11 +86,67 @@ export class ConversationService {
   }
 
   /**
+   * Delete a conversation by filename.
+   */
+  async deleteConversation(filename: string): Promise<boolean> {
+    const filePath = path.join(this._conversationsDir, filename);
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      // Remove from index
+      const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
+      const filtered = index.filter((e) => e.filename !== filename);
+      await this._context.globalState.update('claude.conversationIndex', filtered);
+      return true;
+    } catch (err) {
+      console.error('Failed to delete conversation:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Search conversations by content (searches user messages).
+   */
+  searchConversations(query: string): ConversationIndexEntry[] {
+    if (!query.trim()) return this.getConversationList();
+
+    const lower = query.toLowerCase();
+    const list = this.getConversationList();
+
+    return list.filter((entry) => {
+      // Search in first/last user message previews
+      if (entry.firstUserMessage.toLowerCase().includes(lower)) return true;
+      if (entry.lastUserMessage.toLowerCase().includes(lower)) return true;
+      return false;
+    });
+  }
+
+  /**
+   * Export a conversation to JSON string.
+   */
+  exportConversation(filename: string): string | null {
+    const conversation = this.loadConversation(filename);
+    if (!conversation) return null;
+    return JSON.stringify(conversation, null, 2);
+  }
+
+  /**
    * Get the latest conversation's session ID (for auto-resume).
    */
   getLatestSessionId(): string | undefined {
     const list = this.getConversationList();
     return list.length > 0 ? list[0].sessionId : undefined;
+  }
+
+  /**
+   * Get the latest conversation data.
+   */
+  getLatestConversation(): ConversationData | null {
+    const list = this.getConversationList();
+    if (list.length === 0) return null;
+    return this.loadConversation(list[0].filename);
   }
 
   /**
