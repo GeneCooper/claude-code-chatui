@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useChatStore } from '../store'
-import { postMessage } from '../hooks'
 
 const STATUS_PHRASES = [
   'Claude is working',
@@ -114,12 +113,6 @@ export function StatusBar() {
           <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
         )}
 
-        {/* Context usage indicator — use last known input tokens as context size */}
-        <ContextIndicator
-          inputTokens={tokens.currentInputTokens || tokens.totalTokensInput}
-          isProcessing={isProcessing}
-        />
-
       </div>
 
       {/* Details panel */}
@@ -192,66 +185,3 @@ export function StatusBar() {
   )
 }
 
-const CONTEXT_LIMIT = 200_000
-
-function ContextIndicator({ inputTokens, isProcessing }: { inputTokens: number; isProcessing: boolean }) {
-  const percent = Math.min(Math.round((inputTokens / CONTEXT_LIMIT) * 100), 100)
-
-  const getColor = (p: number) => {
-    if (p >= 80) return '#ff453a'
-    if (p >= 60) return '#ff9500'
-    return '#4ec9b0'
-  }
-
-  const color = getColor(percent)
-
-  const handleCompact = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isProcessing) return
-    postMessage({ type: 'executeSlashCommand', command: 'compact' })
-  }
-
-  return (
-    <button
-      onClick={handleCompact}
-      disabled={isProcessing}
-      className="flex items-center gap-1.5 border-none"
-      style={{
-        background: percent >= 60 ? `${color}15` : 'transparent',
-        border: `1px solid ${percent >= 60 ? `${color}40` : 'rgba(128,128,128,0.2)'}`,
-        borderRadius: '10px',
-        padding: '1px 8px',
-        cursor: isProcessing ? 'default' : 'pointer',
-        transition: 'all 0.2s ease',
-        color,
-        fontSize: '10px',
-        fontWeight: 600,
-        lineHeight: '16px',
-      }}
-      title={`Context: ${percent}% (${Math.round(inputTokens / 1000)}K / ${CONTEXT_LIMIT / 1000}K tokens) — Click to compact`}
-    >
-      {/* Mini progress bar */}
-      <div
-        style={{
-          width: '24px',
-          height: '4px',
-          borderRadius: '2px',
-          background: 'rgba(128,128,128,0.2)',
-          overflow: 'hidden',
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            width: `${percent}%`,
-            height: '100%',
-            borderRadius: '2px',
-            background: color,
-            transition: 'width 0.5s ease',
-          }}
-        />
-      </div>
-      <span>{percent}%</span>
-    </button>
-  )
-}

@@ -174,6 +174,23 @@ export class PanelProvider {
         }
       }),
     );
+
+    // Track active file and send to webview
+    const sendActiveFile = (editor: vscode.TextEditor | undefined) => {
+      if (editor && editor.document.uri.scheme === 'file') {
+        const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+        this._postMessage({
+          type: 'activeFileChanged',
+          data: { filePath: relativePath, languageId: editor.document.languageId },
+        });
+      } else {
+        this._postMessage({ type: 'activeFileChanged', data: null });
+      }
+    };
+    sendActiveFile(vscode.window.activeTextEditor);
+    this._disposables.push(
+      vscode.window.onDidChangeActiveTextEditor(sendActiveFile),
+    );
   }
 
   // ==================== Public API ====================

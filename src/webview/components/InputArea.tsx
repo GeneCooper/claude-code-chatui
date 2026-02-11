@@ -25,6 +25,7 @@ export function InputArea() {
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
+  const [activeFile, setActiveFile] = useState<{ filePath: string; languageId: string } | null>(null)
   const { showSlashPicker, setShowSlashPicker, draftText, setDraftText } = useUIStore()
 
   const [slashFilter, setSlashFilter] = useState('')
@@ -110,6 +111,16 @@ export function InputArea() {
     }
     window.addEventListener('editorSelection', handler)
     return () => window.removeEventListener('editorSelection', handler)
+  }, [])
+
+  // Listen for active file changes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { filePath: string; languageId: string } | null
+      setActiveFile(detail)
+    }
+    window.addEventListener('activeFileChanged', handler)
+    return () => window.removeEventListener('activeFileChanged', handler)
   }, [])
 
   const adjustHeight = useCallback(() => {
@@ -789,6 +800,39 @@ export function InputArea() {
             })()}
           </div>
         </div>
+      </div>
+
+      {/* Bottom status bar: permission mode + active file */}
+      <div
+        className="flex items-center gap-2"
+        style={{
+          fontSize: '11px',
+          opacity: 0.6,
+          padding: '4px 2px 0',
+          minHeight: '20px',
+        }}
+      >
+        <span className="flex items-center gap-1">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+            {yoloMode ? (
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            ) : (
+              <path d="M8 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2zm3.5 6V3a3.5 3.5 0 1 0-7 0v4a3.5 3.5 0 1 0 7 0zM2 9a1 1 0 0 1 1 1v2a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-2a1 1 0 1 1 2 0v2a5 5 0 0 1-5 5H6a5 5 0 0 1-5-5v-2a1 1 0 0 1 1-1z" />
+            )}
+          </svg>
+          {yoloMode ? 'YOLO mode' : 'Ask before edits'}
+        </span>
+        {activeFile && (
+          <>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span className="flex items-center gap-1">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M13.85 4.44l-3.28-3.3A.5.5 0 0 0 10.21 1H3.5A1.5 1.5 0 0 0 2 2.5v11A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V4.8a.5.5 0 0 0-.15-.36zM10 2l3 3h-2.5a.5.5 0 0 1-.5-.5V2z" />
+              </svg>
+              <span className="truncate" style={{ maxWidth: '200px' }}>{activeFile.filePath}</span>
+            </span>
+          </>
+        )}
       </div>
     </div>
   )

@@ -273,6 +273,11 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const data = msg.data as { filePath: string; startLine: number; endLine: number; text: string } | null
     window.dispatchEvent(new CustomEvent('editorSelection', { detail: data }))
   },
+
+  activeFileChanged: (msg) => {
+    const data = msg.data as { filePath: string; languageId: string } | null
+    window.dispatchEvent(new CustomEvent('activeFileChanged', { detail: data }))
+  },
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {
@@ -396,17 +401,27 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-scroll when container resizes (e.g. TodoDisplay appears/changes)
+  // Auto-scroll when content inside the scroll container changes size
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const observer = new ResizeObserver(() => {
+    const observer = new MutationObserver(() => {
       if (isAutoScrollEnabled && isNearBottom) {
         scrollToBottom({ behavior: 'instant' })
       }
     })
-    observer.observe(container)
-    return () => observer.disconnect()
+    // Watch for any child additions/removals and subtree changes that affect scroll height
+    observer.observe(container, { childList: true, subtree: true, characterData: true })
+    // Also observe child element resizes (e.g. expanding messages, TodoDisplay)
+    const resizeObserver = new ResizeObserver(() => {
+      if (isAutoScrollEnabled && isNearBottom) {
+        scrollToBottom({ behavior: 'instant' })
+      }
+    })
+    for (const child of container.children) {
+      resizeObserver.observe(child)
+    }
+    return () => { observer.disconnect(); resizeObserver.disconnect() }
   }, [isAutoScrollEnabled, isNearBottom, scrollToBottom])
 
   return {
