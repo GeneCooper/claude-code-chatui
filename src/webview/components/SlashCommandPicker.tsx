@@ -110,37 +110,37 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
   let globalIndex = 0
 
   const getIcon = (cmd: SlashCommand) => {
-    if (cmd.category === 'custom') return '\u270F\uFE0F'
+    if (cmd.category === 'custom') return '✏️'
     if (cmd.category === 'snippet') {
       const icons: Record<string, string> = {
-        'performance-analysis': '\u26A1',
-        'security-review': '\uD83D\uDD12',
-        'implementation-review': '\uD83D\uDD0D',
-        'code-explanation': '\uD83D\uDCD6',
-        'bug-fix': '\uD83D\uDC1B',
-        'refactor': '\u267B\uFE0F',
-        'test-generation': '\uD83E\uddEA',
-        'documentation': '\uD83D\uDCDD',
+        'performance-analysis': '⚡',
+        'security-review': '🔒',
+        'implementation-review': '🔍',
+        'code-explanation': '📖',
+        'bug-fix': '🐛',
+        'refactor': '♻️',
+        'test-generation': '🧪',
+        'documentation': '📝',
       }
-      return icons[cmd.command] || '\uD83D\uDCCB'
+      return icons[cmd.command] || '📋'
     }
     const nativeIcons: Record<string, string> = {
-      'clear': '\uD83D\uDDD1\uFE0F',
-      'compact': '\uD83D\uDCE6',
-      'config': '\u2699\uFE0F',
-      'cost': '\uD83D\uDCB0',
-      'doctor': '\uD83E\uDE7A',
-      'help': '\u2753',
-      'init': '\uD83D\uDE80',
-      'login': '\uD83D\uDD11',
-      'memory': '\uD83E\udDE0',
-      'model': '\uD83E\uDD16',
-      'permissions': '\uD83D\uDEE1\uFE0F',
-      'review': '\uD83D\uDCDD',
-      'status': '\uD83D\uDCCA',
-      'usage': '\uD83D\uDCC8',
+      'clear': '🗑️',
+      'compact': '📦',
+      'config': '⚙️',
+      'cost': '💰',
+      'doctor': '🩺',
+      'help': '❓',
+      'init': '🚀',
+      'login': '🔑',
+      'memory': '🧠',
+      'model': '🤖',
+      'permissions': '🛡️',
+      'review': '📝',
+      'status': '📊',
+      'usage': '📈',
     }
-    return nativeIcons[cmd.command] || '\u25B6'
+    return nativeIcons[cmd.command] || '▶'
   }
 
   const renderItem = (cmd: SlashCommand) => {
@@ -270,7 +270,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
               opacity: 0.6,
             }}
           >
-            {'\u2715'}
+            {'✕'}
           </button>
         </div>
 

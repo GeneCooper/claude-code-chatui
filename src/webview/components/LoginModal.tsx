@@ -47,7 +47,7 @@ export function LoginModal() {
             onClick={() => setShow(false)}
             style={{ background: 'none', border: 'none', color: 'var(--vscode-foreground)', cursor: 'pointer', fontSize: '16px', padding: '4px', opacity: 0.6 }}
           >
-            {'\u2715'}
+            {'✕'}
           </button>
         </div>
 

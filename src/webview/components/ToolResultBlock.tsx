@@ -67,7 +67,7 @@ export function ToolResultBlock({ data }: Props) {
           background: 'var(--chatui-surface-1)',
         }}
       >
-        <span>{isError ? '\u274C' : '\u2705'}</span>
+        <span>{isError ? '❌' : '✅'}</span>
         <span style={{ opacity: 0.6 }}>
           {toolName ? `${toolName} result` : 'Result'}
         </span>

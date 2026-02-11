@@ -30,7 +30,7 @@ export function PermissionDialog({ data }: Props) {
           opacity: 0.6,
         }}
       >
-        <span>{status === 'approved' ? '\u2705' : '\u274C'} {tool} \u2014 {status}</span>
+        <span>{status === 'approved' ? '✅' : '❌'} {tool} — {status}</span>
       </div>
     )
   }
@@ -69,7 +69,7 @@ export function PermissionDialog({ data }: Props) {
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-3" style={{ fontWeight: 600 }}>
-        <span style={{ fontSize: '16px' }}>{'\u26A0\uFE0F'}</span>
+        <span style={{ fontSize: '16px' }}>{'⚠️'}</span>
         <span className="text-sm">Permission Required: {tool}</span>
 
         {/* More menu */}

@@ -58,7 +58,7 @@ export function TodoDisplay() {
 }
 
 function TodoRow({ todo }: { todo: TodoItem }) {
-  const icon = todo.status === 'completed' ? '\u2705' : todo.status === 'in_progress' ? '\uD83D\uDD04' : '\u23F3'
+  const icon = todo.status === 'completed' ? '✅' : todo.status === 'in_progress' ? '🔄' : '⏳'
   const textStyle: React.CSSProperties = todo.status === 'completed'
     ? { textDecoration: 'line-through', opacity: 0.5 }
     : todo.status === 'in_progress'

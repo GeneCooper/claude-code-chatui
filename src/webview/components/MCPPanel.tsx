@@ -197,7 +197,7 @@ export function MCPPanel() {
               opacity: 0.6,
             }}
           >
-            {'\u2715'}
+            {'✕'}
           </button>
         </div>
 

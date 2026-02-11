@@ -48,7 +48,7 @@ export function HistoryView() {
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
         >
-          {'\u2190'} Back to Chat
+          {'←'} Back to Chat
         </button>
       </div>
 

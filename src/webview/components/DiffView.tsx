@@ -84,7 +84,7 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
         }}
         onClick={() => setCollapsed(!collapsed)}
       >
-        <span className="opacity-60">{collapsed ? '\u25B6' : '\u25BC'}</span>
+        <span className="opacity-60">{collapsed ? '▶' : '▼'}</span>
         <button
           className="font-mono opacity-80 cursor-pointer border-none bg-transparent text-inherit p-0 hover:underline"
           style={{ fontSize: 'inherit', fontWeight: 'inherit' }}

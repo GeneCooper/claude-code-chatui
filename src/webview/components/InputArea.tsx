@@ -8,10 +8,10 @@ import { FilePicker } from './FilePicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 
 const MODELS = [
-  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '\u2605' },
-  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '\u25C6' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '\u25CF' },
-  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '\u25CB' },
+  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
+  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '◆' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '●' },
+  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '○' },
 ]
 
 export function InputArea() {
