@@ -340,7 +340,14 @@ export class PanelProvider {
       if (commit) this._postMessage({ type: 'restorePoint', data: commit });
     });
 
-    this._postMessage({ type: 'userInput', data: { text, images } });
+    // Save userInput to conversation so it replays on webview reload (tab switch)
+    const userInputData = { text, images };
+    this._messageProcessor.currentConversation.push({
+      timestamp: new Date().toISOString(),
+      messageType: 'userInput',
+      data: userInputData,
+    });
+    this._postMessage({ type: 'userInput', data: userInputData });
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
