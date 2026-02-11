@@ -22,7 +22,6 @@ export function InputArea() {
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const { showSlashPicker, showFilePicker, setShowSlashPicker, setShowFilePicker, draftText, setDraftText } = useUIStore()
@@ -58,6 +57,7 @@ export function InputArea() {
       textareaRef.current?.focus()
     }
   }, [draftText, setDraftText])
+
 
   // Listen for image file picked via native dialog
   useEffect(() => {
@@ -113,7 +113,7 @@ export function InputArea() {
 
   const handleSend = () => {
     const trimmed = text.trim()
-    if (!trimmed || isProcessing) return
+    if ((!trimmed && images.length === 0) || isProcessing) return
 
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
@@ -190,8 +190,7 @@ export function InputArea() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    const files = e.dataTransfer.files
-    for (const file of files) {
+    for (const file of e.dataTransfer.files) {
       if (file.type.startsWith('image/')) addImageFile(file)
     }
   }
@@ -201,15 +200,11 @@ export function InputArea() {
   const addImageFile = (file: File) => {
     const reader = new FileReader()
     reader.onload = () => {
-      const dataUrl = reader.result as string
-      setImages((prev) => [...prev, { name: file.name, dataUrl }])
+      setImages((prev) => [...prev, { name: file.name, dataUrl: reader.result as string }])
     }
     reader.readAsDataURL(file)
   }
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index))
-  }
 
   const handleSlashSelect = (command: string, category: 'snippet' | 'native') => {
     if (category === 'native') {
@@ -276,7 +271,7 @@ export function InputArea() {
                 style={{ border: '1px solid var(--vscode-panel-border)' }}
               />
               <button
-                onClick={() => removeImage(idx)}
+                onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center cursor-pointer border-none opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 x
@@ -548,10 +543,11 @@ export function InputArea() {
             {/* Slash command button */}
             <button
               onClick={() => { setShowSlashPicker(true); setSlashFilter('') }}
-              className="cursor-pointer border-none"
+              className="cursor-pointer border-none flex items-center justify-center"
               style={{
                 background: 'transparent',
-                padding: '4px 8px',
+                padding: '0 8px',
+                height: '24px',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '13px',
                 fontWeight: 600,
@@ -565,99 +561,17 @@ export function InputArea() {
               /
             </button>
 
-            {/* File reference button */}
-            <button
-              onClick={() => setShowFilePicker(true)}
-              className="cursor-pointer border-none"
-              style={{
-                background: 'transparent',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: 'inherit',
-                transition: 'all 0.15s ease',
-              }}
-              title="Reference files"
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-            >
-              @
-            </button>
-
-            {/* Image paste button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer border-none flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                padding: '4px',
-                width: '24px',
-                height: '24px',
-                borderRadius: 'var(--radius-sm)',
-                color: 'inherit',
-                transition: 'all 0.15s ease',
-              }}
-              title="Attach images (from browser)"
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            </button>
-
-            {/* Pick image file via native dialog */}
-            <button
-              onClick={() => postMessage({ type: 'pickImageFile' })}
-              className="cursor-pointer border-none flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                padding: '4px',
-                width: '24px',
-                height: '24px',
-                borderRadius: 'var(--radius-sm)',
-                color: 'inherit',
-                transition: 'all 0.15s ease',
-              }}
-              title="Pick image file (native dialog)"
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            </button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = e.target.files
-                if (files) {
-                  for (const file of files) addImageFile(file)
-                }
-                e.target.value = ''
-              }}
-            />
-
             {/* Send / Stop button */}
             {isProcessing ? (
               <button
                 onClick={handleStop}
-                className="cursor-pointer border-none flex items-center gap-1 shrink-0"
+                className="cursor-pointer border-none flex items-center justify-center gap-1 shrink-0"
                 style={{
                   background: 'transparent',
                   color: 'var(--vscode-descriptionForeground)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
-                  padding: '4px 8px',
+                  padding: '0 8px',
+                  height: '24px',
                   fontSize: '12px',
                   borderRadius: 'var(--radius-md)',
                   transition: 'all 0.2s ease',

@@ -339,7 +339,7 @@ export class PanelProvider {
       if (commit) this._postMessage({ type: 'restorePoint', data: commit });
     });
 
-    this._postMessage({ type: 'userInput', data: text });
+    this._postMessage({ type: 'userInput', data: { text, images } });
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 

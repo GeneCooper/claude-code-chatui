@@ -258,7 +258,7 @@ export type WebviewToExtensionMessage =
 /** Messages from Extension to Webview */
 export type ExtensionToWebviewMessage =
   | { type: 'ready'; data: string }
-  | { type: 'userInput'; data: string }
+  | { type: 'userInput'; data: { text: string; images?: string[] } }
   | { type: 'output'; data: string }
   | { type: 'thinking'; data: string }
   | { type: 'loading'; data: string }

@@ -186,8 +186,12 @@ function LoadingDots() {
 
 function MessageRenderer({ message }: { message: ChatMessage }) {
   switch (message.type) {
-    case 'userInput':
-      return <UserMessage text={String(message.data)} />
+    case 'userInput': {
+      const ud = message.data as { text: string; images?: string[] } | string
+      const uText = typeof ud === 'string' ? ud : ud.text
+      const uImages = typeof ud === 'string' ? undefined : ud.images
+      return <UserMessage text={uText} images={uImages} />
+    }
     case 'error':
       return (
         <div className="px-3 py-2 rounded-lg border text-sm" style={{ backgroundColor: 'var(--vscode-inputValidation-errorBackground, rgba(255,0,0,0.1))', borderColor: 'var(--vscode-inputValidation-errorBorder, #be1100)' }}>
