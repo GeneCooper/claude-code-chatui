@@ -1,27 +1,17 @@
-/**
- * Webview Message Handlers
- *
- * Handler map for messages received from the extension host.
- * Extracted from useVSCode for modularity.
- *
- * @module webview/hooks/useMessageHandlers
- */
-
 import { postMessage } from '../lib/vscode';
 import { useChatStore } from '../stores/chatStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useConversationStore } from '../stores/conversationStore';
 import { useMCPStore } from '../stores/mcpStore';
 import { useUIStore } from '../stores/uiStore';
+import { createModuleLogger } from '../../shared/utils/logger';
 import type { UsageData } from '../../shared/types';
+
+const log = createModuleLogger('MessageHandlers');
 
 type ExtensionMessage = { type: string; data?: unknown; state?: unknown; [key: string]: unknown };
 type WebviewMessageHandler = (msg: ExtensionMessage) => void;
 
-/**
- * Map of extension message types to handler functions.
- * Each handler dispatches to the appropriate Zustand store.
- */
 export const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   ready: () => {
     // No-op — extension acknowledges readiness
@@ -187,5 +177,7 @@ export function handleExtensionMessage(msg: ExtensionMessage): void {
   const handler = webviewMessageHandlers[msg.type];
   if (handler) {
     handler(msg);
+  } else {
+    log.warn('Unhandled message type', { type: msg.type });
   }
 }

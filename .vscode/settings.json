@@ -1,4 +1,7 @@
 {
     "chatgpt.openOnStartup": false,
-    "markdownlint.ignore": ["LICENSE"]
+    "markdownlint.ignore": [
+        "LICENSE"
+    ],
+    "claudeCodeChat.permissions.yoloMode": true
 }

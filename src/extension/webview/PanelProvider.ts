@@ -10,7 +10,10 @@ import { SessionStateManager } from './SessionStateManager';
 import { SettingsManager } from './SettingsManager';
 import { handleWebviewMessage, type WebviewMessage } from './handlers';
 import { getWebviewHtml } from './html';
+import { createModuleLogger } from '../../shared/utils/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage } from '../../shared/types';
+
+const log = createModuleLogger('PanelProvider');
 
 /**
  * Manages the webview panel lifecycle, message routing, and Claude CLI interaction.
@@ -38,6 +41,7 @@ export class PanelProvider {
   ) {
     // Load saved preferences
     this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
+    log.info('PanelProvider initialized');
 
     // Create message processor
     const poster: MessagePoster = {
@@ -79,6 +83,7 @@ export class PanelProvider {
     });
 
     this._claudeService.onError((error) => {
+      log.error('Claude service error', { message: error });
       this._stateManager.isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
@@ -270,6 +275,7 @@ export class PanelProvider {
 
   private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
     if (this._stateManager.isProcessing) return;
+    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
