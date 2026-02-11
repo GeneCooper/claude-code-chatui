@@ -15,7 +15,7 @@ export function ChatView({ onHintClick }: ChatViewProps) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto px-3 py-4"
+      className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4"
     >
       {messages.length === 0 && (
         <WelcomeScreen onHintClick={onHintClick || (() => {})} />

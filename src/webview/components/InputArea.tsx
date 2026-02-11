@@ -21,6 +21,7 @@ export function InputArea() {
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
@@ -267,8 +268,9 @@ export function InputArea() {
               <img
                 src={img.dataUrl}
                 alt={img.name}
-                className="w-12 h-12 rounded object-cover"
+                className="w-12 h-12 rounded object-cover cursor-pointer"
                 style={{ border: '1px solid var(--vscode-panel-border)' }}
+                onClick={() => setPreviewSrc(img.dataUrl)}
               />
               <button
                 onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
@@ -278,6 +280,29 @@ export function InputArea() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {previewSrc && (
+        <div
+          onClick={() => setPreviewSrc(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'zoom-out',
+          }}
+        >
+          <img
+            src={previewSrc}
+            alt="Preview"
+            style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '8px', objectFit: 'contain' }}
+          />
         </div>
       )}
 
