@@ -101,12 +101,12 @@ export const useChatStore = create<ChatState>((set) => ({
   updateTodos: (todos) => set({ todos }),
 
   restoreState: (restored) =>
-    set({
-      messages: restored.messages || [],
+    set((state) => ({
+      messages: restored.messages !== undefined ? restored.messages : state.messages,
       sessionId: restored.sessionId || null,
       todos: [],
       totals: { totalCost: restored.totalCost || 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
-    }),
+    })),
 }))
 
 // ============================================================================
