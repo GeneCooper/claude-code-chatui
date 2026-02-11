@@ -3,5 +3,8 @@
     "markdownlint.ignore": [
         "LICENSE"
     ],
-    "claudeCodeChat.permissions.yoloMode": true
+    "claudeCodeChat.permissions.yoloMode": true,
+    "terminal.integrated.automationProfile.windows": {
+        "path": "cmd.exe"
+    }
 }
