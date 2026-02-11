@@ -58,7 +58,7 @@ export function SettingsPanel() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-4">
         {/* Thinking Intensity */}
         <div>
           <label className="text-xs font-medium block mb-1.5">Thinking Intensity</label>

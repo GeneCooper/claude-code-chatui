@@ -180,8 +180,12 @@ export class PanelProvider {
     stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
 
     const poster: MessagePoster = {
-      postMessage: (msg) => this._postMessage(msg),
-      sendAndSaveMessage: (msg) => this._postMessage(msg),
+      postMessage: (msg) => {
+        if (this._activeTabId === tabId) this._postMessage(msg);
+      },
+      sendAndSaveMessage: (msg) => {
+        if (this._activeTabId === tabId) this._postMessage(msg);
+      },
     };
 
     const tab: TabContext = { tabId, title, stateManager, sessionId: undefined, messageProcessor: undefined as unknown as ClaudeMessageProcessor };

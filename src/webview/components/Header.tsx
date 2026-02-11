@@ -29,10 +29,6 @@ export function Header() {
   const { sessionId, isProcessing } = useChatStore()
   const { activeView, setActiveView, requestStartTime } = useUIStore()
 
-  const handleNewSession = () => {
-    postMessage({ type: 'createTab' })
-  }
-
   return (
     <div
       className="flex items-center justify-between px-4 py-3"
@@ -81,17 +77,6 @@ export function Header() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
-          </svg>
-        </HeaderIconButton>
-        <HeaderSep />
-
-        <HeaderIconButton
-          title="New Chat"
-          onClick={handleNewSession}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </HeaderIconButton>
       </div>
@@ -174,8 +159,6 @@ export function TabBar() {
   const tabs = useTabStore((s) => s.tabs)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const processingTabId = useTabStore((s) => s.processingTabId)
-
-  if (tabs.length <= 1) return null
 
   return (
     <div

@@ -633,28 +633,6 @@ export function InputArea() {
 
             <InputSep />
 
-            {/* Attach file button */}
-            <button
-              onClick={() => postMessage({ type: 'pickWorkspaceFile' })}
-              className="cursor-pointer border-none flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                padding: '2px 4px',
-                opacity: 0.7,
-                color: 'inherit',
-                transition: 'all 0.2s ease',
-              }}
-              title="Attach workspace file"
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
-
-            <InputSep />
-
             {/* MCP button */}
             <button
               onClick={() => useUIStore.getState().setShowMCPModal(true)}
@@ -698,7 +676,37 @@ export function InputArea() {
           </div>
 
           {/* Right controls */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-1">
+            {/* Attach file button */}
+            <button
+              onClick={() => postMessage({ type: 'pickWorkspaceFile' })}
+              className="cursor-pointer flex items-center justify-center"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
+                padding: '0',
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--radius-md)',
+                color: 'inherit',
+                opacity: 0.7,
+                transition: 'all 0.15s ease',
+              }}
+              title="Attach workspace file"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                e.currentTarget.style.opacity = '1'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.opacity = '0.7'
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
+
             {/* Slash command button */}
             <button
               onClick={() => { setShowSlashPicker(true); setSlashFilter('') }}
