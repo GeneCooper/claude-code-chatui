@@ -8,7 +8,7 @@ import { PermissionService } from '../services/PermissionService';
 import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
 import { SessionStateManager } from './SessionStateManager';
 import { SettingsManager } from './SettingsManager';
-import { handleWebviewMessage, type WebviewMessage } from './handlers';
+import { handleWebviewMessage, type WebviewMessage } from './messageHandlers';
 import { getWebviewHtml } from './html';
 import { createModuleLogger } from '../../shared/utils/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage } from '../../shared/types';

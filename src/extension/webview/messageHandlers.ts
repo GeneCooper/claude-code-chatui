@@ -1,20 +1,42 @@
-/**
- * Message Handlers
- *
- * Individual handler functions for each webview message type.
- * Extracted from PanelProvider for modularity and testability.
- *
- * @module webview/handlers/messageHandlers
- */
-
 import * as vscode from 'vscode';
-import { DiffContentProvider } from '../../providers/DiffContentProvider';
-import { FILE_SEARCH_EXCLUDES } from '../../../shared/constants';
-import type { MCPServerConfig } from '../../../shared/types';
-import type { MessageHandler, MessageHandlerContext, MessageHandlerMap, WebviewMessage } from './types';
+import { DiffContentProvider } from '../providers/DiffContentProvider';
+import { FILE_SEARCH_EXCLUDES } from '../../shared/constants';
+import type { MCPServerConfig } from '../../shared/types';
+import type { ClaudeService } from '../services/ClaudeService';
+import type { ConversationService } from '../services/ConversationService';
+import type { MCPService } from '../services/MCPService';
+import type { BackupService } from '../services/BackupService';
+import type { UsageService } from '../services/UsageService';
+import type { PermissionService } from '../services/PermissionService';
+import type { SessionStateManager } from './SessionStateManager';
+import type { SettingsManager } from './SettingsManager';
 
 // ============================================================================
-// Message Handlers
+// Types
+// ============================================================================
+
+export interface MessageHandlerContext {
+    claudeService: ClaudeService;
+    conversationService: ConversationService;
+    mcpService: MCPService;
+    backupService: BackupService;
+    usageService: UsageService;
+    permissionService: PermissionService;
+    stateManager: SessionStateManager;
+    settingsManager: SettingsManager;
+    extensionContext: vscode.ExtensionContext;
+    postMessage(msg: Record<string, unknown>): void;
+    newSession(): Promise<void>;
+    loadConversation(filename: string): Promise<void>;
+    handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
+}
+
+export type WebviewMessage = { type: string; [key: string]: unknown };
+
+type MessageHandler = (msg: WebviewMessage, ctx: MessageHandlerContext) => void | Promise<void>;
+
+// ============================================================================
+// Handlers
 // ============================================================================
 
 const handleSendMessage: MessageHandler = (msg, ctx) => {
@@ -160,7 +182,6 @@ const handleExecuteSlashCommand: MessageHandler = (msg, ctx) => {
         return;
     }
 
-    // Open terminal for native commands
     const sessionId = ctx.claudeService.sessionId;
     const args = sessionId ? `/${command} --resume ${sessionId}` : `/${command}`;
     const terminal = vscode.window.createTerminal({ name: `Claude: /${command}` });
@@ -293,7 +314,7 @@ const handleRevertFile: MessageHandler = async (msg, ctx) => {
 };
 
 // ============================================================================
-// Helper Functions
+// Helper
 // ============================================================================
 
 function checkCliAvailable(ctx: MessageHandlerContext): void {
@@ -307,13 +328,10 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
 }
 
 // ============================================================================
-// Handler Map
+// Handler Map & Dispatch
 // ============================================================================
 
-/**
- * Map of message types to handler functions
- */
-export const messageHandlers: MessageHandlerMap = {
+const messageHandlers: Record<string, MessageHandler> = {
     sendMessage: handleSendMessage,
     newSession: handleNewSession,
     stopRequest: handleStopRequest,
@@ -347,9 +365,6 @@ export const messageHandlers: MessageHandlerMap = {
     revertFile: handleRevertFile,
 };
 
-/**
- * Dispatch a webview message to the appropriate handler
- */
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {
     const handler = messageHandlers[msg.type];
     if (handler) {
