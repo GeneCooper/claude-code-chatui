@@ -25,16 +25,11 @@ function LogoIcon({ size = 20 }: { size?: number }) {
 export { LogoIcon }
 
 export function Header() {
-  const { sessionId, isProcessing, totals } = useChatStore()
+  const { sessionId, isProcessing } = useChatStore()
   const { activeView, setActiveView, requestStartTime } = useUIStore()
 
   const handleNewSession = () => {
     postMessage({ type: 'newSession' })
-  }
-
-  const formatCost = (cost: number) => {
-    if (cost === 0) return ''
-    return `$${cost.toFixed(4)}`
   }
 
   return (
@@ -74,13 +69,6 @@ export function Header() {
       </div>
 
       <div className="flex items-center" style={{ fontSize: '11px', height: '28px' }}>
-        {totals.totalCost > 0 && (
-          <>
-            <span className="opacity-50" style={{ lineHeight: '28px' }}>{formatCost(totals.totalCost)}</span>
-            <HeaderSep />
-          </>
-        )}
-
         <UsageIndicator />
         <HeaderSep />
 

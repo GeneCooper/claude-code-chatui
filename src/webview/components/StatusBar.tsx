@@ -78,11 +78,6 @@ export function StatusBar() {
           <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
         )}
 
-        {cacheSavingsPercent > 0 && (
-          <span style={{ opacity: 0.5, color: '#4ec9b0', fontSize: '10px' }}>
-            {cacheSavingsPercent}% cached
-          </span>
-        )}
       </div>
 
       {/* Details panel */}
