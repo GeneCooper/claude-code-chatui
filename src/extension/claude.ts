@@ -134,13 +134,21 @@ export class ClaudeService implements vscode.Disposable {
   private _abortController: AbortController | undefined;
   private _sessionId: string | undefined;
   private _pendingPermissions = new Map<string, PendingPermission>();
+  private _subscriptionType: 'pro' | 'max' | undefined;
+  private _accountInfoFetched = false;
 
   private _messageEmitter = new EventEmitter();
   private _processEndEmitter = new EventEmitter();
   private _errorEmitter = new EventEmitter();
   private _permissionRequestEmitter = new EventEmitter();
+  private _accountInfoEmitter = new EventEmitter();
 
-  constructor(private readonly _context: vscode.ExtensionContext) {}
+  constructor(private readonly _context: vscode.ExtensionContext) {
+    this._subscriptionType = _context.globalState.get<'pro' | 'max' | undefined>('claude.subscriptionType');
+  }
+
+  get subscriptionType(): 'pro' | 'max' | undefined { return this._subscriptionType; }
+  onAccountInfo(cb: (type: 'pro' | 'max' | undefined) => void): void { this._accountInfoEmitter.on('info', cb); }
 
   onMessage(cb: (msg: ClaudeMessage) => void): void { this._messageEmitter.on('message', cb); }
   onProcessEnd(cb: () => void): void { this._processEndEmitter.on('end', cb); }
@@ -215,6 +223,17 @@ export class ClaudeService implements vscode.Disposable {
         parent_tool_use_id: null,
       };
       claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
+
+      // Send initialize control_request to detect account/subscription type
+      if (!this._accountInfoFetched) {
+        this._accountInfoFetched = true;
+        const initReq = {
+          type: 'control_request',
+          request_id: `init-${Date.now()}`,
+          request: { subtype: 'initialize' },
+        };
+        claudeProcess.stdin.write(JSON.stringify(initReq) + '\n');
+      }
     }
 
     let rawOutput = '';
@@ -230,7 +249,7 @@ export class ClaudeService implements vscode.Disposable {
         try {
           const json = JSON.parse(line.trim());
           if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
-          if (json.type === 'control_response') continue;
+          if (json.type === 'control_response') { this._handleControlResponse(json); continue; }
           if (json.type === 'result') {
             if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) claudeProcess.stdin.end();
           }
@@ -310,6 +329,19 @@ export class ClaudeService implements vscode.Disposable {
       blockedPath: (request as { blocked_path?: string }).blocked_path,
       pattern,
     });
+  }
+
+  private _handleControlResponse(response: Record<string, unknown>): void {
+    try {
+      const data = response.data as Record<string, unknown> | undefined;
+      const innerResponse = (response.response as Record<string, unknown>)?.response as Record<string, unknown> | undefined;
+      const account = (data?.account || innerResponse?.account) as Record<string, unknown> | undefined;
+      if (account?.subscriptionType) {
+        this._subscriptionType = account.subscriptionType as 'pro' | 'max';
+        void this._context.globalState.update('claude.subscriptionType', this._subscriptionType);
+        this._accountInfoEmitter.emit('info', this._subscriptionType);
+      }
+    } catch { /* ignore malformed responses */ }
   }
 
   // Common command patterns: [firstWord, subcommand] → wildcard pattern

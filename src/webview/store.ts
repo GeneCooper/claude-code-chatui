@@ -229,6 +229,8 @@ interface UIState {
   draftText: string
   requestStartTime: number | null
   usageData: UsageData | null
+  accountType: 'pro' | 'max' | undefined
+  platformInfo: { platform: string; isWindows: boolean } | null
   notifications: Notification[]
 
   setActiveView: (view: ActiveView) => void
@@ -242,6 +244,8 @@ interface UIState {
   setDraftText: (text: string) => void
   setRequestStartTime: (time: number | null) => void
   setUsageData: (data: UsageData | null) => void
+  setAccountType: (type: 'pro' | 'max' | undefined) => void
+  setPlatformInfo: (info: { platform: string; isWindows: boolean } | null) => void
   showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
   dismissNotification: (id: string) => void
 }
@@ -260,6 +264,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   draftText: '',
   requestStartTime: null,
   usageData: null,
+  accountType: undefined,
+  platformInfo: null,
   notifications: [],
 
   setActiveView: (view) => set({ activeView: view }),
@@ -273,6 +279,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   setDraftText: (text) => set({ draftText: text }),
   setRequestStartTime: (time) => set({ requestStartTime: time }),
   setUsageData: (data) => set({ usageData: data }),
+  setAccountType: (type) => set({ accountType: type }),
+  setPlatformInfo: (info) => set({ platformInfo: info }),
 
   showNotification: (type, title, message, timeout = 5000) => {
     const id = `notif-${++notifCounter}`

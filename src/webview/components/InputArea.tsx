@@ -59,6 +59,29 @@ export function InputArea() {
     }
   }, [draftText, setDraftText])
 
+  // Listen for image file picked via native dialog
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { name: string; dataUrl: string }
+      if (detail) setImages((prev) => [...prev, detail])
+    }
+    window.addEventListener('imageFilePicked', handler)
+    return () => window.removeEventListener('imageFilePicked', handler)
+  }, [])
+
+  // Listen for clipboard content fallback from extension
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { text: string }
+      if (detail?.text) {
+        setText((prev) => prev + detail.text)
+        textareaRef.current?.focus()
+      }
+    }
+    window.addEventListener('clipboardContent', handler)
+    return () => window.removeEventListener('clipboardContent', handler)
+  }, [])
+
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
@@ -149,6 +172,12 @@ export function InputArea() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
+    // Webview clipboard restriction: when types is empty, fall back to extension API
+    if (e.clipboardData.types.length === 0) {
+      e.preventDefault()
+      postMessage({ type: 'getClipboardText' })
+      return
+    }
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         e.preventDefault()
@@ -556,7 +585,7 @@ export function InputArea() {
               @
             </button>
 
-            {/* Image button */}
+            {/* Image paste button */}
             <button
               onClick={() => fileInputRef.current?.click()}
               className="cursor-pointer border-none flex items-center justify-center"
@@ -569,7 +598,7 @@ export function InputArea() {
                 color: 'inherit',
                 transition: 'all 0.15s ease',
               }}
-              title="Attach images"
+              title="Attach images (from browser)"
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
@@ -577,6 +606,30 @@ export function InputArea() {
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+
+            {/* Pick image file via native dialog */}
+            <button
+              onClick={() => postMessage({ type: 'pickImageFile' })}
+              className="cursor-pointer border-none flex items-center justify-center"
+              style={{
+                background: 'transparent',
+                padding: '4px',
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--radius-sm)',
+                color: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+              title="Pick image file (native dialog)"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             </button>
 

@@ -147,3 +147,42 @@ export function applyDiff(oldContent: string, diff: DiffResult): string {
   }
   return result.join('\n');
 }
+
+// ============================================================================
+// Permission Error Detection
+// ============================================================================
+
+const PERMISSION_ERROR_PATTERNS = [
+  'permission denied',
+  'not permitted',
+  'access denied',
+  'eperm',
+  'eacces',
+  'operation not permitted',
+  'requires approval',
+  'permission_error',
+  'blocked by policy',
+];
+
+export function isPermissionError(content: string): boolean {
+  const lower = content.toLowerCase();
+  return PERMISSION_ERROR_PATTERNS.some((p) => lower.includes(p));
+}
+
+// ============================================================================
+// Usage Limit Timestamp Parsing
+// ============================================================================
+
+export function parseUsageLimitTimestamp(text: string): { message: string; resetDate: string } | null {
+  const match = text.match(/Claude AI usage limit reached\|(\d+)/);
+  if (!match) return null;
+  const timestamp = parseInt(match[1], 10);
+  const date = new Date(timestamp * 1000);
+  return {
+    message: 'Claude AI usage limit reached',
+    resetDate: date.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    }),
+  };
+}

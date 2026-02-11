@@ -5,6 +5,7 @@ import { useConversationStore } from './store'
 import { useMCPStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
+import { parseUsageLimitTimestamp } from './utils'
 import type { UsageData } from '../shared/types'
 
 // ============================================================================
@@ -69,7 +70,13 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   error: (msg) => {
     useChatStore.getState().removeLoading()
-    useChatStore.getState().addMessage({ type: 'error', data: msg.data })
+    const text = typeof msg.data === 'string' ? msg.data : ''
+    const usageLimit = parseUsageLimitTimestamp(text)
+    if (usageLimit) {
+      useChatStore.getState().addMessage({ type: 'error', data: `${usageLimit.message}. Resets ${usageLimit.resetDate}` })
+    } else {
+      useChatStore.getState().addMessage({ type: 'error', data: msg.data })
+    }
   },
 
   setProcessing: (msg) => {
@@ -160,6 +167,23 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
   usageError: () => {},
+
+  accountInfo: (msg) => {
+    const info = msg.data as { subscriptionType: 'pro' | 'max' | undefined }
+    useUIStore.getState().setAccountType(info.subscriptionType)
+  },
+
+  platformInfo: (msg) => {
+    useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
+  },
+
+  imageFilePicked: (msg) => {
+    window.dispatchEvent(new CustomEvent('imageFilePicked', { detail: msg.data }))
+  },
+
+  clipboardContent: (msg) => {
+    window.dispatchEvent(new CustomEvent('clipboardContent', { detail: msg.data }))
+  },
 
   todosUpdate: (msg) => {
     const todosData = msg.data as { todos: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }> }

@@ -3,6 +3,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { DiffView } from './DiffView'
 import { postMessage } from '../hooks'
+import { useSettingsStore } from '../store'
+import { isPermissionError } from '../utils'
 
 interface Props {
   data: Record<string, unknown>
@@ -46,6 +48,8 @@ export function ToolResultBlock({ data }: Props) {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const yoloMode = useSettingsStore((s) => s.yoloMode)
+  const showYoloHint = isError && isPermissionError(content) && !yoloMode
   const barClass = isError ? 'message-bar-error' : 'message-bar-result'
 
   return (
@@ -106,6 +110,34 @@ export function ToolResultBlock({ data }: Props) {
             startLine={startLine}
             startLines={startLines}
           />
+        </div>
+      )}
+
+      {showYoloHint && (
+        <div
+          className="flex items-center gap-2 text-[11px]"
+          style={{
+            padding: '6px 12px',
+            paddingLeft: '16px',
+            background: 'rgba(255, 149, 0, 0.08)',
+            borderTop: '1px solid rgba(255, 149, 0, 0.2)',
+            color: 'var(--vscode-editorWarning-foreground, #ff9500)',
+          }}
+        >
+          <span style={{ opacity: 0.8 }}>Tip: Enable YOLO mode to skip permission prompts</span>
+          <button
+            onClick={() => postMessage({ type: 'updateSettings', settings: { 'permissions.yoloMode': true } })}
+            className="cursor-pointer border-none text-[10px] font-medium"
+            style={{
+              marginLeft: 'auto',
+              background: 'rgba(255, 149, 0, 0.15)',
+              color: 'inherit',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            Enable YOLO Mode
+          </button>
         </div>
       )}
 

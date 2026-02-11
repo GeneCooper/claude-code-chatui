@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { postMessage } from '../hooks'
 
+const FILE_EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit']
+
 interface Props {
   data: Record<string, unknown>
 }
@@ -9,6 +11,21 @@ export function ToolUseBlock({ data }: Props) {
   const [showInput, setShowInput] = useState(false)
   const toolName = data.toolName as string
   const rawInput = data.rawInput as Record<string, unknown> | undefined
+  const fileContentBefore = data.fileContentBefore as string | undefined
+  const filePath = rawInput?.file_path as string | undefined
+
+  const canPreviewDiff = FILE_EDIT_TOOLS.includes(toolName) && fileContentBefore && filePath && rawInput
+
+  const handlePreviewDiff = () => {
+    if (!canPreviewDiff) return
+    let expectedContent = fileContentBefore
+    if (toolName === 'Write' && rawInput.content) {
+      expectedContent = String(rawInput.content)
+    } else if (toolName === 'Edit' && rawInput.old_string != null && rawInput.new_string != null) {
+      expectedContent = fileContentBefore.replace(String(rawInput.old_string), String(rawInput.new_string))
+    }
+    postMessage({ type: 'openDiff', oldContent: fileContentBefore, newContent: expectedContent, filePath })
+  }
 
   const getToolSummary = () => {
     if (!rawInput) return ''
@@ -59,6 +76,17 @@ export function ToolUseBlock({ data }: Props) {
         <span style={{ fontWeight: 500, fontSize: '13px', opacity: 0.9 }}>{toolName}</span>
         {summary && (
           <span className="opacity-50 truncate flex-1 font-mono text-[11px]">{summary}</span>
+        )}
+        {canPreviewDiff && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handlePreviewDiff()
+            }}
+            className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
+          >
+            Preview Diff
+          </button>
         )}
         {rawInput?.file_path != null && (
           <button

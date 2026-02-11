@@ -250,7 +250,10 @@ export type WebviewToExtensionMessage =
   | { type: 'deleteMCPServer'; name: string }
   | { type: 'createBackup'; message: string }
   | { type: 'restoreBackup'; commitSha: string }
-  | { type: 'refreshUsage' };
+  | { type: 'refreshUsage' }
+  | { type: 'openCCUsageTerminal' }
+  | { type: 'pickImageFile' }
+  | { type: 'getClipboardText' };
 
 /** Messages from Extension to Webview */
 export type ExtensionToWebviewMessage =
@@ -287,7 +290,11 @@ export type ExtensionToWebviewMessage =
   | { type: 'usageUpdate'; data: UsageData }
   | { type: 'usageError'; data: string }
   | { type: 'todosUpdate'; data: { todos: TodoItem[] } }
-  | { type: 'installComplete'; data: { success: boolean; error?: string } };
+  | { type: 'installComplete'; data: { success: boolean; error?: string } }
+  | { type: 'accountInfo'; data: { subscriptionType: 'pro' | 'max' | undefined } }
+  | { type: 'platformInfo'; data: { platform: string; isWindows: boolean } }
+  | { type: 'imageFilePicked'; data: { name: string; dataUrl: string } }
+  | { type: 'clipboardContent'; data: { text: string } };
 
 export interface SettingsData {
   thinkingIntensity: string;

@@ -3,8 +3,11 @@ import { postMessage } from '../hooks'
 
 export function UsageIndicator() {
   const usageData = useUIStore((s) => s.usageData)
+  const accountType = useUIStore((s) => s.accountType)
 
   if (!usageData) return null
+
+  const usageLabel = accountType === 'max' ? 'Max Plan Usage' : accountType === 'pro' ? 'Pro Plan Usage' : 'API Usage'
 
   const sessionPercent = Math.round((usageData.currentSession.usageCost / usageData.currentSession.costLimit) * 100)
   const weeklyPercent = Math.round((usageData.weekly.costLikely / usageData.weekly.costLimit) * 100)
@@ -60,7 +63,7 @@ export function UsageIndicator() {
         }}
       >
         <div className="flex items-center justify-between" style={{ marginBottom: '14px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600 }}>API Usage</span>
+          <span style={{ fontSize: '12px', fontWeight: 600 }}>{usageLabel}</span>
           <button
             onClick={() => postMessage({ type: 'refreshUsage' })}
             className="cursor-pointer border-none"
@@ -90,6 +93,30 @@ export function UsageIndicator() {
           percent={weeklyPercent}
           resetTime={usageData.weekly.resetsAt}
         />
+
+        <button
+          onClick={() => postMessage({ type: 'openCCUsageTerminal' })}
+          className="cursor-pointer border-none w-full"
+          style={{
+            background: 'rgba(128, 128, 128, 0.1)',
+            padding: '6px 8px',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '10px',
+            color: 'var(--vscode-descriptionForeground)',
+            textAlign: 'center',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(128, 128, 128, 0.2)'
+            e.currentTarget.style.color = 'var(--chatui-accent)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(128, 128, 128, 0.1)'
+            e.currentTarget.style.color = 'var(--vscode-descriptionForeground)'
+          }}
+        >
+          View Detailed Usage (ccusage)
+        </button>
       </div>
     </div>
   )

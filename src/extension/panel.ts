@@ -173,6 +173,10 @@ export class PanelProvider {
       }
     });
 
+    this._claudeService.onAccountInfo((subscriptionType) => {
+      this._postMessage({ type: 'accountInfo', data: { subscriptionType } });
+    });
+
     this._claudeService.onPermissionRequest((request) => {
       this._postMessage({
         type: 'permissionRequest',
@@ -197,6 +201,7 @@ export class PanelProvider {
 
     if (this._panel) {
       this._panel.reveal(actualColumn);
+      void vscode.commands.executeCommand('workbench.view.explorer');
       return;
     }
 
@@ -208,6 +213,7 @@ export class PanelProvider {
     this._panel.webview.html = getWebviewHtml(this._panel.webview, this._extensionUri);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);
+    void vscode.commands.executeCommand('workbench.view.explorer');
   }
 
   showInWebview(webview: vscode.Webview, webviewView?: vscode.WebviewView): void {

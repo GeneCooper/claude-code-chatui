@@ -48,6 +48,12 @@ export function activate(context: vscode.ExtensionContext): void {
     webviewProvider,
   );
 
+  // Register command to load a specific conversation
+  const loadConvCmd = vscode.commands.registerCommand(
+    'claude-code-chatui.loadConversation',
+    (filename: string) => { panelProvider.show(); void panelProvider.loadConversation(filename); },
+  );
+
   // Status bar item
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.text = '$(comment-discussion) Claude';
@@ -57,6 +63,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     openChatCmd,
+    loadConvCmd,
     webviewProviderReg,
     diffProvider,
     statusBarItem,

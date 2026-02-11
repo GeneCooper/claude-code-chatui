@@ -674,6 +674,10 @@ const handleStopRequest: MessageHandler = (_msg, ctx) => { void ctx.claudeServic
 
 const handleReady: MessageHandler = (_msg, ctx) => {
   ctx.postMessage({ type: 'ready', data: 'Extension ready' });
+  ctx.postMessage({
+    type: 'platformInfo',
+    data: { platform: process.platform, isWindows: process.platform === 'win32' },
+  });
   checkCliAvailable(ctx);
 };
 
@@ -730,8 +734,13 @@ const handleOpenFile: MessageHandler = (msg) => {
 
 const handleOpenExternal: MessageHandler = (msg) => { void vscode.env.openExternal(vscode.Uri.parse(msg.url as string)); };
 
-const handleOpenDiff: MessageHandler = (msg) => {
-  void DiffContentProvider.openDiff(msg.oldContent as string, msg.newContent as string, msg.filePath as string);
+const handleOpenDiff: MessageHandler = async (msg) => {
+  // Force side-by-side diff rendering
+  const diffConfig = vscode.workspace.getConfiguration('diffEditor');
+  if (!diffConfig.get<boolean>('renderSideBySide', true)) {
+    await diffConfig.update('renderSideBySide', true, vscode.ConfigurationTarget.Global);
+  }
+  await DiffContentProvider.openDiff(msg.oldContent as string, msg.newContent as string, msg.filePath as string);
 };
 
 const handleGetConversationList: MessageHandler = (_msg, ctx) => {
@@ -870,6 +879,46 @@ const handleRevertFile: MessageHandler = async (msg, ctx) => {
   }
 };
 
+const handleOpenCCUsageTerminal: MessageHandler = (_msg, ctx) => {
+  const subscriptionType = ctx.claudeService.subscriptionType;
+  const isPlan = subscriptionType === 'pro' || subscriptionType === 'max';
+  const command = isPlan ? 'npx -y ccusage blocks --live' : 'npx -y ccusage blocks --recent --order desc';
+  const terminal = vscode.window.createTerminal({ name: 'ccusage' });
+  terminal.sendText(command);
+  terminal.show();
+};
+
+const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
+  const result = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    openLabel: 'Select Image',
+    filters: { Images: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] },
+  });
+  if (!result || result.length === 0) return;
+  try {
+    const data = await vscode.workspace.fs.readFile(result[0]);
+    const base64 = Buffer.from(data).toString('base64');
+    const ext = result[0].fsPath.split('.').pop()?.toLowerCase() || 'png';
+    const mimeMap: Record<string, string> = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+    };
+    const name = result[0].fsPath.split(/[\\/]/).pop() || 'image';
+    ctx.postMessage({ type: 'imageFilePicked', data: { name, dataUrl: `data:${mimeMap[ext] || 'image/png'};base64,${base64}` } });
+  } catch {
+    ctx.postMessage({ type: 'error', data: 'Failed to read image file' });
+  }
+};
+
+const handleGetClipboard: MessageHandler = async (_msg, ctx) => {
+  try {
+    const text = await vscode.env.clipboard.readText();
+    ctx.postMessage({ type: 'clipboardContent', data: { text } });
+  } catch {
+    ctx.postMessage({ type: 'clipboardContent', data: { text: '' } });
+  }
+};
+
 function checkCliAvailable(ctx: MessageHandlerContext): void {
   const { exec } = require('child_process') as typeof import('child_process');
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
@@ -910,6 +959,9 @@ const messageHandlers: Record<string, MessageHandler> = {
   addPermission: handleAddPermission,
   removePermission: handleRemovePermission,
   revertFile: handleRevertFile,
+  openCCUsageTerminal: handleOpenCCUsageTerminal,
+  pickImageFile: handlePickImageFile,
+  getClipboardText: handleGetClipboard,
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {
