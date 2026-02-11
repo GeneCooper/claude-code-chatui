@@ -179,9 +179,15 @@ function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }
 
 function LoadingIndicator() {
   const [elapsed, setElapsed] = useState(0)
+  const [dotCount, setDotCount] = useState(1)
 
   useEffect(() => {
     const id = setInterval(() => setElapsed((e) => e + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => setDotCount((d) => (d % 3) + 1), 500)
     return () => clearInterval(id)
   }, [])
 
@@ -190,21 +196,44 @@ function LoadingIndicator() {
     return `${Math.floor(s / 60)}m ${s % 60}s`
   }
 
+  // Dynamic status message based on elapsed time
+  const statusText = elapsed < 5 ? 'Analyzing' : elapsed < 15 ? 'Thinking deeply' : elapsed < 30 ? 'Working on it' : 'Processing'
+  const dots = '.'.repeat(dotCount)
+
   return (
     <div
       className="flex items-center gap-3 px-3 py-2 text-xs"
-      style={{ opacity: 0.6 }}
+      style={{ opacity: 0.7 }}
     >
-      <span
-        className="inline-block w-3 h-3 rounded-full"
-        style={{
-          border: '2px solid rgba(255,255,255,0.2)',
-          borderTopColor: 'var(--chatui-accent)',
-          animation: 'spin 0.8s linear infinite',
-        }}
-      />
-      <span>Claude is thinking...</span>
-      <span style={{ opacity: 0.5, fontSize: '10px' }}>{formatTime(elapsed)}</span>
+      {/* Three-dot pulse animation */}
+      <div className="flex items-center gap-1">
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full"
+          style={{
+            background: 'var(--chatui-accent)',
+            animation: 'pulse 1.4s ease-in-out infinite',
+            animationDelay: '0s',
+          }}
+        />
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full"
+          style={{
+            background: 'var(--chatui-accent)',
+            animation: 'pulse 1.4s ease-in-out infinite',
+            animationDelay: '0.2s',
+          }}
+        />
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full"
+          style={{
+            background: 'var(--chatui-accent)',
+            animation: 'pulse 1.4s ease-in-out infinite',
+            animationDelay: '0.4s',
+          }}
+        />
+      </div>
+      <span style={{ minWidth: '120px' }}>{statusText}{dots}</span>
+      <span style={{ opacity: 0.4, fontSize: '10px' }}>{formatTime(elapsed)}</span>
     </div>
   )
 }
@@ -316,7 +345,7 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
       {!isCollapsed && (
         <div style={{ paddingLeft: '12px', borderLeft: '1px solid rgba(255, 255, 255, 0.06)', marginLeft: '10px', marginTop: '4px' }}>
           {plan.assistantMessage.type === 'output' && (
-            <AssistantMessage text={String(plan.assistantMessage.data)} timestamp={plan.assistantMessage.timestamp} />
+            <AssistantMessage text={String(plan.assistantMessage.data)} timestamp={plan.assistantMessage.timestamp} isStreaming={plan.status === 'executing'} />
           )}
           {plan.thinkingMessage && <ThinkingBlock text={String(plan.thinkingMessage.data)} />}
           {plan.assistantMessage.type === 'thinking' && !plan.thinkingMessage && (

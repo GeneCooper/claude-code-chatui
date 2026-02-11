@@ -108,8 +108,13 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   output: (msg) => {
-    useChatStore.getState().removeLoading()
-    useChatStore.getState().addMessage({ type: 'output', data: msg.data })
+    const store = useChatStore.getState()
+    store.removeLoading()
+    // Try to merge with last output message (consecutive output chunks from same response)
+    const merged = store.appendToLastOutput(String(msg.data))
+    if (!merged) {
+      store.addMessage({ type: 'output', data: msg.data })
+    }
   },
 
   thinking: (msg) => {

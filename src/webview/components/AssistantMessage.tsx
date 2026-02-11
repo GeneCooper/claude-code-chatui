@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -12,6 +12,7 @@ const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-
 interface Props {
   text: string
   timestamp?: string
+  isStreaming?: boolean
 }
 
 // Stable reference for markdown components — avoids re-creating on each render
@@ -64,8 +65,68 @@ const markdownComponents = {
   ),
 }
 
-export function AssistantMessage({ text }: Props) {
+/**
+ * Hook to progressively reveal text for a streaming effect.
+ * On first mount or when new text is appended, reveals content character-by-character
+ * at a fast rate to simulate streaming output.
+ */
+function useStreamingText(fullText: string, isStreaming: boolean) {
+  const [displayText, setDisplayText] = useState(isStreaming ? '' : fullText)
+  const prevTextRef = useRef(fullText)
+  const revealedRef = useRef(isStreaming ? 0 : fullText.length)
+  const rafRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (!isStreaming) {
+      setDisplayText(fullText)
+      revealedRef.current = fullText.length
+      prevTextRef.current = fullText
+      return
+    }
+
+    // If text grew (new content appended), keep revealed portion and stream the rest
+    const prevLen = prevTextRef.current.length
+    if (fullText.length > prevLen && fullText.startsWith(prevTextRef.current)) {
+      // Previous text is a prefix — keep the revealed count
+    } else {
+      // Text changed entirely — reset
+      revealedRef.current = 0
+    }
+    prevTextRef.current = fullText
+
+    if (revealedRef.current >= fullText.length) {
+      setDisplayText(fullText)
+      return
+    }
+
+    // Streaming reveal — ~30 chars per frame at 60fps = ~1800 chars/sec
+    const CHARS_PER_FRAME = 30
+
+    const reveal = () => {
+      revealedRef.current = Math.min(revealedRef.current + CHARS_PER_FRAME, fullText.length)
+      // Snap to next word boundary to avoid cutting mid-word
+      if (revealedRef.current < fullText.length) {
+        const nextSpace = fullText.indexOf(' ', revealedRef.current)
+        if (nextSpace !== -1 && nextSpace - revealedRef.current < 20) {
+          revealedRef.current = nextSpace + 1
+        }
+      }
+      setDisplayText(fullText.substring(0, revealedRef.current))
+      if (revealedRef.current < fullText.length) {
+        rafRef.current = requestAnimationFrame(reveal)
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(reveal)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [fullText, isStreaming])
+
+  return displayText
+}
+
+export function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
+  const displayText = useStreamingText(text, isStreaming)
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(text)
@@ -73,12 +134,12 @@ export function AssistantMessage({ text }: Props) {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // Memoize markdown rendering — only re-parse when text actually changes
+  // Memoize markdown rendering — only re-parse when displayText actually changes
   const renderedMarkdown = useMemo(() => (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-      {text}
+      {displayText}
     </ReactMarkdown>
-  ), [text])
+  ), [displayText])
 
   return (
     <div
