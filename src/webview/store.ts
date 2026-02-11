@@ -1,15 +1,11 @@
 import { create } from 'zustand'
-import type { UsageData } from '../shared/types'
+import type { UsageData, TodoItem, MCPServerConfig } from '../shared/types'
+
+export type { TodoItem }
 
 // ============================================================================
 // Chat Store
 // ============================================================================
-
-export interface TodoItem {
-  content: string
-  status: 'pending' | 'in_progress' | 'completed'
-  activeForm?: string
-}
 
 export interface ChatMessage {
   id: string
@@ -168,14 +164,6 @@ export const useConversationStore = create<ConversationState>((set) => ({
 // ============================================================================
 // MCP Store
 // ============================================================================
-
-interface MCPServerConfig {
-  type: 'stdio' | 'http' | 'sse'
-  command?: string
-  url?: string
-  args?: string[]
-  headers?: Record<string, string>
-}
 
 interface MCPState {
   servers: Record<string, MCPServerConfig>
