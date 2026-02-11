@@ -154,7 +154,15 @@ export class ConversationService {
     // Auto-rebuild entries with missing firstUserMessage (one-time migration)
     const needsRebuild = index.some((e) => !e.firstUserMessage);
     if (needsRebuild) { void this._rebuildIndex(); }
-    return [...index].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime());
+    // Deduplicate by sessionId (keep latest endTime), then sort
+    const seen = new Map<string, ConversationIndexEntry>();
+    for (const entry of index) {
+      const existing = seen.get(entry.sessionId);
+      if (!existing || new Date(entry.endTime).getTime() > new Date(existing.endTime).getTime()) {
+        seen.set(entry.sessionId, entry);
+      }
+    }
+    return [...seen.values()].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime());
   }
 
   private async _rebuildIndex(): Promise<void> {

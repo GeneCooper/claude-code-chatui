@@ -36,15 +36,21 @@ function groupByTime(conversations: ConvEntry[]): TimeGroup[] {
     .map(([label, items]) => ({ label, items }))
 }
 
+const PAGE_SIZE = 30
+
 export function HistoryView() {
   const conversations = useConversationStore((s) => s.conversations)
   const setActiveView = useUIStore((s) => s.setActiveView)
   const [searchQuery, setSearchQuery] = useState('')
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     postMessage({ type: 'getConversationList' })
   }, [])
+
+  // Reset display count when conversations or search changes
+  useEffect(() => { setDisplayCount(PAGE_SIZE) }, [searchQuery])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -58,7 +64,9 @@ export function HistoryView() {
     }, 300)
   }
 
-  const groups = useMemo(() => groupByTime(conversations), [conversations])
+  const truncated = useMemo(() => conversations.slice(0, displayCount), [conversations, displayCount])
+  const hasMore = conversations.length > displayCount
+  const groups = useMemo(() => groupByTime(truncated), [truncated])
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr)
@@ -157,85 +165,108 @@ export function HistoryView() {
             {searchQuery ? 'No matching conversations' : 'No conversation history'}
           </div>
         ) : (
-          groups.map((group) => (
-            <div key={group.label}>
-              {/* Group label */}
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--vscode-descriptionForeground)',
-                  padding: '8px 4px 4px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  opacity: 0.6,
-                }}
-              >
-                {group.label}
-              </div>
-
-              {group.items.map((conv) => (
-                <button
-                  key={conv.filename}
-                  onClick={() => {
-                    postMessage({ type: 'loadConversation', filename: conv.filename })
-                    setActiveView('chat')
-                  }}
-                  className="w-full text-left cursor-pointer border-none text-inherit"
+          <>
+            {groups.map((group) => (
+              <div key={group.label}>
+                {/* Group label */}
+                <div
                   style={{
-                    display: 'block',
-                    padding: '10px 12px',
-                    margin: '2px 0',
-                    border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--vscode-list-inactiveSelectionBackground, transparent)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                    e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--vscode-list-inactiveSelectionBackground, transparent)'
-                    e.currentTarget.style.borderColor = 'var(--vscode-widget-border, var(--vscode-panel-border))'
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: 'var(--vscode-descriptionForeground)',
+                    padding: '8px 4px 4px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    opacity: 0.6,
                   }}
                 >
-                  {/* Meta info */}
-                  <div
-                    className="flex items-center justify-between"
-                    style={{ marginBottom: '3px' }}
+                  {group.label}
+                </div>
+
+                {group.items.map((conv) => (
+                  <button
+                    key={conv.filename}
+                    onClick={() => {
+                      postMessage({ type: 'loadConversation', filename: conv.filename })
+                      setActiveView('chat')
+                    }}
+                    className="w-full text-left cursor-pointer border-none text-inherit"
+                    style={{
+                      display: 'block',
+                      padding: '10px 12px',
+                      margin: '2px 0',
+                      border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--vscode-list-inactiveSelectionBackground, transparent)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                      e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--vscode-list-inactiveSelectionBackground, transparent)'
+                      e.currentTarget.style.borderColor = 'var(--vscode-widget-border, var(--vscode-panel-border))'
+                    }}
                   >
-                    <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>
-                      {formatDate(conv.startTime)} {formatTime(conv.startTime)}
-                    </span>
-                    <span style={{ fontSize: '10px', color: 'var(--vscode-descriptionForeground)', opacity: 0.8 }}>
-                      {conv.messageCount} msgs {formatCost(conv.totalCost)}
-                    </span>
-                  </div>
-
-                  {/* Title / first message */}
-                  <div className="truncate" style={{ fontWeight: 500, fontSize: '13px' }}>
-                    {conv.firstUserMessage || 'No message'}
-                  </div>
-
-                  {/* Preview */}
-                  {conv.lastUserMessage && conv.lastUserMessage !== conv.firstUserMessage && (
-                    <div style={{
-                      fontSize: '11px',
-                      color: 'var(--vscode-descriptionForeground)',
-                      opacity: 0.7,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      marginTop: '2px',
-                    }}>
-                      {conv.lastUserMessage}
+                    {/* Meta info */}
+                    <div
+                      className="flex items-center justify-between"
+                      style={{ marginBottom: '3px' }}
+                    >
+                      <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>
+                        {formatDate(conv.startTime)} {formatTime(conv.startTime)}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--vscode-descriptionForeground)', opacity: 0.8 }}>
+                        {conv.messageCount} msgs {formatCost(conv.totalCost)}
+                      </span>
                     </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))
+
+                    {/* Title / first message */}
+                    <div className="truncate" style={{ fontWeight: 500, fontSize: '13px' }}>
+                      {conv.firstUserMessage || 'No message'}
+                    </div>
+
+                    {/* Preview */}
+                    {conv.lastUserMessage && conv.lastUserMessage !== conv.firstUserMessage && (
+                      <div style={{
+                        fontSize: '11px',
+                        color: 'var(--vscode-descriptionForeground)',
+                        opacity: 0.7,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        marginTop: '2px',
+                      }}>
+                        {conv.lastUserMessage}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ))}
+            {hasMore && (
+              <button
+                onClick={() => setDisplayCount((c) => c + PAGE_SIZE)}
+                className="w-full cursor-pointer border-none"
+                style={{
+                  padding: '8px',
+                  margin: '8px 0',
+                  fontSize: '12px',
+                  color: 'var(--vscode-textLink-foreground)',
+                  background: 'transparent',
+                  textAlign: 'center',
+                  borderRadius: 'var(--radius-md)',
+                  opacity: 0.8,
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.8' }}
+              >
+                Load more ({conversations.length - displayCount} remaining)
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

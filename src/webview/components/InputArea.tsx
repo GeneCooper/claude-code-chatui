@@ -551,7 +551,7 @@ export function InputArea() {
         className="textarea-glow"
         style={{
           background: 'var(--vscode-input-background)',
-          border: isDragging ? '1px solid var(--chatui-accent)' : '1px solid rgba(237, 110, 29, 0.3)',
+          border: isDragging ? '1px solid var(--chatui-accent)' : '1px solid var(--vscode-input-border, var(--vscode-panel-border))',
           borderRadius: 'var(--radius-md)',
           position: 'relative',
         }}
@@ -703,70 +703,60 @@ export function InputArea() {
 
             {/* Stop button (only visible when processing) */}
             {isProcessing && (
-              <>
-                <InputSep />
-                <button
-                  onClick={handleStop}
-                  className="cursor-pointer flex items-center justify-center gap-1 shrink-0"
-                  style={{
-                    background: 'transparent',
-                    color: '#e74c3c',
-                    border: 'none',
-                    padding: '0 8px',
-                    height: '24px',
-                    fontSize: '12px',
-                    borderRadius: 'var(--radius-md)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                  }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
-                  Stop
-                </button>
-              </>
+              <button
+                onClick={handleStop}
+                className="cursor-pointer flex items-center justify-center shrink-0"
+                style={{
+                  background: 'var(--chatui-accent)',
+                  border: 'none',
+                  padding: '0',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  transition: 'opacity 0.15s ease',
+                  marginLeft: '2px',
+                }}
+                title="Stop"
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85' }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <rect x="2" y="2" width="12" height="12" rx="2" />
+                </svg>
+              </button>
             )}
 
             {/* Send button (only visible when not processing) */}
-            {!isProcessing && (
-              <>
-                <InputSep />
+            {!isProcessing && (() => {
+              const hasContent = !!(text.trim() || images.length > 0 || attachedFiles.length > 0)
+              return (
                 <button
                   onClick={handleSend}
-                  disabled={!text.trim() && images.length === 0 && attachedFiles.length === 0}
+                  disabled={!hasContent}
                   className="cursor-pointer flex items-center justify-center shrink-0"
                   style={{
-                    background: 'transparent',
+                    background: hasContent ? 'var(--chatui-accent)' : 'rgba(255, 255, 255, 0.08)',
                     border: 'none',
                     padding: '0',
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: 'var(--radius-md)',
-                    color: (text.trim() || images.length > 0 || attachedFiles.length > 0) ? 'var(--chatui-accent)' : 'inherit',
-                    opacity: (text.trim() || images.length > 0 || attachedFiles.length > 0) ? 1 : 0.4,
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '8px',
+                    color: hasContent ? '#fff' : 'rgba(255, 255, 255, 0.3)',
                     transition: 'all 0.15s ease',
+                    marginLeft: '2px',
                   }}
                   title="Send message"
-                  onMouseEnter={(e) => {
-                    if (text.trim() || images.length > 0 || attachedFiles.length > 0) {
-                      e.currentTarget.style.background = 'rgba(100,149,237,0.1)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                  }}
+                  onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 12V4" />
+                    <path d="M4 7l4-4 4 4" />
                   </svg>
                 </button>
-              </>
-            )}
+              )
+            })()}
           </div>
         </div>
       </div>
