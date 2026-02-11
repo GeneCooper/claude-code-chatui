@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ComponentPropsWithoutRef } from 'react'
-import { postMessage } from '../lib/vscode'
+import { postMessage } from '../hooks'
 
 // Regex to detect file paths in text (Unix and Windows paths)
 const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-]+(?::\d+)?)/g

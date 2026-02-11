@@ -1,0 +1,287 @@
+import { create } from 'zustand'
+import type { UsageData } from '../shared/types'
+
+// ============================================================================
+// Chat Store
+// ============================================================================
+
+export interface TodoItem {
+  content: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm?: string
+}
+
+export interface ChatMessage {
+  id: string
+  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint' | 'todosUpdate'
+  data: unknown
+  timestamp: string
+}
+
+interface TokenState {
+  totalTokensInput: number
+  totalTokensOutput: number
+  currentInputTokens: number
+  currentOutputTokens: number
+  cacheCreationTokens: number
+  cacheReadTokens: number
+}
+
+interface TotalsState {
+  totalCost: number
+  totalTokensInput: number
+  totalTokensOutput: number
+  requestCount: number
+}
+
+interface ChatState {
+  messages: ChatMessage[]
+  isProcessing: boolean
+  sessionId: string | null
+  tokens: TokenState
+  totals: TotalsState
+  todos: TodoItem[]
+
+  addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
+  clearMessages: () => void
+  removeLoading: () => void
+  setProcessing: (isProcessing: boolean) => void
+  setSessionId: (id: string | null) => void
+  updateTokens: (tokens: Partial<TokenState>) => void
+  updateTotals: (totals: Partial<TotalsState>) => void
+  updatePermissionStatus: (id: string, status: string) => void
+  updateTodos: (todos: TodoItem[]) => void
+  restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
+}
+
+let messageCounter = 0
+
+export const useChatStore = create<ChatState>((set) => ({
+  messages: [],
+  isProcessing: false,
+  sessionId: null,
+  todos: [],
+  tokens: {
+    totalTokensInput: 0, totalTokensOutput: 0,
+    currentInputTokens: 0, currentOutputTokens: 0,
+    cacheCreationTokens: 0, cacheReadTokens: 0,
+  },
+  totals: { totalCost: 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
+
+  addMessage: (msg) =>
+    set((state) => ({
+      messages: [...state.messages, { ...msg, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
+    })),
+
+  clearMessages: () => set({ messages: [] }),
+
+  removeLoading: () =>
+    set((state) => ({ messages: state.messages.filter((m) => m.type !== 'loading') })),
+
+  setProcessing: (isProcessing) => set({ isProcessing }),
+  setSessionId: (sessionId) => set({ sessionId }),
+
+  updateTokens: (tokens) =>
+    set((state) => ({ tokens: { ...state.tokens, ...tokens } })),
+
+  updateTotals: (totals) =>
+    set((state) => ({ totals: { ...state.totals, ...totals } })),
+
+  updatePermissionStatus: (id, status) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.type === 'permissionRequest') {
+          const data = m.data as Record<string, unknown>
+          if (data.id === id) return { ...m, data: { ...data, status } }
+        }
+        return m
+      }),
+    })),
+
+  updateTodos: (todos) => set({ todos }),
+
+  restoreState: (restored) =>
+    set({
+      messages: restored.messages || [],
+      sessionId: restored.sessionId || null,
+      todos: [],
+      totals: { totalCost: restored.totalCost || 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
+    }),
+}))
+
+// ============================================================================
+// Conversation Store
+// ============================================================================
+
+interface ConversationEntry {
+  filename: string
+  sessionId: string
+  startTime: string
+  endTime: string
+  messageCount: number
+  totalCost: number
+  firstUserMessage: string
+  lastUserMessage: string
+}
+
+interface ConversationState {
+  conversations: ConversationEntry[]
+  setConversations: (list: ConversationEntry[]) => void
+}
+
+export const useConversationStore = create<ConversationState>((set) => ({
+  conversations: [],
+  setConversations: (list) => set({ conversations: list }),
+}))
+
+// ============================================================================
+// MCP Store
+// ============================================================================
+
+interface MCPServerConfig {
+  type: 'stdio' | 'http' | 'sse'
+  command?: string
+  url?: string
+  args?: string[]
+  headers?: Record<string, string>
+}
+
+interface MCPState {
+  servers: Record<string, MCPServerConfig>
+  editingServer: string | null
+  setServers: (servers: Record<string, MCPServerConfig>) => void
+  setEditingServer: (name: string | null) => void
+  removeServer: (name: string) => void
+}
+
+export const useMCPStore = create<MCPState>((set) => ({
+  servers: {},
+  editingServer: null,
+  setServers: (servers) => set({ servers }),
+  setEditingServer: (name) => set({ editingServer: name }),
+  removeServer: (name) =>
+    set((state) => {
+      const { [name]: _, ...rest } = state.servers
+      return { servers: rest }
+    }),
+}))
+
+// ============================================================================
+// Settings Store
+// ============================================================================
+
+export interface CustomSnippet {
+  command: string
+  description: string
+  prompt: string
+}
+
+interface SettingsState {
+  thinkingIntensity: string
+  yoloMode: boolean
+  customSnippets: CustomSnippet[]
+  updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean }>) => void
+  setCustomSnippets: (snippets: CustomSnippet[]) => void
+  addCustomSnippet: (snippet: CustomSnippet) => void
+  removeCustomSnippet: (command: string) => void
+}
+
+export const useSettingsStore = create<SettingsState>((set) => ({
+  thinkingIntensity: 'think',
+  yoloMode: false,
+  customSnippets: [],
+  updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
+  setCustomSnippets: (snippets) => set({ customSnippets: snippets }),
+  addCustomSnippet: (snippet) =>
+    set((state) => ({
+      customSnippets: [...state.customSnippets.filter((s) => s.command !== snippet.command), snippet],
+    })),
+  removeCustomSnippet: (command) =>
+    set((state) => ({
+      customSnippets: state.customSnippets.filter((s) => s.command !== command),
+    })),
+}))
+
+// ============================================================================
+// UI Store
+// ============================================================================
+
+type ActiveView = 'chat' | 'history' | 'settings'
+type NotificationType = 'info' | 'success' | 'warning' | 'error'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message?: string
+  timestamp: number
+}
+
+interface UIState {
+  activeView: ActiveView
+  showSlashPicker: boolean
+  showFilePicker: boolean
+  showIntensityModal: boolean
+  showMCPModal: boolean
+  showInstallModal: boolean
+  showLoginModal: boolean
+  loginErrorMessage: string
+  draftText: string
+  requestStartTime: number | null
+  usageData: UsageData | null
+  notifications: Notification[]
+
+  setActiveView: (view: ActiveView) => void
+  setShowSlashPicker: (show: boolean) => void
+  setShowFilePicker: (show: boolean) => void
+  setShowIntensityModal: (show: boolean) => void
+  setShowMCPModal: (show: boolean) => void
+  setShowInstallModal: (show: boolean) => void
+  setShowLoginModal: (show: boolean) => void
+  setLoginErrorMessage: (msg: string) => void
+  setDraftText: (text: string) => void
+  setRequestStartTime: (time: number | null) => void
+  setUsageData: (data: UsageData | null) => void
+  showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
+  dismissNotification: (id: string) => void
+}
+
+let notifCounter = 0
+
+export const useUIStore = create<UIState>((set, get) => ({
+  activeView: 'chat',
+  showSlashPicker: false,
+  showFilePicker: false,
+  showIntensityModal: false,
+  showMCPModal: false,
+  showInstallModal: false,
+  showLoginModal: false,
+  loginErrorMessage: '',
+  draftText: '',
+  requestStartTime: null,
+  usageData: null,
+  notifications: [],
+
+  setActiveView: (view) => set({ activeView: view }),
+  setShowSlashPicker: (show) => set({ showSlashPicker: show }),
+  setShowFilePicker: (show) => set({ showFilePicker: show }),
+  setShowIntensityModal: (show) => set({ showIntensityModal: show }),
+  setShowMCPModal: (show) => set({ showMCPModal: show }),
+  setShowInstallModal: (show) => set({ showInstallModal: show }),
+  setShowLoginModal: (show) => set({ showLoginModal: show }),
+  setLoginErrorMessage: (msg) => set({ loginErrorMessage: msg }),
+  setDraftText: (text) => set({ draftText: text }),
+  setRequestStartTime: (time) => set({ requestStartTime: time }),
+  setUsageData: (data) => set({ usageData: data }),
+
+  showNotification: (type, title, message, timeout = 5000) => {
+    const id = `notif-${++notifCounter}`
+    const notification: Notification = { id, type, title, message, timestamp: Date.now() }
+    set({ notifications: [...get().notifications, notification] })
+    if (timeout > 0) setTimeout(() => get().dismissNotification(id), timeout)
+  },
+
+  dismissNotification: (id) => {
+    set({ notifications: get().notifications.filter((n) => n.id !== id) })
+  },
+}))

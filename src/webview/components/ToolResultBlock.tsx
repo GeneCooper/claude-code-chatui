@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { DiffView } from './DiffView'
-import { postMessage } from '../lib/vscode'
+import { postMessage } from '../hooks'
 
 interface Props {
   data: Record<string, unknown>

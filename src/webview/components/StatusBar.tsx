@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useChatStore } from '../stores/chatStore'
+import { useChatStore } from '../store'
 
 export function StatusBar() {
   const tokens = useChatStore((s) => s.tokens)

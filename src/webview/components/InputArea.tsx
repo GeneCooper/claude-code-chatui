@@ -1,17 +1,17 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { postMessage, getState, setState } from '../lib/vscode'
-import { useChatStore } from '../stores/chatStore'
-import { useUIStore } from '../stores/uiStore'
-import { useSettingsStore } from '../stores/settingsStore'
+import { postMessage, getState, setState } from '../hooks'
+import { useChatStore } from '../store'
+import { useUIStore } from '../store'
+import { useSettingsStore } from '../store'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { FilePicker } from './FilePicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 
 const MODELS = [
-  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '‚òÖ' },
-  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '‚óÜ' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '‚óè' },
-  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '‚óã' },
+  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '‚ò? },
+  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '‚ó? },
+  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '‚ó? },
+  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '‚ó? },
 ]
 
 export function InputArea() {

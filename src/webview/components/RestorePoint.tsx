@@ -1,4 +1,4 @@
-import { postMessage } from '../lib/vscode'
+import { postMessage } from '../hooks'
 
 interface Props {
   data: {

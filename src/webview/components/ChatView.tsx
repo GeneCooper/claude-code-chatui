@@ -1,5 +1,5 @@
-import { useChatStore } from '../stores/chatStore'
-import { useAutoScroll } from '../hooks/useAutoScroll'
+import { useChatStore } from '../store'
+import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
-import { computeLineDiff } from '../utils/diff'
-import { postMessage } from '../lib/vscode'
+import { computeLineDiff } from '../utils'
+import { postMessage } from '../hooks'
 
 interface Props {
   oldContent: string

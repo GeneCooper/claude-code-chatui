@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { postMessage } from '../lib/vscode'
-import { useSettingsStore, type CustomSnippet } from '../stores/settingsStore'
-import { useUIStore } from '../stores/uiStore'
+import { postMessage } from '../hooks'
+import { useSettingsStore, type CustomSnippet } from '../store'
+import { useUIStore } from '../store'
 
 export function SettingsPanel() {
   const { thinkingIntensity, yoloMode, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
@@ -87,7 +87,7 @@ export function SettingsPanel() {
             <span className="text-xs font-medium">YOLO Mode</span>
           </label>
           <p className="text-[10px] opacity-50 mt-1">
-            Skip all permission prompts. Use with caution â€” Claude will execute tools without asking.
+            Skip all permission prompts. Use with caution â€?Claude will execute tools without asking.
           </p>
         </div>
 

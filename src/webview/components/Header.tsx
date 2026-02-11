@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useChatStore } from '../stores/chatStore'
-import { useUIStore } from '../stores/uiStore'
-import { postMessage } from '../lib/vscode'
+import { useChatStore } from '../store'
+import { useUIStore } from '../store'
+import { postMessage } from '../hooks'
 import { UsageIndicator } from './UsageIndicator'
 
 declare global {

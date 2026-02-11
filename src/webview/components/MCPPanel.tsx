@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { postMessage } from '../lib/vscode'
-import { useMCPStore } from '../stores/mcpStore'
-import { useUIStore } from '../stores/uiStore'
+import { postMessage } from '../hooks'
+import { useMCPStore } from '../store'
+import { useUIStore } from '../store'
 
 const POPULAR_SERVERS = [
   {

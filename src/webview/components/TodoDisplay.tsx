@@ -1,4 +1,4 @@
-import { useChatStore, type TodoItem } from '../stores/chatStore'
+import { useChatStore, type TodoItem } from '../store'
 
 export function TodoDisplay() {
   const todos = useChatStore((s) => s.todos)
@@ -58,7 +58,7 @@ export function TodoDisplay() {
 }
 
 function TodoRow({ todo }: { todo: TodoItem }) {
-  const icon = todo.status === 'completed' ? '✅' : todo.status === 'in_progress' ? '🔄' : '⏳'
+  const icon = todo.status === 'completed' ? '�? : todo.status === 'in_progress' ? '🔄' : '�?
   const textStyle: React.CSSProperties = todo.status === 'completed'
     ? { textDecoration: 'line-through', opacity: 0.5 }
     : todo.status === 'in_progress'

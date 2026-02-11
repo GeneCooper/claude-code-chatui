@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { postMessage, onMessage } from '../lib/vscode'
-import { useUIStore } from '../stores/uiStore'
+import { postMessage, onMessage } from '../hooks'
+import { useUIStore } from '../store'
 
 interface FileItem {
   name: string

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useUIStore } from '../stores/uiStore'
-import { useSettingsStore } from '../stores/settingsStore'
+import { useUIStore } from '../store'
+import { useSettingsStore } from '../store'
 
 interface SlashCommand {
   command: string

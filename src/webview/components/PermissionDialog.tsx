@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { postMessage } from '../lib/vscode'
+import { postMessage } from '../hooks'
 
 interface Props {
   data: Record<string, unknown>
@@ -30,7 +30,7 @@ export function PermissionDialog({ data }: Props) {
           opacity: 0.6,
         }}
       >
-        <span>{status === 'approved' ? '\u2705' : '\u274C'} {tool} â€” {status}</span>
+        <span>{status === 'approved' ? '\u2705' : '\u274C'} {tool} â€?{status}</span>
       </div>
     )
   }

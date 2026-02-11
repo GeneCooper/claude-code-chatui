@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { postMessage } from '../lib/vscode'
-import { useUIStore } from '../stores/uiStore'
+import { postMessage } from '../hooks'
+import { useUIStore } from '../store'
 
 type Stage = 'prompt' | 'installing' | 'success' | 'error'
 

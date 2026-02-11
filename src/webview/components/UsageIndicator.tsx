@@ -1,5 +1,5 @@
-import { useUIStore } from '../stores/uiStore'
-import { postMessage } from '../lib/vscode'
+import { useUIStore } from '../store'
+import { postMessage } from '../hooks'
 
 export function UsageIndicator() {
   const usageData = useUIStore((s) => s.usageData)

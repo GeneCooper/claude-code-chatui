@@ -1,0 +1,304 @@
+import { useRef, useCallback, useEffect, useState, type RefObject } from 'react'
+import { useChatStore } from './store'
+import { useSettingsStore } from './store'
+import { useConversationStore } from './store'
+import { useMCPStore } from './store'
+import { useUIStore } from './store'
+import { createModuleLogger } from '../shared/utils/logger'
+import type { UsageData } from '../shared/types'
+
+// ============================================================================
+// VS Code API Bridge
+// ============================================================================
+
+interface VSCodeApi {
+  postMessage(message: unknown): void
+  getState(): unknown
+  setState(state: unknown): void
+}
+
+const vscode: VSCodeApi | undefined =
+  typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined
+
+export function postMessage(message: { type: string; [key: string]: unknown }): void {
+  vscode?.postMessage(message)
+}
+
+export function getState<T>(): T | undefined {
+  return vscode?.getState() as T | undefined
+}
+
+export function setState<T>(state: T): void {
+  vscode?.setState(state)
+}
+
+export function onMessage(handler: (message: Record<string, unknown>) => void): () => void {
+  const listener = (event: MessageEvent) => handler(event.data)
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+
+declare function acquireVsCodeApi(): VSCodeApi
+
+// ============================================================================
+// Extension Message Handlers
+// ============================================================================
+
+const log = createModuleLogger('MessageHandlers')
+
+type ExtensionMessage = { type: string; data?: unknown; state?: unknown; [key: string]: unknown }
+type WebviewMessageHandler = (msg: ExtensionMessage) => void
+
+const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
+  ready: () => {},
+
+  userInput: (msg) => { useChatStore.getState().addMessage({ type: 'userInput', data: msg.data }) },
+
+  output: (msg) => {
+    useChatStore.getState().removeLoading()
+    useChatStore.getState().addMessage({ type: 'output', data: msg.data })
+  },
+
+  thinking: (msg) => {
+    useChatStore.getState().removeLoading()
+    useChatStore.getState().addMessage({ type: 'thinking', data: msg.data })
+  },
+
+  loading: (msg) => { useChatStore.getState().addMessage({ type: 'loading', data: msg.data }) },
+  clearLoading: () => { useChatStore.getState().removeLoading() },
+
+  error: (msg) => {
+    useChatStore.getState().removeLoading()
+    useChatStore.getState().addMessage({ type: 'error', data: msg.data })
+  },
+
+  setProcessing: (msg) => {
+    const isProcessing = (msg.data as { isProcessing: boolean }).isProcessing
+    useChatStore.getState().setProcessing(isProcessing)
+    useUIStore.getState().setRequestStartTime(isProcessing ? Date.now() : null)
+  },
+
+  sessionCleared: () => {
+    useChatStore.getState().clearMessages()
+    useChatStore.getState().setSessionId(null)
+    useUIStore.getState().setRequestStartTime(null)
+  },
+
+  sessionInfo: (msg) => {
+    const info = msg.data as { sessionId: string }
+    useChatStore.getState().setSessionId(info.sessionId)
+    useChatStore.getState().addMessage({ type: 'sessionInfo', data: msg.data })
+  },
+
+  updateTokens: (msg) => { useChatStore.getState().updateTokens(msg.data as Record<string, number>) },
+  updateTotals: (msg) => { useChatStore.getState().updateTotals(msg.data as Record<string, number>) },
+
+  toolUse: (msg) => {
+    useChatStore.getState().removeLoading()
+    useChatStore.getState().addMessage({ type: 'toolUse', data: msg.data })
+  },
+
+  toolResult: (msg) => {
+    const result = msg.data as { hidden?: boolean }
+    if (!result.hidden) useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
+  },
+
+  permissionRequest: (msg) => { useChatStore.getState().addMessage({ type: 'permissionRequest', data: msg.data }) },
+
+  updatePermissionStatus: (msg) => {
+    const perm = msg.data as { id: string; status: string }
+    useChatStore.getState().updatePermissionStatus(perm.id, perm.status)
+  },
+
+  compacting: (msg) => { useChatStore.getState().addMessage({ type: 'compacting', data: msg.data }) },
+  compactBoundary: (msg) => { useChatStore.getState().addMessage({ type: 'compactBoundary', data: msg.data }) },
+
+  restoreState: (msg) => {
+    useChatStore.getState().restoreState(msg.state as { messages?: []; sessionId?: string; totalCost?: number })
+  },
+
+  showInstallModal: () => { useUIStore.getState().setShowInstallModal(true) },
+
+  showLoginRequired: (msg) => {
+    const loginData = msg.data as { message: string }
+    useUIStore.getState().setLoginErrorMessage(loginData.message || '')
+    useUIStore.getState().setShowLoginModal(true)
+  },
+
+  installComplete: (msg) => {
+    const installResult = msg.data as { success: boolean; error?: string }
+    const cb = (window as unknown as { __installCallback?: (success: boolean, error?: string) => void }).__installCallback
+    if (cb) cb(installResult.success, installResult.error)
+  },
+
+  settingsData: (msg) => {
+    useSettingsStore.getState().updateSettings(msg.data as { thinkingIntensity: string; yoloMode: boolean })
+  },
+
+  conversationList: (msg) => {
+    useConversationStore.getState().setConversations(msg.data as Array<{
+      filename: string; sessionId: string; startTime: string; endTime: string;
+      messageCount: number; totalCost: number; firstUserMessage: string; lastUserMessage: string;
+    }>)
+  },
+
+  mcpServers: (msg) => {
+    useMCPStore.getState().setServers(
+      msg.data as Record<string, { type: 'stdio' | 'http' | 'sse'; command?: string; url?: string; args?: string[] }>,
+    )
+  },
+
+  mcpServerSaved: () => { postMessage({ type: 'loadMCPServers' }) },
+
+  mcpServerDeleted: (msg) => { useMCPStore.getState().removeServer((msg.data as { name: string }).name) },
+
+  mcpServerError: (msg) => {
+    useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
+  },
+
+  restorePoint: (msg) => { useChatStore.getState().addMessage({ type: 'restorePoint', data: msg.data }) },
+
+  usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
+  usageError: () => {},
+
+  todosUpdate: (msg) => {
+    const todosData = msg.data as { todos: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }> }
+    useChatStore.getState().updateTodos(todosData.todos)
+  },
+}
+
+export function handleExtensionMessage(msg: ExtensionMessage): void {
+  const handler = webviewMessageHandlers[msg.type]
+  if (handler) handler(msg)
+  else log.warn('Unhandled message type', { type: msg.type })
+}
+
+// ============================================================================
+// useVSCode Hook
+// ============================================================================
+
+export function useVSCode(): void {
+  useEffect(() => {
+    const unsubscribe = onMessage((msg) => {
+      handleExtensionMessage(msg as { type: string; data?: unknown; state?: unknown })
+    })
+    postMessage({ type: 'ready' })
+    return unsubscribe
+  }, [])
+}
+
+// ============================================================================
+// useAutoScroll Hook
+// ============================================================================
+
+export interface UseAutoScrollOptions {
+  threshold?: number
+  enabled?: boolean
+  behavior?: ScrollBehavior
+  dependencies?: unknown[]
+  onScrollAway?: () => void
+  onScrollToBottom?: () => void
+}
+
+export interface UseAutoScrollReturn<T extends HTMLElement> {
+  containerRef: RefObject<T>
+  isNearBottom: boolean
+  isAutoScrollEnabled: boolean
+  scrollToBottom: (options?: { behavior?: ScrollBehavior }) => void
+  enableAutoScroll: () => void
+  disableAutoScroll: () => void
+  toggleAutoScroll: () => void
+  checkIsAtBottom: () => boolean
+}
+
+export function useAutoScroll<T extends HTMLElement = HTMLDivElement>(
+  options: UseAutoScrollOptions = {},
+): UseAutoScrollReturn<T> {
+  const {
+    threshold = 100,
+    enabled = true,
+    behavior = 'smooth',
+    dependencies = [],
+    onScrollAway,
+    onScrollToBottom,
+  } = options
+
+  const containerRef = useRef<T>(null)
+  const [isNearBottom, setIsNearBottom] = useState(true)
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(enabled)
+  const isScrollingRef = useRef(false)
+  const lastScrollTopRef = useRef(0)
+
+  const checkIsAtBottom = useCallback((): boolean => {
+    const container = containerRef.current
+    if (!container) return true
+    const { scrollTop, scrollHeight, clientHeight } = container
+    return scrollHeight - scrollTop - clientHeight <= threshold
+  }, [threshold])
+
+  const scrollToBottom = useCallback(
+    (scrollOptions?: { behavior?: ScrollBehavior }): void => {
+      const container = containerRef.current
+      if (!container) return
+      isScrollingRef.current = true
+      container.scrollTo({ top: container.scrollHeight, behavior: scrollOptions?.behavior ?? behavior })
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { isScrollingRef.current = false; setIsNearBottom(true) })
+      })
+    },
+    [behavior],
+  )
+
+  const enableAutoScroll = useCallback((): void => { setIsAutoScrollEnabled(true) }, [])
+  const disableAutoScroll = useCallback((): void => { setIsAutoScrollEnabled(false) }, [])
+  const toggleAutoScroll = useCallback((): void => { setIsAutoScrollEnabled((prev) => !prev) }, [])
+
+  const handleScroll = useCallback((): void => {
+    if (isScrollingRef.current) return
+    const container = containerRef.current
+    if (!container) return
+
+    const { scrollTop } = container
+    const wasNearBottom = isNearBottom
+    const nowNearBottom = checkIsAtBottom()
+    const isScrollingUp = scrollTop < lastScrollTopRef.current
+    lastScrollTopRef.current = scrollTop
+
+    setIsNearBottom(nowNearBottom)
+    if (wasNearBottom && !nowNearBottom && isScrollingUp) onScrollAway?.()
+    else if (!wasNearBottom && nowNearBottom) onScrollToBottom?.()
+  }, [isNearBottom, checkIsAtBottom, onScrollAway, onScrollToBottom])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  useEffect(() => {
+    if (isAutoScrollEnabled && isNearBottom) {
+      requestAnimationFrame(() => { scrollToBottom({ behavior }) })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...dependencies, isAutoScrollEnabled, isNearBottom])
+
+  useEffect(() => {
+    if (isAutoScrollEnabled) scrollToBottom({ behavior: 'instant' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return {
+    containerRef, isNearBottom, isAutoScrollEnabled,
+    scrollToBottom, enableAutoScroll, disableAutoScroll, toggleAutoScroll, checkIsAtBottom,
+  }
+}
+
+export function scrollElementToBottom(element: HTMLElement, options?: { behavior?: ScrollBehavior }): void {
+  element.scrollTo({ top: element.scrollHeight, behavior: options?.behavior ?? 'smooth' })
+}
+
+export function isElementAtBottom(element: HTMLElement, threshold = 100): boolean {
+  const { scrollTop, scrollHeight, clientHeight } = element
+  return scrollHeight - scrollTop - clientHeight <= threshold
+}

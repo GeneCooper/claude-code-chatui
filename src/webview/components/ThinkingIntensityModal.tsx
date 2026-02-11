@@ -1,12 +1,12 @@
-import { useUIStore } from '../stores/uiStore'
-import { useSettingsStore } from '../stores/settingsStore'
-import { postMessage } from '../lib/vscode'
+import { useUIStore } from '../store'
+import { useSettingsStore } from '../store'
+import { postMessage } from '../hooks'
 
 const LEVELS = [
   { key: 'think', label: 'Think', desc: 'Basic reasoning - fastest response', icon: '💡' },
   { key: 'think-hard', label: 'Think Hard', desc: 'More detailed reasoning', icon: '🧠' },
   { key: 'think-harder', label: 'Think Harder', desc: 'Extended reasoning for complex tasks', icon: '🔬' },
-  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
+  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '�? },
 ]
 
 interface Props {

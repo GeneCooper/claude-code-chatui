@@ -1,5 +1,5 @@
-import { useVSCode } from './hooks/useVSCode'
-import { useUIStore } from './stores/uiStore'
+import { useVSCode } from './hooks'
+import { useUIStore } from './store'
 import { Header } from './components/Header'
 import { ChatView } from './components/ChatView'
 import { InputArea } from './components/InputArea'

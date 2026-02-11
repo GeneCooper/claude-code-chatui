@@ -1,15 +1,3 @@
-/**
- * Diff Utilities
- *
- * LCS-based diff computation for file content comparison.
- *
- * @module webview/utils/diff
- */
-
-// ============================================================================
-// Types
-// ============================================================================
-
 export type DiffOperation = 'equal' | 'insert' | 'delete';
 
 export interface DiffLine {
@@ -31,13 +19,6 @@ export interface DiffOptions {
   contextLines?: number;
 }
 
-// ============================================================================
-// LCS Algorithm
-// ============================================================================
-
-/**
- * Compute LCS matrix for two arrays.
- */
 function computeLcsMatrix<T>(a: T[], b: T[], compare: (x: T, y: T) => boolean): number[][] {
   const m = a.length;
   const n = b.length;
@@ -56,9 +37,6 @@ function computeLcsMatrix<T>(a: T[], b: T[], compare: (x: T, y: T) => boolean): 
   return matrix;
 }
 
-/**
- * Backtrack through LCS matrix to produce diff operations.
- */
 function backtrackDiff<T>(
   matrix: number[][],
   a: T[],
@@ -86,17 +64,8 @@ function backtrackDiff<T>(
   return result;
 }
 
-// ============================================================================
-// Public API
-// ============================================================================
-
-/**
- * Compute a line-by-line diff between two strings.
- */
 export function computeLineDiff(oldContent: string, newContent: string, options?: DiffOptions): DiffResult {
-  const normalize = options?.ignoreWhitespace
-    ? (s: string) => s.trim()
-    : (s: string) => s;
+  const normalize = options?.ignoreWhitespace ? (s: string) => s.trim() : (s: string) => s;
 
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
@@ -126,18 +95,10 @@ export function computeLineDiff(oldContent: string, newContent: string, options?
   return { lines, additions, deletions, unchanged };
 }
 
-/**
- * Compute diff with only context lines around changes shown.
- */
-export function computeContextualDiff(
-  oldContent: string,
-  newContent: string,
-  options?: DiffOptions,
-): DiffResult {
+export function computeContextualDiff(oldContent: string, newContent: string, options?: DiffOptions): DiffResult {
   const fullDiff = computeLineDiff(oldContent, newContent, options);
   const contextLines = options?.contextLines ?? 3;
 
-  // Mark indices near changes
   const showIndices = new Set<number>();
   fullDiff.lines.forEach((line, idx) => {
     if (line.type !== 'equal') {
@@ -152,10 +113,7 @@ export function computeContextualDiff(
 
   fullDiff.lines.forEach((line, idx) => {
     if (showIndices.has(idx)) {
-      if (lastShown >= 0 && idx - lastShown > 1) {
-        // Add separator for skipped lines
-        lines.push({ type: 'equal', content: '···' });
-      }
+      if (lastShown >= 0 && idx - lastShown > 1) lines.push({ type: 'equal', content: '···' });
       lines.push(line);
       lastShown = idx;
     }
@@ -164,31 +122,16 @@ export function computeContextualDiff(
   return { lines, additions: fullDiff.additions, deletions: fullDiff.deletions, unchanged: fullDiff.unchanged };
 }
 
-/**
- * Format diff as a unified diff string.
- */
 export function formatUnifiedDiff(diff: DiffResult, oldPath: string, newPath: string): string {
-  const lines: string[] = [
-    `--- ${oldPath}`,
-    `+++ ${newPath}`,
-  ];
-
+  const lines: string[] = [`--- ${oldPath}`, `+++ ${newPath}`];
   for (const line of diff.lines) {
-    if (line.type === 'delete') {
-      lines.push(`-${line.content}`);
-    } else if (line.type === 'insert') {
-      lines.push(`+${line.content}`);
-    } else {
-      lines.push(` ${line.content}`);
-    }
+    if (line.type === 'delete') lines.push(`-${line.content}`);
+    else if (line.type === 'insert') lines.push(`+${line.content}`);
+    else lines.push(` ${line.content}`);
   }
-
   return lines.join('\n');
 }
 
-/**
- * Format diff statistics as a summary string.
- */
 export function formatDiffStats(diff: DiffResult): string {
   const parts: string[] = [];
   if (diff.additions > 0) parts.push(`+${diff.additions}`);
@@ -197,18 +140,10 @@ export function formatDiffStats(diff: DiffResult): string {
   return parts.join(', ');
 }
 
-/**
- * Apply a diff to reconstruct the new content from old content.
- */
 export function applyDiff(oldContent: string, diff: DiffResult): string {
   const result: string[] = [];
-
   for (const line of diff.lines) {
-    if (line.type === 'equal' || line.type === 'insert') {
-      result.push(line.content);
-    }
-    // skip 'delete' lines
+    if (line.type === 'equal' || line.type === 'insert') result.push(line.content);
   }
-
   return result.join('\n');
 }

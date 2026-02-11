@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { postMessage } from '../lib/vscode'
+import { postMessage } from '../hooks'
 
 interface Props {
   data: Record<string, unknown>

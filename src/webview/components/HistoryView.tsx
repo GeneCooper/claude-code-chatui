@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { postMessage } from '../lib/vscode'
-import { useConversationStore } from '../stores/conversationStore'
-import { useUIStore } from '../stores/uiStore'
+import { postMessage } from '../hooks'
+import { useConversationStore } from '../store'
+import { useUIStore } from '../store'
 
 export function HistoryView() {
   const conversations = useConversationStore((s) => s.conversations)
