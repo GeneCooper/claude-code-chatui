@@ -4,7 +4,6 @@ import { TEMPLATES, TEMPLATE_CATEGORIES, getTemplateLabel, getTemplatePrompt, ge
 import { t } from '../i18n'
 
 const TIPS = [
-  { keyI18n: 'welcome.tip.agent', descI18n: 'welcome.tip.agentDesc' },
   { keyI18n: 'welcome.tip.slash', descI18n: 'welcome.tip.slashDesc' },
   { keyI18n: 'welcome.tip.drop', descI18n: 'welcome.tip.dropDesc' },
   { keyI18n: 'welcome.tip.yolo', descI18n: 'welcome.tip.yoloDesc' },

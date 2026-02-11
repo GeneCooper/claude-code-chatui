@@ -57,8 +57,6 @@
   "input.placeholderCtrl": "Type your message... (Ctrl+Enter to send)",
   "input.ctrlEnter": "Ctrl+Enter to send",
   "input.dropFiles": "Drop files to attach",
-  "input.agentMode": "Agent mode - Auto think, plan & parallelize based on task complexity",
-  "input.agent": "Agent",
   "input.thinkingMode": "Thinking mode",
   "input.planMode": "Plan mode",
   "input.yoloMode": "YOLO mode - Skip all permission checks (dangerous!)",
