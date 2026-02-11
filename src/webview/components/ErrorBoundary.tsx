@@ -46,15 +46,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       return (
         <div className="flex flex-col items-center justify-center p-6 text-center">
-          <div className="text-[color:var(--vscode-errorForeground)] text-sm font-medium mb-2">
+          <div className="text-(--vscode-errorForeground) text-sm font-medium mb-2">
             Something went wrong
           </div>
-          <div className="text-[color:var(--vscode-descriptionForeground)] text-xs mb-4 max-w-md">
+          <div className="text-(--vscode-descriptionForeground) text-xs mb-4 max-w-md">
             {this.state.error.message}
           </div>
           <button
             onClick={this.handleRetry}
-            className="px-3 py-1 text-xs rounded bg-[color:var(--vscode-button-background)] text-[color:var(--vscode-button-foreground)] hover:bg-[color:var(--vscode-button-hoverBackground)]"
+            className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) hover:bg-(--vscode-button-hoverBackground)"
           >
             Try Again
           </button>
