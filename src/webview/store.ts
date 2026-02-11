@@ -104,7 +104,6 @@ export const useChatStore = create<ChatState>((set) => ({
     set((state) => ({
       messages: restored.messages !== undefined ? restored.messages : state.messages,
       sessionId: restored.sessionId || null,
-      todos: [],
       totals: { totalCost: restored.totalCost || 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
     })),
 }))

@@ -414,14 +414,15 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this._extensionUri],
     };
 
-    this._panelProvider.showInWebview(webviewView.webview, webviewView);
-
+    // Prevent webview destruction when sidebar is hidden
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this._panelProvider.closeMainPanel();
         this._panelProvider.reinitializeWebview();
       }
     });
+
+    this._panelProvider.showInWebview(webviewView.webview, webviewView);
   }
 }
 

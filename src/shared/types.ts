@@ -297,7 +297,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'imageFilePicked'; data: { name: string; dataUrl: string } }
   | { type: 'clipboardContent'; data: { text: string } }
   | { type: 'attachFileContext'; data: { filePath: string } }
-  | { type: 'fileDropped'; data: { filePath: string } };
+  | { type: 'fileDropped'; data: { filePath: string } }
+  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
 
 export interface SettingsData {
   thinkingIntensity: string;

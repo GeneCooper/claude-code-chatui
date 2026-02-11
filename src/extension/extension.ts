@@ -57,10 +57,11 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
-  // Register sidebar webview provider
+  // Register sidebar webview provider (retain context to prevent state loss on sidebar switch)
   const webviewProviderReg = vscode.window.registerWebviewViewProvider(
     'claude-code-chatui.chatView',
     webviewProvider,
+    { webviewOptions: { retainContextWhenHidden: true } },
   );
 
   // Register command to load a specific conversation

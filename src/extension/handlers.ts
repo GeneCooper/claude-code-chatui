@@ -681,23 +681,19 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   });
   checkCliAvailable(ctx);
 
-  // Replay current conversation to restore webview state
+  // Replay current conversation to restore webview state (batched for performance)
   const conversation = ctx.messageProcessor.currentConversation;
   if (conversation.length > 0) {
-    for (const msg of conversation) {
-      ctx.postMessage({ type: msg.messageType, data: msg.data } as Record<string, unknown>);
-    }
+    const replayMessages = conversation.map((msg) => ({ type: msg.messageType, data: msg.data }));
     ctx.postMessage({
-      type: 'restoreState',
-      state: {
+      type: 'batchReplay',
+      data: {
+        messages: replayMessages,
         sessionId: ctx.claudeService.sessionId,
         totalCost: ctx.stateManager.totalCost,
+        isProcessing: ctx.stateManager.isProcessing,
       },
     });
-    if (ctx.stateManager.isProcessing) {
-      ctx.postMessage({ type: 'setProcessing', data: { isProcessing: true } });
-      ctx.postMessage({ type: 'loading', data: 'Claude is working...' });
-    }
   }
 };
 

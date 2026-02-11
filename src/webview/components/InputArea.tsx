@@ -25,9 +25,11 @@ export function InputArea() {
   const [slashFilter, setSlashFilter] = useState('')
 
   useEffect(() => {
-    const saved = getState<{ draft?: string; model?: string }>()
+    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean }>()
     if (saved?.draft) setText(saved.draft)
     if (saved?.model) setSelectedModel(saved.model)
+    if (saved?.planMode !== undefined) setPlanMode(saved.planMode)
+    if (saved?.thinkingMode !== undefined) setThinkingMode(saved.thinkingMode)
   }, [])
 
   // Debounced save to extension for persistence across panel reopens
@@ -40,9 +42,9 @@ export function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel })
+    setState({ draft: text, model: selectedModel, planMode, thinkingMode })
     debouncedSave(text)
-  }, [text, selectedModel, debouncedSave])
+  }, [text, selectedModel, planMode, thinkingMode, debouncedSave])
 
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
 

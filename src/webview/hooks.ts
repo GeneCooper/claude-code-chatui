@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState, type RefObject } from 'react'
-import { useChatStore } from './store'
+import { useChatStore, type ChatMessage, type TodoItem } from './store'
 import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
@@ -51,8 +51,53 @@ const log = createModuleLogger('MessageHandlers')
 type ExtensionMessage = { type: string; data?: unknown; state?: unknown; [key: string]: unknown }
 type WebviewMessageHandler = (msg: ExtensionMessage) => void
 
+let messageCounter = 0
+
 const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   ready: () => {},
+
+  batchReplay: (msg) => {
+    const data = msg.data as {
+      messages: Array<{ type: string; data: unknown }>
+      sessionId?: string
+      totalCost?: number
+      isProcessing?: boolean
+    }
+    if (!data?.messages) return
+
+    // Build all messages at once, then set state in a single update
+    const now = new Date().toISOString()
+    const chatMessages = data.messages
+      .filter((m) => {
+        // Only include message types that go into the messages array
+        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest', 'restorePoint']
+        return validTypes.includes(m.type)
+      })
+      .map((m) => ({
+        id: `msg-${++messageCounter}-${Date.now()}`,
+        type: m.type as ChatMessage['type'],
+        data: m.data,
+        timestamp: now,
+      }))
+
+    // Extract todos from todosUpdate messages
+    const todosMsg = data.messages.filter((m) => m.type === 'todosUpdate').pop()
+    const todos = todosMsg ? (todosMsg.data as { todos: TodoItem[] })?.todos : undefined
+
+    // Single state update for all messages
+    useChatStore.setState((state) => ({
+      messages: chatMessages,
+      sessionId: data.sessionId || state.sessionId,
+      isProcessing: data.isProcessing || false,
+      totals: { ...state.totals, totalCost: data.totalCost || 0 },
+      ...(todos ? { todos } : {}),
+    }))
+
+    if (data.isProcessing) {
+      useUIStore.getState().setRequestStartTime(Date.now())
+      useChatStore.getState().addMessage({ type: 'loading', data: 'Claude is working...' })
+    }
+  },
 
   userInput: (msg) => {
     if (consumeOptimisticUserInput()) return // Already added optimistically
