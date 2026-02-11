@@ -1,5 +1,5 @@
 import React, { Component, type ReactNode, type ErrorInfo } from 'react'
-import { createModuleLogger } from '../../shared/utils/logger'
+import { createModuleLogger } from '../../shared/logger'
 
 const log = createModuleLogger('ErrorBoundary')
 

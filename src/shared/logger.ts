@@ -1,6 +1,5 @@
 /**
  * Centralized Logger Utility
- * @module shared/utils/logger
  */
 
 export enum LogLevel {
@@ -132,18 +131,3 @@ export function createModuleLogger(module: string) {
     },
   };
 }
-
-export const LOG_PREFIXES = {
-  EXTENSION: '[Extension]',
-  WEBVIEW: '[Webview]',
-  CLAUDE_SERVICE: '[ClaudeService]',
-  MCP_SERVICE: '[MCPService]',
-  PERMISSION_SERVICE: '[PermissionService]',
-  CONVERSATION_SERVICE: '[ConversationService]',
-  PANEL_PROVIDER: '[PanelProvider]',
-  MESSAGE_HANDLER: '[MessageHandler]',
-  STORE: '[Store]',
-  HOOK: '[Hook]',
-  COMPONENT: '[Component]',
-  ERROR_BOUNDARY: '[ErrorBoundary]',
-} as const;

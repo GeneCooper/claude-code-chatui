@@ -30,7 +30,7 @@ export function PermissionDialog({ data }: Props) {
           opacity: 0.6,
         }}
       >
-        <span>{status === 'approved' ? '\u2705' : '\u274C'} {tool} â€?{status}</span>
+        <span>{status === 'approved' ? '\u2705' : '\u274C'} {tool} \u2014 {status}</span>
       </div>
     )
   }

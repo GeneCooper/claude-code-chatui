@@ -4,7 +4,7 @@ import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
 import { useUIStore } from './store'
-import { createModuleLogger } from '../shared/utils/logger'
+import { createModuleLogger } from '../shared/logger'
 import type { UsageData } from '../shared/types'
 
 // ============================================================================

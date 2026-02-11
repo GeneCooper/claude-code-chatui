@@ -10,7 +10,7 @@ import {
   type MessagePoster,
   type WebviewMessage,
 } from './handlers';
-import { createModuleLogger } from '../shared/utils/logger';
+import { createModuleLogger } from '../shared/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage } from '../shared/types';
 
 const log = createModuleLogger('PanelProvider');
