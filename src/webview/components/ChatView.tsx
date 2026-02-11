@@ -10,7 +10,11 @@ interface ChatViewProps {
 export function ChatView({ onHintClick }: ChatViewProps) {
   const messages = useChatStore((s) => s.messages)
   const isProcessing = useChatStore((s) => s.isProcessing)
-  const { containerRef } = useAutoScroll<HTMLDivElement>({ dependencies: [messages] })
+  // Use instant scroll during streaming to avoid smooth-scroll "chasing" jitter
+  const { containerRef } = useAutoScroll<HTMLDivElement>({
+    dependencies: [messages],
+    behavior: isProcessing ? 'instant' : 'smooth',
+  })
 
   return (
     <div

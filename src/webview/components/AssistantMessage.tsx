@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -13,29 +13,16 @@ interface Props {
   timestamp?: string
 }
 
-export function AssistantMessage({ text, timestamp }: Props) {
+// Stable reference for markdown components — avoids re-creating on each render
+const markdownComponents = {
+  code: CodeComponent,
+  pre: ({ children }: ComponentPropsWithoutRef<'pre'>) => <>{children}</>,
+  a: LinkComponent,
+  p: ParagraphWithPaths,
+}
+
+export function AssistantMessage({ text }: Props) {
   const [copied, setCopied] = useState(false)
-
-  // Typewriter effect: reveal text progressively for new messages
-  const isNewMessage = !!timestamp && (Date.now() - new Date(timestamp).getTime()) < 2000
-  const [revealedLength, setRevealedLength] = useState(isNewMessage ? 0 : text.length)
-  const rafRef = useRef<number>(0)
-
-  useEffect(() => {
-    if (revealedLength >= text.length) return
-
-    // Complete reveal in ~1.5s regardless of length, minimum 3 chars/frame
-    const charsPerFrame = Math.max(3, Math.ceil(text.length / 100))
-
-    rafRef.current = requestAnimationFrame(() => {
-      setRevealedLength((prev) => Math.min(prev + charsPerFrame, text.length))
-    })
-
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [text.length, revealedLength])
-
-  const displayText = revealedLength >= text.length ? text : text.substring(0, revealedLength)
-  const isRevealing = revealedLength < text.length
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(text)
@@ -43,13 +30,17 @@ export function AssistantMessage({ text, timestamp }: Props) {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  // Memoize markdown rendering — only re-parse when text actually changes
+  const renderedMarkdown = useMemo(() => (
+    <ReactMarkdown components={markdownComponents}>
+      {text}
+    </ReactMarkdown>
+  ), [text])
+
   return (
     <div
       className="group relative max-w-[95%]"
-      style={{
-        padding: '4px 0',
-        animation: 'fadeInUp 0.3s var(--ease-out-expo)',
-      }}
+      style={{ padding: '4px 0' }}
     >
       {/* Copy button - appears above on hover */}
       <button
@@ -69,25 +60,7 @@ export function AssistantMessage({ text, timestamp }: Props) {
 
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">
-        <ReactMarkdown
-          components={{
-            code: CodeComponent,
-            pre: ({ children }) => <>{children}</>,
-            a: LinkComponent,
-            p: ParagraphWithPaths,
-          }}
-        >
-          {displayText}
-        </ReactMarkdown>
-        {isRevealing && (
-          <span
-            className="inline-block w-0.5 h-4 align-middle"
-            style={{
-              background: 'var(--chatui-accent)',
-              animation: 'blink 0.8s step-end infinite',
-            }}
-          />
-        )}
+        {renderedMarkdown}
       </div>
     </div>
   )

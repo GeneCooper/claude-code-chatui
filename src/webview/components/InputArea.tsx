@@ -453,7 +453,6 @@ export function InputArea() {
             minHeight: '68px',
             lineHeight: 1.4,
           }}
-          disabled={isProcessing}
         />
 
         {/* Input controls row */}
@@ -538,66 +537,65 @@ export function InputArea() {
               /
             </button>
 
-            {/* Send / Stop button */}
-            {isProcessing ? (
-              <button
-                onClick={handleStop}
-                className="cursor-pointer border-none flex items-center justify-center gap-1 shrink-0"
-                style={{
-                  background: 'transparent',
-                  color: 'var(--vscode-descriptionForeground)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  padding: '0 8px',
-                  height: '24px',
-                  fontSize: '12px',
-                  borderRadius: 'var(--radius-md)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
+            {/* Stop button (always visible) */}
+            <button
+              onClick={handleStop}
+              disabled={!isProcessing}
+              className="cursor-pointer border-none flex items-center justify-center gap-1 shrink-0"
+              style={{
+                background: 'transparent',
+                color: isProcessing ? '#e74c3c' : 'var(--vscode-descriptionForeground)',
+                border: `1px solid ${isProcessing ? 'rgba(231, 76, 60, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+                padding: '0 8px',
+                height: '24px',
+                fontSize: '12px',
+                borderRadius: 'var(--radius-md)',
+                transition: 'all 0.2s ease',
+                opacity: isProcessing ? 1 : 0.4,
+              }}
+              onMouseEnter={(e) => {
+                if (isProcessing) {
                   e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
-                  e.currentTarget.style.color = '#e74c3c'
-                  e.currentTarget.style.borderColor = 'rgba(231, 76, 60, 0.3)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = 'var(--vscode-descriptionForeground)'
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
-                }}
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
-                Stop
-              </button>
-            ) : (
-              <button
-                onClick={handleSend}
-                disabled={!text.trim() && images.length === 0}
-                className="cursor-pointer border-none flex items-center justify-center shrink-0"
-                style={{
-                  background: 'transparent',
-                  padding: '4px',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: 'var(--radius-sm)',
-                  color: (text.trim() || images.length > 0) ? 'var(--chatui-accent)' : 'inherit',
-                  opacity: (text.trim() || images.length > 0) ? 1 : 0.3,
-                  transition: 'all 0.15s ease',
-                }}
-                title="Send message"
-                onMouseEnter={(e) => {
-                  if (text.trim() || images.length > 0) {
-                    e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-              </button>
-            )}
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+              Stop
+            </button>
+
+            {/* Send button */}
+            <button
+              onClick={handleSend}
+              disabled={isProcessing || (!text.trim() && images.length === 0)}
+              className="cursor-pointer border-none flex items-center justify-center shrink-0"
+              style={{
+                background: 'transparent',
+                padding: '4px',
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--radius-sm)',
+                color: (!isProcessing && (text.trim() || images.length > 0)) ? 'var(--chatui-accent)' : 'inherit',
+                opacity: (!isProcessing && (text.trim() || images.length > 0)) ? 1 : 0.3,
+                transition: 'all 0.15s ease',
+              }}
+              title="Send message"
+              onMouseEnter={(e) => {
+                if (!isProcessing && (text.trim() || images.length > 0)) {
+                  e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

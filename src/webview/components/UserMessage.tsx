@@ -19,7 +19,7 @@ export function UserMessage({ text, images }: Props) {
     <>
       <div
         className="flex justify-end"
-        style={{ animation: 'fadeInUp 0.3s var(--ease-out-expo)' }}
+        style={{ animation: 'fadeIn 0.15s ease' }}
       >
         <div
           className="group relative max-w-[85%]"

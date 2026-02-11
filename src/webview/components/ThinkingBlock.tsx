@@ -20,7 +20,7 @@ export function ThinkingBlock({ text }: Props) {
       style={{
         border: '1px solid rgba(255, 255, 255, 0.06)',
         borderRadius: 'var(--radius-md)',
-        animation: 'fadeInUp 0.3s var(--ease-out-expo)',
+        animation: 'fadeIn 0.15s ease',
       }}
     >
       <button

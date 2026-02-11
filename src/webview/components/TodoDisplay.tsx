@@ -1,38 +1,55 @@
+import { useState } from 'react'
 import { useChatStore, type TodoItem } from '../store'
 
 export function TodoDisplay() {
   const todos = useChatStore((s) => s.todos)
+  const [collapsed, setCollapsed] = useState(false)
 
   if (todos.length === 0) return null
 
   const completed = todos.filter((t) => t.status === 'completed').length
   const total = todos.length
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0
+  const activeTask = todos.find((t) => t.status === 'in_progress')
 
   return (
     <div
       style={{
-        padding: '8px 12px',
+        padding: collapsed ? '4px 12px' : '6px 12px',
         borderTop: '1px solid var(--vscode-panel-border)',
         background: 'rgba(128, 128, 128, 0.04)',
-        fontSize: '12px',
-        maxHeight: '180px',
-        overflowY: 'auto',
+        fontSize: '11px',
+        flexShrink: 0,
       }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between" style={{ marginBottom: '6px' }}>
-        <span style={{ fontWeight: 600, fontSize: '11px', opacity: 0.7 }}>
+      {/* Header - always visible, clickable to toggle */}
+      <div
+        className="flex items-center gap-2 cursor-pointer select-none"
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        <span style={{ opacity: 0.5, fontSize: '10px' }}>{collapsed ? '▶' : '▼'}</span>
+        <span style={{ fontWeight: 600, opacity: 0.7 }}>
           Tasks ({completed}/{total})
         </span>
+        {/* Active task hint when collapsed */}
+        {collapsed && activeTask && (
+          <span
+            className="truncate"
+            style={{ opacity: 0.5, fontSize: '10px', maxWidth: '200px' }}
+          >
+            {activeTask.activeForm || activeTask.content}
+          </span>
+        )}
         {/* Progress bar */}
         <div
+          className="ml-auto"
           style={{
             width: '60px',
             height: '4px',
             borderRadius: '2px',
             background: 'rgba(128, 128, 128, 0.2)',
             overflow: 'hidden',
+            flexShrink: 0,
           }}
         >
           <div
@@ -47,12 +64,14 @@ export function TodoDisplay() {
         </div>
       </div>
 
-      {/* Todo items */}
-      <div className="space-y-0.5">
-        {todos.map((todo, idx) => (
-          <TodoRow key={idx} todo={todo} />
-        ))}
-      </div>
+      {/* Todo items - collapsible */}
+      {!collapsed && (
+        <div className="space-y-0.5" style={{ marginTop: '4px', maxHeight: '100px', overflowY: 'auto' }}>
+          {todos.map((todo, idx) => (
+            <TodoRow key={idx} todo={todo} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -66,7 +85,7 @@ function TodoRow({ todo }: { todo: TodoItem }) {
       : { opacity: 0.7 }
 
   return (
-    <div className="flex items-start gap-1.5" style={{ padding: '2px 0', fontSize: '11px' }}>
+    <div className="flex items-start gap-1.5" style={{ padding: '1px 0', fontSize: '11px' }}>
       <span style={{ flexShrink: 0, fontSize: '10px', lineHeight: '16px' }}>{icon}</span>
       <span style={{ ...textStyle, lineHeight: '16px' }}>
         {todo.status === 'in_progress' && todo.activeForm ? todo.activeForm : todo.content}
