@@ -589,6 +589,7 @@ export function InputArea() {
         )}
         <textarea
           ref={textareaRef}
+          autoFocus
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -812,16 +813,6 @@ export function InputArea() {
           minHeight: '20px',
         }}
       >
-        <span className="flex items-center gap-1">
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-            {yoloMode ? (
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            ) : (
-              <path d="M8 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2zm3.5 6V3a3.5 3.5 0 1 0-7 0v4a3.5 3.5 0 1 0 7 0zM2 9a1 1 0 0 1 1 1v2a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-2a1 1 0 1 1 2 0v2a5 5 0 0 1-5 5H6a5 5 0 0 1-5-5v-2a1 1 0 0 1 1-1z" />
-            )}
-          </svg>
-          {yoloMode ? 'YOLO mode' : 'Ask before edits'}
-        </span>
         {activeFile && (
           <>
             <span style={{ opacity: 0.4 }}>·</span>

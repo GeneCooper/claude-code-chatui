@@ -691,6 +691,10 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   });
   checkCliAvailable(ctx);
 
+  // Send current settings so webview has correct initial state
+  const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode } });
+
   // Replay conversation to restore webview state
   const conversation = ctx.messageProcessor.currentConversation;
   if (conversation.length > 0) {
