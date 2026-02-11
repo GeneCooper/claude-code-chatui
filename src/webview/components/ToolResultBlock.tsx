@@ -22,7 +22,11 @@ export function ToolResultBlock({ data }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const isError = data.isError as boolean
-  const content = String(data.content || '')
+  const rawContent = String(data.content || '')
+  // Clean up XML-like tags from error messages (e.g. <tool_use_error>...</tool_use_error>)
+  const content = isError
+    ? rawContent.replace(/<\/?tool_use_error>/g, '').trim()
+    : rawContent
   const toolName = data.toolName as string | undefined
   const rawInput = data.rawInput as Record<string, unknown> | undefined
   const fileContentBefore = data.fileContentBefore as string | undefined

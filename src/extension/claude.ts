@@ -1,8 +1,112 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import { EventEmitter } from 'events';
-import type { ClaudeMessage, PermissionRequest } from '../../shared/types';
-import { THINKING_INTENSITIES, ThinkingIntensity } from '../../shared/constants';
+import type { ClaudeMessage, PermissionRequest } from '../shared/types';
+import { THINKING_INTENSITIES, ThinkingIntensity } from '../shared/constants';
+
+// ============================================================================
+// PermissionService
+// ============================================================================
+
+export interface PermissionEntry {
+  toolName: string;
+  pattern: string;
+  createdAt: string;
+}
+
+export interface Permissions {
+  allowedPatterns: PermissionEntry[];
+}
+
+export class PermissionService implements vscode.Disposable {
+  private _permissionsPath: string;
+
+  constructor(private readonly _context: vscode.ExtensionContext) {
+    const permDir = path.join(_context.globalStorageUri.fsPath, 'permissions');
+    if (!fs.existsSync(permDir)) {
+      fs.mkdirSync(permDir, { recursive: true });
+    }
+    this._permissionsPath = path.join(permDir, 'permissions.json');
+  }
+
+  dispose(): void {}
+
+  async getPermissions(): Promise<Permissions> {
+    try {
+      if (fs.existsSync(this._permissionsPath)) {
+        const raw = fs.readFileSync(this._permissionsPath, 'utf8');
+        return JSON.parse(raw) as Permissions;
+      }
+    } catch { /* corrupt file */ }
+    return { allowedPatterns: [] };
+  }
+
+  async isToolPreApproved(toolName: string, input: Record<string, unknown>): Promise<boolean> {
+    const permissions = await this.getPermissions();
+    for (const entry of permissions.allowedPatterns) {
+      if (entry.toolName !== toolName) continue;
+      const command = this._extractCommand(toolName, input);
+      if (command && this._matchesPattern(command, entry.pattern)) return true;
+    }
+    return false;
+  }
+
+  async savePermission(toolName: string, pattern: string): Promise<void> {
+    const permissions = await this.getPermissions();
+    const exists = permissions.allowedPatterns.some(
+      (e) => e.toolName === toolName && e.pattern === pattern,
+    );
+    if (exists) return;
+    permissions.allowedPatterns.push({ toolName, pattern, createdAt: new Date().toISOString() });
+    await this._savePermissions(permissions);
+  }
+
+  async removePermission(toolName: string, pattern: string): Promise<void> {
+    const permissions = await this.getPermissions();
+    permissions.allowedPatterns = permissions.allowedPatterns.filter(
+      (e) => !(e.toolName === toolName && e.pattern === pattern),
+    );
+    await this._savePermissions(permissions);
+  }
+
+  async addPermission(toolName: string, pattern: string): Promise<void> {
+    await this.savePermission(toolName, pattern);
+  }
+
+  async clearPermissions(): Promise<void> {
+    await this._savePermissions({ allowedPatterns: [] });
+  }
+
+  private _extractCommand(toolName: string, input: Record<string, unknown>): string | null {
+    switch (toolName) {
+      case 'Bash': return (input.command as string) || null;
+      case 'Read': case 'Write': case 'Edit': case 'MultiEdit':
+        return (input.file_path as string) || null;
+      case 'Glob': case 'Grep': return (input.pattern as string) || null;
+      default: return null;
+    }
+  }
+
+  private _matchesPattern(command: string, pattern: string): boolean {
+    if (command === pattern) return true;
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    try { return new RegExp(`^${escaped}$`).test(command); } catch { return false; }
+  }
+
+  private async _savePermissions(permissions: Permissions): Promise<void> {
+    try {
+      fs.writeFileSync(this._permissionsPath, JSON.stringify(permissions, null, 2), 'utf8');
+    } catch (err) {
+      console.error('Failed to save permissions:', err);
+    }
+  }
+}
+
+// ============================================================================
+// ClaudeService
+// ============================================================================
 
 export interface SendMessageOptions {
   cwd: string;
@@ -25,9 +129,6 @@ interface PendingPermission {
   toolUseId: string;
 }
 
-/**
- * Manages the Claude CLI child process and bidirectional stdin/stdout communication.
- */
 export class ClaudeService implements vscode.Disposable {
   private _process: cp.ChildProcess | undefined;
   private _abortController: AbortController | undefined;
@@ -41,7 +142,6 @@ export class ClaudeService implements vscode.Disposable {
 
   constructor(private readonly _context: vscode.ExtensionContext) {}
 
-  // Event registration
   onMessage(cb: (msg: ClaudeMessage) => void): void { this._messageEmitter.on('message', cb); }
   onProcessEnd(cb: () => void): void { this._processEndEmitter.on('end', cb); }
   onError(cb: (err: string) => void): void { this._errorEmitter.on('error', cb); }
@@ -50,11 +150,7 @@ export class ClaudeService implements vscode.Disposable {
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
-  /**
-   * Send a message to Claude CLI via a spawned process.
-   */
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
-    // Prepend thinking prompt if thinking mode enabled
     let actualMessage = message;
     if (options.thinkingMode) {
       const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
@@ -63,10 +159,7 @@ export class ClaudeService implements vscode.Disposable {
       actualMessage = `${prompt}\n\n${actualMessage}`;
     }
 
-    // Build CLI arguments
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-
-    // Append efficiency system prompt to reduce token waste
     args.push(
       '--append-system-prompt',
       'Respond concisely. Prefer showing code over explaining it. Avoid repeating the question or restating what you are about to do. Get straight to the solution.',
@@ -77,40 +170,18 @@ export class ClaudeService implements vscode.Disposable {
     } else {
       args.push('--permission-prompt-tool', 'stdio');
     }
-
-    if (options.mcpConfigPath) {
-      args.push('--mcp-config', options.mcpConfigPath);
-    }
-
-    if (options.planMode && !options.yoloMode) {
-      args.push('--permission-mode', 'plan');
-    }
-
-    if (options.model && options.model !== 'default') {
-      args.push('--model', options.model);
-    }
-
+    if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
+    if (options.planMode && !options.yoloMode) args.push('--permission-mode', 'plan');
+    if (options.model && options.model !== 'default') args.push('--model', options.model);
     if (options.allowedTools?.length) {
-      for (const tool of options.allowedTools) {
-        args.push('--allowedTools', tool);
-      }
+      for (const tool of options.allowedTools) args.push('--allowedTools', tool);
     }
-
     if (options.disallowedTools?.length) {
-      for (const tool of options.disallowedTools) {
-        args.push('--disallowedTools', tool);
-      }
+      for (const tool of options.disallowedTools) args.push('--disallowedTools', tool);
     }
+    if (options.continueConversation && this._sessionId) args.push('--continue');
+    if (this._sessionId) args.push('--resume', this._sessionId);
 
-    if (options.continueConversation && this._sessionId) {
-      args.push('--continue');
-    }
-
-    if (this._sessionId) {
-      args.push('--resume', this._sessionId);
-    }
-
-    // Abort any previous request
     this._abortController = new AbortController();
 
     const claudeProcess = cp.spawn('claude', args, {
@@ -124,41 +195,28 @@ export class ClaudeService implements vscode.Disposable {
 
     this._process = claudeProcess;
 
-    // Send user message to stdin
     if (claudeProcess.stdin) {
-      // Build content blocks: text + optional images
       const contentBlocks: unknown[] = [{ type: 'text', text: actualMessage }];
-
       if (options.images?.length) {
         for (const dataUrl of options.images) {
-          // Parse data URL: data:image/png;base64,xxxxx
           const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
           if (match) {
             contentBlocks.push({
               type: 'image',
-              source: {
-                type: 'base64',
-                media_type: match[1],
-                data: match[2],
-              },
+              source: { type: 'base64', media_type: match[1], data: match[2] },
             });
           }
         }
       }
-
       const userMsg = {
         type: 'user',
         session_id: this._sessionId || '',
-        message: {
-          role: 'user',
-          content: contentBlocks,
-        },
+        message: { role: 'user', content: contentBlocks },
         parent_tool_use_id: null,
       };
       claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
     }
 
-    // Process stdout (JSON stream, line by line)
     let rawOutput = '';
     let errorOutput = '';
 
@@ -171,44 +229,24 @@ export class ClaudeService implements vscode.Disposable {
         if (!line.trim()) continue;
         try {
           const json = JSON.parse(line.trim());
-
-          // Handle permission control requests
-          if (json.type === 'control_request') {
-            this._handleControlRequest(json, claudeProcess);
-            continue;
-          }
-
-          // Handle control responses (e.g., account info)
-          if (json.type === 'control_response') {
-            continue;
-          }
-
-          // End stdin on result
+          if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
+          if (json.type === 'control_response') continue;
           if (json.type === 'result') {
-            if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) {
-              claudeProcess.stdin.end();
-            }
+            if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) claudeProcess.stdin.end();
           }
-
           this._messageEmitter.emit('message', json as ClaudeMessage);
-        } catch {
-          // Ignore non-JSON lines
-        }
+        } catch { /* non-JSON */ }
       }
     });
 
-    claudeProcess.stderr?.on('data', (data: Buffer) => {
-      errorOutput += data.toString();
-    });
+    claudeProcess.stderr?.on('data', (data: Buffer) => { errorOutput += data.toString(); });
 
     claudeProcess.on('close', (code) => {
       if (!this._process) return;
       this._process = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
-      if (code !== 0 && errorOutput.trim()) {
-        this._errorEmitter.emit('error', errorOutput.trim());
-      }
+      if (code !== 0 && errorOutput.trim()) this._errorEmitter.emit('error', errorOutput.trim());
     });
 
     claudeProcess.on('error', (error) => {
@@ -220,55 +258,38 @@ export class ClaudeService implements vscode.Disposable {
     });
   }
 
-  /**
-   * Stop the current Claude process.
-   */
   async stopProcess(): Promise<void> {
     if (!this._process) return;
-
     try {
       this._abortController?.abort();
-      if (this._process.stdin && !this._process.stdin.destroyed) {
-        this._process.stdin.end();
-      }
+      if (this._process.stdin && !this._process.stdin.destroyed) this._process.stdin.end();
       if (process.platform === 'win32' && this._process.pid) {
         cp.exec(`taskkill /pid ${this._process.pid} /T /F`);
       } else if (this._process.pid) {
         process.kill(-this._process.pid, 'SIGTERM');
       }
-    } catch {
-      // Process may already be dead
-    }
-
+    } catch { /* already dead */ }
     this._process = undefined;
     this._cancelPendingPermissions();
   }
 
-  /**
-   * Send a permission response back to Claude via stdin.
-   */
   sendPermissionResponse(requestId: string, approved: boolean, alwaysAllow?: boolean): void {
     const pending = this._pendingPermissions.get(requestId);
     if (!pending) return;
-
     this._pendingPermissions.delete(requestId);
-
     if (this._process?.stdin && !this._process.stdin.destroyed) {
       const response = {
         type: 'control_response',
         request_id: requestId,
-        permission_decision: approved
-          ? (alwaysAllow ? 'allow_always' : 'allow')
-          : 'deny',
+        permission_decision: approved ? (alwaysAllow ? 'allow_always' : 'allow') : 'deny',
       };
       this._process.stdin.write(JSON.stringify(response) + '\n');
     }
   }
 
-  private _handleControlRequest(controlRequest: { request_id: string; request: Record<string, unknown> }, claudeProcess: cp.ChildProcess): void {
+  private _handleControlRequest(controlRequest: { request_id: string; request: Record<string, unknown> }, _claudeProcess: cp.ChildProcess): void {
     const request = controlRequest.request;
     const requestId = controlRequest.request_id;
-
     if ((request as { subtype?: string }).subtype !== 'can_use_tool') return;
 
     const toolName = (request as { tool_name?: string }).tool_name || 'Unknown Tool';
@@ -278,18 +299,13 @@ export class ClaudeService implements vscode.Disposable {
 
     this._pendingPermissions.set(requestId, { requestId, toolName, input, suggestions, toolUseId });
 
-    // Generate bash command pattern with wildcard matching
     let pattern: string | undefined;
     if (toolName === 'Bash' && input.command) {
       pattern = this._getCommandPattern(String(input.command).trim());
     }
 
     this._permissionRequestEmitter.emit('request', {
-      requestId,
-      toolName,
-      input,
-      suggestions,
-      toolUseId,
+      requestId, toolName, input, suggestions, toolUseId,
       decisionReason: (request as { decision_reason?: string }).decision_reason,
       blockedPath: (request as { blocked_path?: string }).blocked_path,
       pattern,
@@ -316,7 +332,6 @@ export class ClaudeService implements vscode.Disposable {
     ['pnpm', 'remove', 'pnpm remove *'],
     ['bun', 'install', 'bun install *'],
     ['bun', 'add', 'bun add *'],
-
     // Git commands
     ['git', 'add', 'git add *'],
     ['git', 'commit', 'git commit *'],
@@ -332,7 +347,6 @@ export class ClaudeService implements vscode.Disposable {
     ['git', 'diff', 'git diff *'],
     ['git', 'log', 'git log *'],
     ['git', 'status', 'git status'],
-
     // Docker commands
     ['docker', 'run', 'docker run *'],
     ['docker', 'build', 'docker build *'],
@@ -344,7 +358,6 @@ export class ClaudeService implements vscode.Disposable {
     ['docker', 'rmi', 'docker rmi *'],
     ['docker', 'pull', 'docker pull *'],
     ['docker', 'push', 'docker push *'],
-
     // Build tools
     ['make', '', 'make *'],
     ['cargo', 'build', 'cargo build *'],
@@ -358,7 +371,6 @@ export class ClaudeService implements vscode.Disposable {
     ['gradle', 'test', 'gradle test *'],
     ['go', 'build', 'go build *'],
     ['go', 'test', 'go test *'],
-
     // System commands
     ['curl', '', 'curl *'],
     ['wget', '', 'wget *'],
@@ -372,7 +384,6 @@ export class ClaudeService implements vscode.Disposable {
     ['cat', '', 'cat *'],
     ['ls', '', 'ls *'],
     ['cd', '', 'cd *'],
-
     // Development tools
     ['node', '', 'node *'],
     ['python', '', 'python *'],
@@ -389,15 +400,9 @@ export class ClaudeService implements vscode.Disposable {
     const parts = command.split(/\s+/);
     const firstWord = parts[0] || command;
     const subCommand = parts[1] || '';
-
-    // Try to match known patterns
     for (const [cmd, sub, pattern] of ClaudeService.COMMAND_PATTERNS) {
-      if (firstWord === cmd && (sub === '' || subCommand === sub)) {
-        return pattern;
-      }
+      if (firstWord === cmd && (sub === '' || subCommand === sub)) return pattern;
     }
-
-    // Fallback: use first word + wildcard
     return parts.length > 1 ? `${firstWord} *` : firstWord;
   }
 

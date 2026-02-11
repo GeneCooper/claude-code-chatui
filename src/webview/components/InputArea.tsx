@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { postMessage, getState, setState } from '../lib/vscode'
 import { useChatStore } from '../stores/chatStore'
 import { useUIStore } from '../stores/uiStore'
@@ -35,9 +35,21 @@ export function InputArea() {
     if (saved?.model) setSelectedModel(saved.model)
   }, [])
 
+  // Debounced save to extension for persistence across panel reopens
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const debouncedSave = useMemo(() => (value: string) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      postMessage({ type: 'saveInputText', text: value })
+    }, 500)
+  }, [])
+
   useEffect(() => {
     setState({ draft: text, model: selectedModel })
-  }, [text, selectedModel])
+    debouncedSave(text)
+  }, [text, selectedModel, debouncedSave])
+
+  useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
 
   useEffect(() => {
     if (draftText) {
@@ -50,8 +62,28 @@ export function InputArea() {
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
+
+    // Reset to measure true scrollHeight
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 150)}px`
+
+    const computed = getComputedStyle(el)
+    const lineHeight = parseFloat(computed.lineHeight) || 20
+    const paddingTop = parseFloat(computed.paddingTop)
+    const paddingBottom = parseFloat(computed.paddingBottom)
+    const borderTop = parseFloat(computed.borderTopWidth)
+    const borderBottom = parseFloat(computed.borderBottomWidth)
+
+    const maxRows = 5
+    const minHeight = lineHeight + paddingTop + paddingBottom + borderTop + borderBottom
+    const maxHeight = (lineHeight * maxRows) + paddingTop + paddingBottom + borderTop + borderBottom
+
+    if (el.scrollHeight <= maxHeight) {
+      el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`
+      el.style.overflowY = 'hidden'
+    } else {
+      el.style.height = `${maxHeight}px`
+      el.style.overflowY = 'auto'
+    }
   }, [])
 
   useEffect(() => { adjustHeight() }, [text, adjustHeight])

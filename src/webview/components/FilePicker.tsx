@@ -70,13 +70,17 @@ export function FilePicker({ onSelect }: Props) {
 
   const getFileIcon = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase() || ''
-    const codeExts = ['js', 'ts', 'tsx', 'jsx', 'py', 'java', 'cpp', 'c', 'go', 'rs', 'rb', 'php']
-    const markupExts = ['html', 'css', 'json', 'md', 'xml', 'yaml', 'yml', 'toml']
-    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico']
+    const codeExts = ['js', 'ts', 'tsx', 'jsx', 'py', 'java', 'cpp', 'c', 'go', 'rs', 'rb', 'php', 'cs', 'swift', 'kt', 'scala', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'pl', 'ex', 'exs', 'hs', 'clj', 'vue', 'svelte']
+    const markupExts = ['html', 'css', 'scss', 'less', 'json', 'md', 'mdx', 'xml', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf']
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp', 'tiff', 'avif']
+    const packageExts = ['zip', 'tar', 'gz', 'bz2', 'xz', '7z', 'rar', 'jar', 'war', 'whl', 'deb', 'rpm', 'vsix', 'wasm']
+    const dataExts = ['sql', 'sqlite', 'db', 'csv', 'tsv', 'parquet', 'proto', 'graphql', 'gql']
 
     if (codeExts.includes(ext)) return '{ }'
     if (markupExts.includes(ext)) return '<>'
     if (imageExts.includes(ext)) return 'img'
+    if (packageExts.includes(ext)) return 'pkg'
+    if (dataExts.includes(ext)) return 'dat'
     return 'file'
   }
 
