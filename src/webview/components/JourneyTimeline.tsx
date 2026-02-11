@@ -252,13 +252,27 @@ function LoadingIndicator() {
   )
 }
 
-function MessageRenderer({ message }: { message: ChatMessage }) {
+function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessing }: {
+  message: ChatMessage
+  userInputIndex?: number
+  onFork?: (index: number) => void
+  onRewind?: (index: number) => void
+  isProcessing?: boolean
+}) {
   switch (message.type) {
     case 'userInput': {
       const ud = message.data as { text: string; images?: string[] } | string
       const uText = typeof ud === 'string' ? ud : ud.text
       const uImages = typeof ud === 'string' ? undefined : ud.images
-      return <UserMessage text={uText} images={uImages} />
+      return (
+        <UserMessage
+          text={uText}
+          images={uImages}
+          onFork={userInputIndex !== undefined && onFork ? () => onFork(userInputIndex) : undefined}
+          onRewind={userInputIndex !== undefined && onRewind ? () => onRewind(userInputIndex) : undefined}
+          isProcessing={isProcessing}
+        />
+      )
     }
     case 'error':
       return (
@@ -386,13 +400,27 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
 interface Props {
   messages: ChatMessage[]
   isProcessing: boolean
+  onFork?: (userInputIndex: number) => void
+  onRewind?: (userInputIndex: number) => void
 }
 
-export function JourneyTimeline({ messages, isProcessing }: Props) {
+export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
   const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
 
   const items = useMemo(() => buildTimelineItems(messages, isProcessing), [messages, isProcessing])
+
+  // Map message IDs to their userInput index (0-based count of userInput messages)
+  const userInputIndexMap = useMemo(() => {
+    const map = new Map<string, number>()
+    let idx = 0
+    for (const msg of messages) {
+      if (msg.type === 'userInput') {
+        map.set(msg.id, idx++)
+      }
+    }
+    return map
+  }, [messages])
 
   // After a batchReplay, auto-collapse all completed plan groups for performance
   useEffect(() => {
@@ -426,7 +454,17 @@ export function JourneyTimeline({ messages, isProcessing }: Props) {
     <div className="space-y-4">
       {items.map((item) => {
         if (item.kind === 'message') {
-          return <MessageRenderer key={item.message.id} message={item.message} />
+          const uiIdx = item.message.type === 'userInput' ? userInputIndexMap.get(item.message.id) : undefined
+          return (
+            <MessageRenderer
+              key={item.message.id}
+              message={item.message}
+              userInputIndex={uiIdx}
+              onFork={onFork}
+              onRewind={onRewind}
+              isProcessing={isProcessing}
+            />
+          )
         }
         return (
           <PlanGroupCard

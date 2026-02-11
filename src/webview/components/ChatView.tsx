@@ -1,5 +1,6 @@
+import { useCallback } from 'react'
 import { useChatStore } from '../store'
-import { useAutoScroll } from '../hooks'
+import { useAutoScroll, postMessage } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
 
@@ -16,6 +17,14 @@ export function ChatView({ onHintClick }: ChatViewProps) {
     behavior: isProcessing ? 'instant' : 'smooth',
   })
 
+  const handleFork = useCallback((userInputIndex: number) => {
+    postMessage({ type: 'forkFromMessage', userInputIndex })
+  }, [])
+
+  const handleRewind = useCallback((userInputIndex: number) => {
+    postMessage({ type: 'rewindToMessage', userInputIndex })
+  }, [])
+
   return (
     <div
       ref={containerRef}
@@ -26,7 +35,12 @@ export function ChatView({ onHintClick }: ChatViewProps) {
       )}
 
       {messages.length > 0 && (
-        <JourneyTimeline messages={messages} isProcessing={isProcessing} />
+        <JourneyTimeline
+          messages={messages}
+          isProcessing={isProcessing}
+          onFork={handleFork}
+          onRewind={handleRewind}
+        />
       )}
     </div>
   )

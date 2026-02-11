@@ -11,7 +11,7 @@ import {
   type WebviewMessage,
 } from './handlers';
 import { createModuleLogger } from '../shared/logger';
-import type { ClaudeMessage, WebviewToExtensionMessage, TabInfo } from '../shared/types';
+import type { ClaudeMessage, WebviewToExtensionMessage, TabInfo, ConversationMessage } from '../shared/types';
 
 const log = createModuleLogger('PanelProvider');
 
@@ -252,6 +252,61 @@ export class PanelProvider {
     } else {
       this._postMessage({ type: 'tabClosed', data: { tabId, newActiveTabId: this._activeTabId! } });
     }
+  }
+
+  rewindToMessage(userInputIndex: number): void {
+    const tab = this._getActiveTab();
+    if (!tab) return;
+    if (this._processingTabId === tab.tabId) return;
+
+    const conversation = tab.messageProcessor.currentConversation;
+    const pos = this._findUserInputPosition(conversation, userInputIndex);
+    if (pos === -1) return;
+
+    tab.messageProcessor.truncateConversation(pos);
+    tab.sessionId = undefined;
+    this._replayTabConversation(tab);
+  }
+
+  forkFromMessage(userInputIndex: number): void {
+    const tab = this._getActiveTab();
+    if (!tab) return;
+    if (this._tabs.size >= PanelProvider.MAX_TABS) {
+      this._postMessage({ type: 'error', data: 'Cannot fork: maximum number of tabs reached.' });
+      return;
+    }
+
+    const conversation = tab.messageProcessor.currentConversation;
+    const pos = this._findUserInputPosition(conversation, userInputIndex);
+    if (pos === -1) return;
+
+    const forkedMessages = conversation.slice(0, pos + 1);
+    const newTab = this._createTab();
+
+    for (const msg of forkedMessages) {
+      newTab.messageProcessor.currentConversation.push({ ...msg });
+    }
+
+    const targetMsg = forkedMessages[pos];
+    const text = typeof targetMsg.data === 'string'
+      ? targetMsg.data
+      : ((targetMsg.data as Record<string, unknown>)?.text as string || 'Fork');
+    newTab.title = text.substring(0, 25) + (text.length > 25 ? '...' : '') + ' (fork)';
+
+    this._activeTabId = newTab.tabId;
+    this._postMessage({ type: 'tabCreated', data: { tabId: newTab.tabId, title: newTab.title } });
+    this._replayTabConversation(newTab);
+  }
+
+  private _findUserInputPosition(conversation: ConversationMessage[], userInputIndex: number): number {
+    let count = -1;
+    for (let i = 0; i < conversation.length; i++) {
+      if (conversation[i].messageType === 'userInput') {
+        count++;
+        if (count === userInputIndex) return i;
+      }
+    }
+    return -1;
   }
 
   getTabsState(): { tabs: TabInfo[]; activeTabId: string; processingTabId: string | null } {
@@ -539,6 +594,8 @@ export class PanelProvider {
       getTabsState: () => this.getTabsState(),
       activeTabId: this._activeTabId,
       processingTabId: this._processingTabId,
+      rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
+      forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
     };
   }
 

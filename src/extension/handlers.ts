@@ -229,6 +229,12 @@ export class ClaudeMessageProcessor {
 
   resetSession(): void { this._currentConversation = []; }
 
+  truncateConversation(endIndex: number): void {
+    if (endIndex >= 0 && endIndex < this._currentConversation.length) {
+      this._currentConversation = this._currentConversation.slice(0, endIndex + 1);
+    }
+  }
+
   async processMessage(jsonData: ClaudeMessage): Promise<void> {
     switch (jsonData.type) {
       case 'system': this._handleSystemMessage(jsonData); break;
@@ -658,6 +664,8 @@ export interface MessageHandlerContext {
   getTabsState(): { tabs: TabInfo[]; activeTabId: string; processingTabId: string | null };
   activeTabId: string | null;
   processingTabId: string | null;
+  rewindToMessage(userInputIndex: number): void;
+  forkFromMessage(userInputIndex: number): void;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -1021,6 +1029,8 @@ const messageHandlers: Record<string, MessageHandler> = {
   createTab: handleCreateTab,
   switchTab: handleSwitchTab,
   closeTab: handleCloseTab,
+  rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
+  forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

@@ -243,6 +243,8 @@ export type WebviewToExtensionMessage =
   | { type: 'createTab' }
   | { type: 'switchTab'; tabId: string }
   | { type: 'closeTab'; tabId: string }
+  | { type: 'rewindToMessage'; userInputIndex: number }
+  | { type: 'forkFromMessage'; userInputIndex: number }
   | { type: 'stopRequest' }
   | { type: 'ready' }
   | { type: 'permissionResponse'; id: string; approved: boolean; alwaysAllow?: boolean }
