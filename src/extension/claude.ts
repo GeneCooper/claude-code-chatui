@@ -297,11 +297,33 @@ export class ClaudeService implements vscode.Disposable {
     if (!pending) return;
     this._pendingPermissions.delete(requestId);
     if (this._process?.stdin && !this._process.stdin.destroyed) {
-      const response = {
-        type: 'control_response',
-        request_id: requestId,
-        permission_decision: approved ? (alwaysAllow ? 'allow_always' : 'allow') : 'deny',
-      };
+      const response = approved
+        ? {
+            type: 'control_response',
+            response: {
+              subtype: 'success',
+              request_id: requestId,
+              response: {
+                behavior: 'allow',
+                updatedInput: pending.input,
+                updatedPermissions: alwaysAllow ? pending.suggestions : undefined,
+                toolUseID: pending.toolUseId,
+              },
+            },
+          }
+        : {
+            type: 'control_response',
+            response: {
+              subtype: 'success',
+              request_id: requestId,
+              response: {
+                behavior: 'deny',
+                message: 'User denied permission',
+                interrupt: true,
+                toolUseID: pending.toolUseId,
+              },
+            },
+          };
       this._process.stdin.write(JSON.stringify(response) + '\n');
     }
   }

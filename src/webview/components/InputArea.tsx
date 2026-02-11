@@ -17,7 +17,7 @@ const MODELS = [
 export function InputArea() {
   const [text, setText] = useState('')
   const [planMode, setPlanMode] = useState(false)
-  const [thinkingMode, setThinkingMode] = useState(false)
+  const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
