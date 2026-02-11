@@ -58,7 +58,7 @@ export function WelcomeScreen({ onHintClick }: Props) {
       {/* Task hints */}
       <div
         className="grid grid-cols-2 gap-1.5 w-full"
-        style={{ margin: '0 auto', marginBottom: '20px' }}
+        style={{ maxWidth: '480px', margin: '0 auto', marginBottom: '20px' }}
       >
         {HINTS.map((hint) => (
           <button

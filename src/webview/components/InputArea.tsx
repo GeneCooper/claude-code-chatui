@@ -548,7 +548,7 @@ export function InputArea() {
                   style={{
                     background: 'transparent',
                     color: '#e74c3c',
-                    border: '1px solid rgba(231, 76, 60, 0.3)',
+                    border: 'none',
                     padding: '0 8px',
                     height: '24px',
                     fontSize: '12px',
@@ -578,9 +578,7 @@ export function InputArea() {
                   className="cursor-pointer flex items-center justify-center shrink-0"
                   style={{
                     background: 'transparent',
-                    border: (text.trim() || images.length > 0)
-                      ? '1px solid var(--chatui-accent, rgba(100,149,237,0.4))'
-                      : '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
+                    border: 'none',
                     padding: '0',
                     width: '24px',
                     height: '24px',

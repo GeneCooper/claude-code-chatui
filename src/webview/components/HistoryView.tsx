@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { postMessage } from '../hooks'
 import { useConversationStore } from '../store'
 import { useUIStore } from '../store'
@@ -6,10 +6,24 @@ import { useUIStore } from '../store'
 export function HistoryView() {
   const conversations = useConversationStore((s) => s.conversations)
   const setActiveView = useUIStore((s) => s.setActiveView)
+  const [searchQuery, setSearchQuery] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     postMessage({ type: 'getConversationList' })
   }, [])
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      if (query.trim()) {
+        postMessage({ type: 'searchConversations', query })
+      } else {
+        postMessage({ type: 'getConversationList' })
+      }
+    }, 300)
+  }
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)
@@ -52,6 +66,44 @@ export function HistoryView() {
         </button>
       </div>
 
+      {/* Search */}
+      <div style={{ padding: '8px 12px 0' }}>
+        <div style={{ position: 'relative' }}>
+          <span
+            style={{
+              position: 'absolute',
+              left: '8px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              opacity: 0.4,
+              fontSize: '13px',
+              pointerEvents: 'none',
+            }}
+          >
+            🔍
+          </span>
+          <input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '6px 8px 6px 28px',
+              fontSize: '12px',
+              border: '1px solid var(--vscode-input-border, var(--vscode-panel-border))',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--vscode-input-background)',
+              color: 'var(--vscode-input-foreground)',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--vscode-input-border, var(--vscode-panel-border))' }}
+          />
+        </div>
+      </div>
+
       <div
         className="flex-1 overflow-y-auto"
         style={{ padding: '8px' }}
@@ -67,7 +119,7 @@ export function HistoryView() {
             opacity: 0.6,
             fontSize: '14px',
           }}>
-            No conversation history
+            {searchQuery ? 'No matching conversations' : 'No conversation history'}
           </div>
         ) : (
           conversations.map((conv) => (
