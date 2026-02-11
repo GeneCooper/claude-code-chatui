@@ -201,7 +201,7 @@ export interface UseAutoScrollOptions {
 }
 
 export interface UseAutoScrollReturn<T extends HTMLElement> {
-  containerRef: RefObject<T>
+  containerRef: RefObject<T | null>
   isNearBottom: boolean
   isAutoScrollEnabled: boolean
   scrollToBottom: (options?: { behavior?: ScrollBehavior }) => void

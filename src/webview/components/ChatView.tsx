@@ -10,11 +10,11 @@ interface ChatViewProps {
 export function ChatView({ onHintClick }: ChatViewProps) {
   const messages = useChatStore((s) => s.messages)
   const isProcessing = useChatStore((s) => s.isProcessing)
-  const scrollRef = useAutoScroll<HTMLDivElement>([messages])
+  const { containerRef } = useAutoScroll<HTMLDivElement>({ dependencies: [messages] })
 
   return (
     <div
-      ref={scrollRef}
+      ref={containerRef}
       className="flex-1 overflow-y-auto px-3 py-4"
     >
       {messages.length === 0 && (

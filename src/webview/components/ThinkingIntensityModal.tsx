@@ -6,7 +6,7 @@ const LEVELS = [
   { key: 'think', label: 'Think', desc: 'Basic reasoning - fastest response', icon: '💡' },
   { key: 'think-hard', label: 'Think Hard', desc: 'More detailed reasoning', icon: '🧠' },
   { key: 'think-harder', label: 'Think Harder', desc: 'Extended reasoning for complex tasks', icon: '🔬' },
-  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '�? },
+  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '\u26A1' },
 ]
 
 interface Props {
