@@ -164,6 +164,15 @@ body {
   }
 }
 
+@keyframes loadingSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* ===== Mode Switch ===== */
 .mode-switch {
   width: 26px;

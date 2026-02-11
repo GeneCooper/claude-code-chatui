@@ -177,9 +177,23 @@ function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }
   )
 }
 
+const LOADING_PHRASES = [
+  'Analyzing',
+  'Thinking',
+  'Reasoning',
+  'Puzzling',
+  'Pondering',
+  'Processing',
+  'Working',
+  'Considering',
+  'Exploring',
+  'Evaluating',
+]
+
 function LoadingIndicator() {
   const [elapsed, setElapsed] = useState(0)
-  const [dotCount, setDotCount] = useState(1)
+  const [phraseIndex, setPhraseIndex] = useState(0)
+  const [fadeClass, setFadeClass] = useState(true)
 
   useEffect(() => {
     const id = setInterval(() => setElapsed((e) => e + 1), 1000)
@@ -187,7 +201,13 @@ function LoadingIndicator() {
   }, [])
 
   useEffect(() => {
-    const id = setInterval(() => setDotCount((d) => (d % 3) + 1), 500)
+    const id = setInterval(() => {
+      setFadeClass(false)
+      setTimeout(() => {
+        setPhraseIndex((i) => (i + 1) % LOADING_PHRASES.length)
+        setFadeClass(true)
+      }, 200)
+    }, 3000)
     return () => clearInterval(id)
   }, [])
 
@@ -196,44 +216,38 @@ function LoadingIndicator() {
     return `${Math.floor(s / 60)}m ${s % 60}s`
   }
 
-  // Dynamic status message based on elapsed time
-  const statusText = elapsed < 5 ? 'Analyzing' : elapsed < 15 ? 'Thinking deeply' : elapsed < 30 ? 'Working on it' : 'Processing'
-  const dots = '.'.repeat(dotCount)
-
   return (
     <div
       className="flex items-center gap-3 px-3 py-2 text-xs"
-      style={{ opacity: 0.7 }}
+      style={{ opacity: 0.8 }}
     >
-      {/* Three-dot pulse animation */}
-      <div className="flex items-center gap-1">
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full"
-          style={{
-            background: 'var(--chatui-accent)',
-            animation: 'pulse 1.4s ease-in-out infinite',
-            animationDelay: '0s',
-          }}
-        />
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full"
-          style={{
-            background: 'var(--chatui-accent)',
-            animation: 'pulse 1.4s ease-in-out infinite',
-            animationDelay: '0.2s',
-          }}
-        />
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full"
-          style={{
-            background: 'var(--chatui-accent)',
-            animation: 'pulse 1.4s ease-in-out infinite',
-            animationDelay: '0.4s',
-          }}
-        />
+      {/* Animated sparkle spinner */}
+      <div
+        style={{
+          width: '16px',
+          height: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'loadingSpin 2s linear infinite',
+          color: 'var(--chatui-accent)',
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
+        </svg>
       </div>
-      <span style={{ minWidth: '120px' }}>{statusText}{dots}</span>
-      <span style={{ opacity: 0.4, fontSize: '10px' }}>{formatTime(elapsed)}</span>
+      <span
+        style={{
+          minWidth: '100px',
+          transition: 'opacity 0.2s ease',
+          opacity: fadeClass ? 1 : 0,
+          fontWeight: 500,
+        }}
+      >
+        {LOADING_PHRASES[phraseIndex]}...
+      </span>
+      <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}>{formatTime(elapsed)}</span>
     </div>
   )
 }

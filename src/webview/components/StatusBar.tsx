@@ -1,11 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useChatStore } from '../store'
+
+const STATUS_PHRASES = [
+  'Claude is working',
+  'Analyzing your request',
+  'Thinking through this',
+  'Processing',
+  'Reasoning',
+  'Working on it',
+]
+
+function useProcessingText(isProcessing: boolean) {
+  const [index, setIndex] = useState(0)
+  const [dotCount, setDotCount] = useState(1)
+  const intervalRef = useRef<ReturnType<typeof setInterval>>()
+  const dotRef = useRef<ReturnType<typeof setInterval>>()
+
+  useEffect(() => {
+    if (isProcessing) {
+      setIndex(0)
+      setDotCount(1)
+      intervalRef.current = setInterval(() => {
+        setIndex((i) => (i + 1) % STATUS_PHRASES.length)
+      }, 4000)
+      dotRef.current = setInterval(() => {
+        setDotCount((d) => (d % 3) + 1)
+      }, 500)
+    }
+    return () => {
+      clearInterval(intervalRef.current)
+      clearInterval(dotRef.current)
+    }
+  }, [isProcessing])
+
+  if (!isProcessing) return 'Ask anything or type / for commands'
+  return STATUS_PHRASES[index] + '.'.repeat(dotCount)
+}
 
 export function StatusBar() {
   const tokens = useChatStore((s) => s.tokens)
   const totals = useChatStore((s) => s.totals)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const [showDetails, setShowDetails] = useState(false)
+  const statusText = useProcessingText(isProcessing)
 
   const formatTokens = (n: number) => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -18,8 +55,6 @@ export function StatusBar() {
     if (cost < 0.01) return `$${cost.toFixed(4)}`
     return `$${cost.toFixed(2)}`
   }
-
-  const statusText = isProcessing ? 'Claude is working...' : 'Ask anything or type / for commands'
 
   // Calculate cache savings percentage
   const totalInput = tokens.totalTokensInput
