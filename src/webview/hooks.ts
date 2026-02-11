@@ -263,6 +263,11 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const todosData = msg.data as { todos: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }> }
     useChatStore.getState().updateTodos(todosData.todos)
   },
+
+  editorSelection: (msg) => {
+    const data = msg.data as { filePath: string; startLine: number; endLine: number; text: string } | null
+    window.dispatchEvent(new CustomEvent('editorSelection', { detail: data }))
+  },
 }
 
 export function handleExtensionMessage(msg: ExtensionMessage): void {

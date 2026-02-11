@@ -1,7 +1,40 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { postMessage } from '../hooks'
 import { useConversationStore } from '../store'
 import { useUIStore } from '../store'
+
+type ConvEntry = ReturnType<typeof useConversationStore.getState>['conversations'][number]
+
+interface TimeGroup {
+  label: string
+  items: ConvEntry[]
+}
+
+function groupByTime(conversations: ConvEntry[]): TimeGroup[] {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const yesterdayStart = todayStart - 86400000
+  const weekStart = todayStart - 6 * 86400000
+
+  const groups: Record<string, ConvEntry[]> = {
+    Today: [],
+    Yesterday: [],
+    'Last 7 days': [],
+    Earlier: [],
+  }
+
+  for (const conv of conversations) {
+    const t = new Date(conv.startTime).getTime()
+    if (t >= todayStart) groups['Today'].push(conv)
+    else if (t >= yesterdayStart) groups['Yesterday'].push(conv)
+    else if (t >= weekStart) groups['Last 7 days'].push(conv)
+    else groups['Earlier'].push(conv)
+  }
+
+  return Object.entries(groups)
+    .filter(([, items]) => items.length > 0)
+    .map(([label, items]) => ({ label, items }))
+}
 
 export function HistoryView() {
   const conversations = useConversationStore((s) => s.conversations)
@@ -25,14 +58,16 @@ export function HistoryView() {
     }, 300)
   }
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  }
+  const groups = useMemo(() => groupByTime(conversations), [conversations])
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr)
     return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
   const formatCost = (cost: number) => {
@@ -122,65 +157,84 @@ export function HistoryView() {
             {searchQuery ? 'No matching conversations' : 'No conversation history'}
           </div>
         ) : (
-          conversations.map((conv) => (
-            <button
-              key={conv.filename}
-              onClick={() => {
-                postMessage({ type: 'loadConversation', filename: conv.filename })
-                setActiveView('chat')
-              }}
-              className="w-full text-left cursor-pointer border-none text-inherit"
-              style={{
-                display: 'block',
-                padding: '12px',
-                margin: '4px 0',
-                border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--vscode-list-inactiveSelectionBackground, transparent)',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--vscode-list-inactiveSelectionBackground, transparent)'
-                e.currentTarget.style.borderColor = 'var(--vscode-widget-border, var(--vscode-panel-border))'
-              }}
-            >
-              {/* Meta info */}
+          groups.map((group) => (
+            <div key={group.label}>
+              {/* Group label */}
               <div
-                className="flex items-center justify-between"
-                style={{ marginBottom: '4px' }}
-              >
-                <span style={{ fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
-                  {formatDate(conv.startTime)} {formatTime(conv.startTime)}
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', opacity: 0.8 }}>
-                  {conv.messageCount} msgs {formatCost(conv.totalCost)}
-                </span>
-              </div>
-
-              {/* Title / first message */}
-              <div style={{ fontWeight: 500, marginBottom: '4px', fontSize: '14px' }}>
-                {conv.firstUserMessage || 'No message'}
-              </div>
-
-              {/* Preview */}
-              {conv.lastUserMessage && conv.lastUserMessage !== conv.firstUserMessage && (
-                <div style={{
+                style={{
                   fontSize: '11px',
+                  fontWeight: 600,
                   color: 'var(--vscode-descriptionForeground)',
-                  opacity: 0.8,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  marginTop: '4px',
-                }}>
-                  Last: {conv.lastUserMessage}
-                </div>
-              )}
-            </button>
+                  padding: '8px 4px 4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  opacity: 0.6,
+                }}
+              >
+                {group.label}
+              </div>
+
+              {group.items.map((conv) => (
+                <button
+                  key={conv.filename}
+                  onClick={() => {
+                    postMessage({ type: 'loadConversation', filename: conv.filename })
+                    setActiveView('chat')
+                  }}
+                  className="w-full text-left cursor-pointer border-none text-inherit"
+                  style={{
+                    display: 'block',
+                    padding: '10px 12px',
+                    margin: '2px 0',
+                    border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--vscode-list-inactiveSelectionBackground, transparent)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                    e.currentTarget.style.borderColor = 'var(--vscode-focusBorder)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--vscode-list-inactiveSelectionBackground, transparent)'
+                    e.currentTarget.style.borderColor = 'var(--vscode-widget-border, var(--vscode-panel-border))'
+                  }}
+                >
+                  {/* Meta info */}
+                  <div
+                    className="flex items-center justify-between"
+                    style={{ marginBottom: '3px' }}
+                  >
+                    <span style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>
+                      {formatDate(conv.startTime)} {formatTime(conv.startTime)}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--vscode-descriptionForeground)', opacity: 0.8 }}>
+                      {conv.messageCount} msgs {formatCost(conv.totalCost)}
+                    </span>
+                  </div>
+
+                  {/* Title / first message */}
+                  <div className="truncate" style={{ fontWeight: 500, fontSize: '13px' }}>
+                    {conv.firstUserMessage || 'No message'}
+                  </div>
+
+                  {/* Preview */}
+                  {conv.lastUserMessage && conv.lastUserMessage !== conv.firstUserMessage && (
+                    <div style={{
+                      fontSize: '11px',
+                      color: 'var(--vscode-descriptionForeground)',
+                      opacity: 0.7,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      marginTop: '2px',
+                    }}>
+                      {conv.lastUserMessage}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           ))
         )}
       </div>

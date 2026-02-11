@@ -11,6 +11,7 @@ import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 export function InputArea() {
   const [text, setText] = useState('')
   const [agentMode, setAgentMode] = useState(true)
+  const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
   const [planMode, setPlanMode] = useState(false)
   const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')
@@ -23,17 +24,19 @@ export function InputArea() {
   const isProcessing = useChatStore((s) => s.isProcessing)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
+  const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
   const { showSlashPicker, setShowSlashPicker, draftText, setDraftText } = useUIStore()
 
   const [slashFilter, setSlashFilter] = useState('')
 
   useEffect(() => {
-    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; agentMode?: boolean }>()
+    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; agentMode?: boolean; ctrlEnterSend?: boolean }>()
     if (saved?.draft) setText(saved.draft)
     if (saved?.model) setSelectedModel(saved.model)
     if (saved?.planMode !== undefined) setPlanMode(saved.planMode)
     if (saved?.thinkingMode !== undefined) setThinkingMode(saved.thinkingMode)
     if (saved?.agentMode !== undefined) setAgentMode(saved.agentMode)
+    if (saved?.ctrlEnterSend !== undefined) setCtrlEnterSend(saved.ctrlEnterSend)
   }, [])
 
   // Debounced save to extension for persistence across panel reopens
@@ -46,9 +49,9 @@ export function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel, planMode, thinkingMode, agentMode })
+    setState({ draft: text, model: selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend })
     debouncedSave(text)
-  }, [text, selectedModel, planMode, thinkingMode, agentMode, debouncedSave])
+  }, [text, selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend, debouncedSave])
 
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
 
@@ -99,6 +102,16 @@ export function InputArea() {
     return () => window.removeEventListener('attachFileContext', handler)
   }, [])
 
+  // Listen for editor text selection changes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { filePath: string; startLine: number; endLine: number; text: string } | null
+      setEditorSelection(detail)
+    }
+    window.addEventListener('editorSelection', handler)
+    return () => window.removeEventListener('editorSelection', handler)
+  }, [])
+
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
@@ -143,7 +156,12 @@ export function InputArea() {
 
     // Prepend attached file paths as @references
     const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
-    const userText = fileRefs ? `${fileRefs} ${trimmed}` : trimmed
+    // Include editor selection context if present
+    const selRef = editorSelection
+      ? `@${editorSelection.filePath}#${editorSelection.startLine}-${editorSelection.endLine}`
+      : ''
+    const refs = [fileRefs, selRef].filter(Boolean).join(' ')
+    const userText = refs ? `${refs} ${trimmed}` : trimmed
 
     // Agent mode: inject directive prefix for adaptive behavior
     const agentDirective = 'Think briefly, then give a concise and actionable answer.\n\n'
@@ -184,9 +202,20 @@ export function InputArea() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (showSlashPicker) return
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+    if (e.key === 'Enter') {
+      if (ctrlEnterSend) {
+        // Ctrl+Enter mode: send on Ctrl/Cmd+Enter, newline on plain Enter
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          handleSend()
+        }
+      } else {
+        // Default mode: send on Enter, newline on Shift+Enter
+        if (!e.shiftKey) {
+          e.preventDefault()
+          handleSend()
+        }
+      }
     }
   }
 
@@ -457,9 +486,32 @@ export function InputArea() {
         </button>
       </div>
 
-      {/* Attached files */}
-      {attachedFiles.length > 0 && (
+      {/* Attached files & editor selection */}
+      {(attachedFiles.length > 0 || editorSelection) && (
         <div className="flex gap-1.5 pb-2 flex-wrap">
+          {/* Editor selection chip */}
+          {editorSelection && (
+            <span
+              className="flex items-center gap-1"
+              style={{
+                padding: '2px 6px 2px 8px',
+                fontSize: '11px',
+                borderRadius: '4px',
+                background: 'rgba(100, 149, 237, 0.1)',
+                color: 'var(--vscode-textLink-foreground)',
+                border: '1px solid rgba(100, 149, 237, 0.2)',
+              }}
+            >
+              <span className="truncate" style={{ maxWidth: '220px' }}>
+                {editorSelection.filePath}#{editorSelection.startLine}-{editorSelection.endLine}
+              </span>
+              <span style={{ opacity: 0.6, fontSize: '10px' }}>
+                ({editorSelection.endLine - editorSelection.startLine + 1} lines)
+              </span>
+            </span>
+          )}
+
+          {/* Attached file chips */}
           {attachedFiles.map((file) => (
             <span
               key={file}
@@ -530,7 +582,7 @@ export function InputArea() {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder="Type your message to Claude Code..."
+          placeholder={ctrlEnterSend ? 'Type your message... (Ctrl+Enter to send)' : 'Type your message to Claude Code...'}
           rows={1}
           className="w-full resize-none border-none focus:outline-none"
           style={{
@@ -593,6 +645,28 @@ export function InputArea() {
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
             >
               MCP
+            </button>
+
+            <InputSep />
+
+            {/* Send mode toggle */}
+            <button
+              onClick={() => setCtrlEnterSend(!ctrlEnterSend)}
+              className="cursor-pointer border-none"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontWeight: 500,
+                opacity: 0.7,
+                color: ctrlEnterSend ? 'var(--chatui-accent)' : 'inherit',
+                transition: 'all 0.2s ease',
+                fontSize: '10px',
+              }}
+              title={ctrlEnterSend ? 'Click to switch: Enter to send' : 'Click to switch: Ctrl+Enter to send'}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+            >
+              {ctrlEnterSend ? 'Ctrl+⏎' : '⏎'}
             </button>
           </div>
 

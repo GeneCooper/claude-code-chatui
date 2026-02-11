@@ -298,6 +298,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'clipboardContent'; data: { text: string } }
   | { type: 'attachFileContext'; data: { filePath: string } }
   | { type: 'fileDropped'; data: { filePath: string } }
+  | { type: 'editorSelection'; data: { filePath: string; startLine: number; endLine: number; text: string } | null }
   | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
 
 export interface SettingsData {

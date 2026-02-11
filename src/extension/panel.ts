@@ -142,6 +142,28 @@ export class PanelProvider {
 
     // Real-time rate-limit updates from the main Claude process stderr
     this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
+
+    // Track editor text selection and send to webview
+    this._disposables.push(
+      vscode.window.onDidChangeTextEditorSelection((e) => {
+        const editor = e.textEditor;
+        const sel = editor.selection;
+        if (sel.isEmpty) {
+          this._postMessage({ type: 'editorSelection', data: null });
+        } else {
+          const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+          this._postMessage({
+            type: 'editorSelection',
+            data: {
+              filePath: relativePath,
+              startLine: sel.start.line + 1,
+              endLine: sel.end.line + 1,
+              text: editor.document.getText(sel),
+            },
+          });
+        }
+      }),
+    );
   }
 
   private _setupClaudeServiceHandlers(): void {
