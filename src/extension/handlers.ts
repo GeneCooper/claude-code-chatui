@@ -926,6 +926,19 @@ const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
   }
 };
 
+const handlePickWorkspaceFile: MessageHandler = async (_msg, ctx) => {
+  const result = await vscode.window.showOpenDialog({
+    canSelectMany: true,
+    openLabel: 'Attach File',
+    defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
+  });
+  if (!result || result.length === 0) return;
+  for (const uri of result) {
+    const relativePath = vscode.workspace.asRelativePath(uri, false);
+    ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
+  }
+};
+
 const handleResolveDroppedFile: MessageHandler = (_msg, ctx) => {
   const uriStr = _msg.uri as string;
   if (!uriStr) return;
@@ -987,6 +1000,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   revertFile: handleRevertFile,
   openCCUsageTerminal: handleOpenCCUsageTerminal,
   pickImageFile: handlePickImageFile,
+  pickWorkspaceFile: handlePickWorkspaceFile,
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
 };

@@ -396,6 +396,19 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Auto-scroll when container resizes (e.g. TodoDisplay appears/changes)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(() => {
+      if (isAutoScrollEnabled && isNearBottom) {
+        scrollToBottom({ behavior: 'instant' })
+      }
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [isAutoScrollEnabled, isNearBottom, scrollToBottom])
+
   return {
     containerRef, isNearBottom, isAutoScrollEnabled,
     scrollToBottom, enableAutoScroll, disableAutoScroll, toggleAutoScroll, checkIsAtBottom,

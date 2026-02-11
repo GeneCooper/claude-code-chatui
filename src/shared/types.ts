@@ -253,6 +253,7 @@ export type WebviewToExtensionMessage =
   | { type: 'refreshUsage' }
   | { type: 'openCCUsageTerminal' }
   | { type: 'pickImageFile' }
+  | { type: 'pickWorkspaceFile' }
   | { type: 'getClipboardText' }
   | { type: 'resolveDroppedFile'; uri: string };
 
