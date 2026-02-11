@@ -115,6 +115,7 @@ export class PanelProvider {
   private _messageProcessor: ClaudeMessageProcessor;
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
+  private _branchMetadata: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number } | undefined;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -302,12 +303,18 @@ export class PanelProvider {
   }
 
   /** Load conversation data directly (used by fork/PanelManager) */
-  loadConversationData(messages: ConversationMessage[], sessionId?: string, totalCost?: number): void {
+  loadConversationData(
+    messages: ConversationMessage[],
+    sessionId?: string,
+    totalCost?: number,
+    branchMetadata?: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number },
+  ): void {
     this._messageProcessor.resetSession();
     this._stateManager.resetSession();
 
     this._sessionId = sessionId;
     if (totalCost) this._stateManager.totalCost = totalCost;
+    this._branchMetadata = branchMetadata;
 
     for (const msg of messages) {
       this._messageProcessor.currentConversation.push({ ...msg });
@@ -348,6 +355,56 @@ export class PanelProvider {
     if (this._panelManager) {
       this._panelManager.createForkPanel(this, userInputIndex);
     }
+  }
+
+  editMessage(userInputIndex: number, newText: string): void {
+    if (this._stateManager.isProcessing) return;
+
+    const conversation = this._messageProcessor.currentConversation;
+    const pos = this._findUserInputPosition(conversation, userInputIndex);
+    if (pos === -1) return;
+
+    // Truncate to before this user input
+    if (pos > 0) {
+      this._messageProcessor.truncateConversation(pos - 1);
+    } else {
+      this._messageProcessor.resetSession();
+    }
+    this._sessionId = undefined;
+    this._stateManager.resetSession();
+    this._replayConversation();
+    // Send edited message
+    this._handleSendMessage(newText);
+  }
+
+  regenerateResponse(): void {
+    if (this._stateManager.isProcessing) return;
+
+    const conversation = this._messageProcessor.currentConversation;
+    // Find the last userInput
+    let lastUserPos = -1;
+    let lastUserText = '';
+    for (let i = conversation.length - 1; i >= 0; i--) {
+      if (conversation[i].messageType === 'userInput') {
+        lastUserPos = i;
+        const data = conversation[i].data as { text: string } | string;
+        lastUserText = typeof data === 'string' ? data : data.text;
+        break;
+      }
+    }
+    if (lastUserPos === -1 || !lastUserText) return;
+
+    // Truncate to before the last user input
+    if (lastUserPos > 0) {
+      this._messageProcessor.truncateConversation(lastUserPos - 1);
+    } else {
+      this._messageProcessor.resetSession();
+    }
+    this._sessionId = undefined;
+    this._stateManager.resetSession();
+    this._replayConversation();
+    // Re-send the same message
+    this._handleSendMessage(lastUserText);
   }
 
   dispose(): void {
@@ -401,6 +458,8 @@ export class PanelProvider {
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
       forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
+      editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
+      regenerateResponse: () => this.regenerateResponse(),
     };
   }
 
@@ -453,6 +512,14 @@ export class PanelProvider {
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
+
+      // Desktop notification when panel is not visible
+      const notifEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI')
+        .get<boolean>('notifications.enabled', true);
+      const isVisible = this._panel?.visible ?? this._webviewView?.visible ?? false;
+      if (notifEnabled && !isVisible) {
+        vscode.window.showInformationMessage('Claude Code: Response complete');
+      }
     });
 
     this._claudeService.onError((error) => {
@@ -513,6 +580,7 @@ export class PanelProvider {
           sessionId: this._sessionId,
           totalCost: this._stateManager.totalCost,
           isProcessing: this._stateManager.isProcessing,
+          ...(this._branchMetadata ? { branchMetadata: this._branchMetadata } : {}),
         },
       });
     } else {

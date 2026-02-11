@@ -8,6 +8,7 @@ import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
 import type { UsageData } from '../shared/types'
+import { setLocale } from './i18n'
 
 // ============================================================================
 // VS Code API Bridge
@@ -62,6 +63,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
       sessionId?: string
       totalCost?: number
       isProcessing?: boolean
+      branchMetadata?: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number }
     }
     if (!data?.messages) return
 
@@ -91,6 +93,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
       isProcessing: data.isProcessing || false,
       totals: { ...state.totals, totalCost: data.totalCost || 0 },
       ...(todos ? { todos } : {}),
+      ...(data.branchMetadata ? { branchMetadata: data.branchMetadata } : {}),
     }))
 
     if (data.isProcessing) {
@@ -277,6 +280,11 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   activeFileChanged: (msg) => {
     const data = msg.data as { filePath: string; languageId: string } | null
     window.dispatchEvent(new CustomEvent('activeFileChanged', { detail: data }))
+  },
+
+  locale: (msg) => {
+    const data = msg.data as { locale: string }
+    if (data?.locale) setLocale(data.locale)
   },
 }
 

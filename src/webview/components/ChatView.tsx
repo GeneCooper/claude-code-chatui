@@ -25,9 +25,20 @@ export function ChatView({ onHintClick }: ChatViewProps) {
     postMessage({ type: 'rewindToMessage', userInputIndex })
   }, [])
 
+  const handleEdit = useCallback((userInputIndex: number, newText: string) => {
+    postMessage({ type: 'editMessage', userInputIndex, newText })
+  }, [])
+
+  const handleRegenerate = useCallback(() => {
+    postMessage({ type: 'regenerateResponse' })
+  }, [])
+
   return (
     <div
       ref={containerRef}
+      role="log"
+      aria-live="polite"
+      aria-label="Chat messages"
       className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 min-h-0"
     >
       {messages.length === 0 && (
@@ -40,6 +51,8 @@ export function ChatView({ onHintClick }: ChatViewProps) {
           isProcessing={isProcessing}
           onFork={handleFork}
           onRewind={handleRewind}
+          onEdit={handleEdit}
+          onRegenerate={handleRegenerate}
         />
       )}
     </div>

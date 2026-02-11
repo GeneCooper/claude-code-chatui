@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { useChatStore } from '../store'
+import { MODEL_CONTEXT_LIMIT } from '../../shared/constants'
+import { t } from '../i18n'
 
 const STATUS_PHRASES = [
-  'Claude is working',
-  'Analyzing your request',
-  'Thinking through this',
-  'Processing',
-  'Reasoning',
-  'Working on it',
+  () => t('chat.claudeWorking'),
+  () => t('chat.analyzing'),
+  () => t('chat.thinkingThrough'),
+  () => t('chat.processing'),
+  () => t('chat.reasoning'),
+  () => t('chat.workingOnIt'),
 ]
 
 function useProcessingText(isProcessing: boolean) {
@@ -33,8 +35,8 @@ function useProcessingText(isProcessing: boolean) {
     }
   }, [isProcessing])
 
-  if (!isProcessing) return 'Ask anything or type / for commands'
-  return STATUS_PHRASES[index] + '.'.repeat(dotCount)
+  if (!isProcessing) return t('status.askAnything')
+  return STATUS_PHRASES[index]() + '.'.repeat(dotCount)
 }
 
 export function StatusBar() {
@@ -65,6 +67,8 @@ export function StatusBar() {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         padding: '8px 12px',
         background: 'linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%)',
@@ -74,6 +78,22 @@ export function StatusBar() {
         fontWeight: 500,
       }}
     >
+      {/* Context window indicator */}
+      {(() => {
+        const totalUsed = tokens.totalTokensInput + tokens.totalTokensOutput
+        if (totalUsed === 0) return null
+        const pct = Math.min((totalUsed / MODEL_CONTEXT_LIMIT) * 100, 100)
+        const barColor = pct < 50 ? '#4ec9b0' : pct < 80 ? '#cca700' : '#e74c3c'
+        return (
+          <div
+            style={{ height: '3px', background: 'rgba(128,128,128,0.15)', borderRadius: '2px', marginBottom: '6px', overflow: 'hidden' }}
+            title={`Context: ${formatTokens(totalUsed)} / ${formatTokens(MODEL_CONTEXT_LIMIT)} (${pct.toFixed(1)}%)`}
+          >
+            <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: '2px', transition: 'width 0.3s ease, background 0.3s ease' }} />
+          </div>
+        )
+      })()}
+
       {/* Main status row */}
       <div
         className="flex items-center gap-2 cursor-pointer"
@@ -125,30 +145,30 @@ export function StatusBar() {
             borderTop: '1px solid var(--vscode-panel-border)',
           }}
         >
-          <span>Requests:</span>
+          <span>{t('status.requests')}</span>
           <span className="text-right">{totals.requestCount}</span>
-          <span>Total Cost:</span>
+          <span>{t('status.totalCost')}</span>
           <span className="text-right" style={{ fontWeight: 600 }}>{formatCost(totals.totalCost)}</span>
 
           {/* Token breakdown */}
           <span style={{ marginTop: '4px', gridColumn: '1 / -1', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '4px', fontWeight: 600 }}>
-            Tokens
+            {t('status.tokens')}
           </span>
-          <span>Input:</span>
+          <span>{t('status.input')}</span>
           <span className="text-right">{formatTokens(tokens.totalTokensInput)}</span>
-          <span>Output:</span>
+          <span>{t('status.output')}</span>
           <span className="text-right">{formatTokens(tokens.totalTokensOutput)}</span>
 
           {/* Current request tokens */}
           {tokens.currentInputTokens > 0 && (
             <>
-              <span style={{ opacity: 0.7 }}>Last Input:</span>
+              <span style={{ opacity: 0.7 }}>{t('status.lastInput')}</span>
               <span className="text-right" style={{ opacity: 0.7 }}>{formatTokens(tokens.currentInputTokens)}</span>
             </>
           )}
           {tokens.currentOutputTokens > 0 && (
             <>
-              <span style={{ opacity: 0.7 }}>Last Output:</span>
+              <span style={{ opacity: 0.7 }}>{t('status.lastOutput')}</span>
               <span className="text-right" style={{ opacity: 0.7 }}>{formatTokens(tokens.currentOutputTokens)}</span>
             </>
           )}
@@ -157,25 +177,25 @@ export function StatusBar() {
           {(tokens.cacheReadTokens > 0 || tokens.cacheCreationTokens > 0) && (
             <>
               <span style={{ marginTop: '4px', gridColumn: '1 / -1', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '4px', fontWeight: 600 }}>
-                Cache
+                {t('status.cache')}
               </span>
             </>
           )}
           {tokens.cacheReadTokens > 0 && (
             <>
-              <span style={{ color: '#4ec9b0' }}>Cache Read:</span>
+              <span style={{ color: '#4ec9b0' }}>{t('status.cacheRead')}</span>
               <span className="text-right" style={{ color: '#4ec9b0' }}>{formatTokens(tokens.cacheReadTokens)}</span>
             </>
           )}
           {tokens.cacheCreationTokens > 0 && (
             <>
-              <span style={{ color: '#cca700' }}>Cache Create:</span>
+              <span style={{ color: '#cca700' }}>{t('status.cacheCreate')}</span>
               <span className="text-right" style={{ color: '#cca700' }}>{formatTokens(tokens.cacheCreationTokens)}</span>
             </>
           )}
           {cacheSavingsPercent > 0 && (
             <>
-              <span style={{ color: '#4ec9b0' }}>Cache Savings:</span>
+              <span style={{ color: '#4ec9b0' }}>{t('status.cacheSavings')}</span>
               <span className="text-right" style={{ color: '#4ec9b0' }}>{cacheSavingsPercent}%</span>
             </>
           )}

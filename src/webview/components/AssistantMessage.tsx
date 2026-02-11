@@ -1,10 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
+import { MermaidBlock } from './MermaidBlock'
+import { t } from '../i18n'
 
 // Regex to detect file paths in text (Unix and Windows paths)
 const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-]+(?::\d+)?)/g
@@ -136,7 +141,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
 
   // Memoize markdown rendering — only re-parse when displayText actually changes
   const renderedMarkdown = useMemo(() => (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
       {displayText}
     </ReactMarkdown>
   ), [displayText])
@@ -157,9 +162,9 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
           transition: 'opacity 0.2s ease',
           color: 'var(--vscode-descriptionForeground)',
         }}
-        title="Copy message"
+        title={t('message.copyMessage')}
       >
-        {copied ? 'Copied!' : 'Copy'}
+        {copied ? t('message.copied') : t('message.copy')}
       </button>
 
       {/* Message content */}
@@ -301,7 +306,7 @@ function CopyButton({ text }: { text: string }) {
         e.currentTarget.style.opacity = copied ? '1' : '0.7'
       }}
     >
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? t('message.copied') : t('message.copy')}
     </button>
   )
 }
@@ -309,6 +314,11 @@ function CopyButton({ text }: { text: string }) {
 function CodeComponent({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) {
   const match = /language-(\w+)/.exec(className || '')
   const code = String(children).replace(/\n$/, '')
+
+  // Mermaid diagram rendering
+  if (match && match[1] === 'mermaid') {
+    return <MermaidBlock code={code} />
+  }
 
   if (match) {
     return (

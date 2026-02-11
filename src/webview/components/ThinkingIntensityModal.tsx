@@ -1,12 +1,14 @@
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { postMessage } from '../hooks'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { t } from '../i18n'
 
 const LEVELS = [
-  { key: 'think', label: 'Think', desc: 'Basic reasoning - fastest response', icon: '💡' },
-  { key: 'think-hard', label: 'Think Hard', desc: 'More detailed reasoning', icon: '🧠' },
-  { key: 'think-harder', label: 'Think Harder', desc: 'Extended reasoning for complex tasks', icon: '🔬' },
-  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
+  { key: 'think', label: 'Think', descKey: 'intensity.basic' as const, icon: '💡' },
+  { key: 'think-hard', label: 'Think Hard', descKey: 'intensity.detailed' as const, icon: '🧠' },
+  { key: 'think-harder', label: 'Think Harder', descKey: 'intensity.extended' as const, icon: '🔬' },
+  { key: 'ultrathink', label: 'Ultrathink', descKey: 'intensity.maximum' as const, icon: '⚡' },
 ]
 
 interface Props {
@@ -19,6 +21,8 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
   const setShow = useUIStore((s) => s.setShowIntensityModal)
   const currentIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const updateSettings = useSettingsStore((s) => s.updateSettings)
+
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, () => setShow(false))
 
   if (!show) return null
 
@@ -36,6 +40,10 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
 
   return (
     <div
+      ref={focusTrapRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="intensity-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -74,7 +82,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
             alignItems: 'center',
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: '14px' }}>Thinking Mode</span>
+          <span id="intensity-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>{t('intensity.title')}</span>
           <div className="flex items-center gap-3">
             {/* On/Off toggle */}
             <div
@@ -158,12 +166,12 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
                     {level.label}
                     {isSelected && (
                       <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--chatui-accent)' }}>
-                        Current
+                        {t('intensity.current')}
                       </span>
                     )}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', opacity: 0.7 }}>
-                    {level.desc}
+                    {t(level.descKey)}
                   </div>
                 </div>
               </button>

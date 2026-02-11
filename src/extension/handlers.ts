@@ -661,6 +661,8 @@ export interface MessageHandlerContext {
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
   forkFromMessage(userInputIndex: number): void;
+  editMessage(userInputIndex: number, newText: string): void;
+  regenerateResponse(): void;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -689,6 +691,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     type: 'platformInfo',
     data: { platform: process.platform, isWindows: process.platform === 'win32' },
   });
+  ctx.postMessage({ type: 'locale', data: { locale: vscode.env.language } });
   checkCliAvailable(ctx);
 
   // Send current settings so webview has correct initial state
@@ -1022,6 +1025,8 @@ const messageHandlers: Record<string, MessageHandler> = {
   createNewPanel: handleCreateNewPanel,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
+  editMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.editMessage(msg.userInputIndex as number, msg.newText as string),
+  regenerateResponse: (_msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.regenerateResponse(),
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

@@ -1,5 +1,6 @@
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
+import { t } from '../i18n'
 
 export function UsageIndicator() {
   const usageData = useUIStore((s) => s.usageData)
@@ -7,7 +8,7 @@ export function UsageIndicator() {
 
   if (!usageData) return null
 
-  const usageLabel = accountType === 'max' ? 'Max Plan Usage' : accountType === 'pro' ? 'Pro Plan Usage' : 'API Usage'
+  const usageLabel = accountType === 'max' ? t('usage.maxPlan') : accountType === 'pro' ? t('usage.proPlan') : t('usage.apiUsage')
 
   const sessionPercent = Math.round((usageData.currentSession.usageCost / usageData.currentSession.costLimit) * 100)
   const weeklyPercent = Math.round((usageData.weekly.costLikely / usageData.weekly.costLimit) * 100)
@@ -80,18 +81,18 @@ export function UsageIndicator() {
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--chatui-accent)' }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--vscode-descriptionForeground)' }}
           >
-            Refresh
+            {t('usage.refresh')}
           </button>
         </div>
 
         <UsageBar
-          label="Session (5h)"
+          label={t('usage.session')}
           percent={sessionPercent}
           resetTime={usageData.currentSession.resetsIn}
         />
 
         <UsageBar
-          label="Weekly (7d)"
+          label={t('usage.weekly')}
           percent={weeklyPercent}
           resetTime={usageData.weekly.resetsAt}
         />
@@ -117,7 +118,7 @@ export function UsageIndicator() {
             e.currentTarget.style.color = 'var(--vscode-descriptionForeground)'
           }}
         >
-          View Detailed Usage (ccusage)
+          {t('usage.viewDetailed')}
         </button>
       </div>
     </div>

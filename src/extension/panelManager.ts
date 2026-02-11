@@ -28,6 +28,7 @@ export class PanelManager {
       initialConversation?: ConversationMessage[];
       sessionId?: string;
       totalCost?: number;
+      branchMetadata?: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number };
     },
   ): PanelProvider {
     const panelId = `panel-${++this._panelCounter}`;
@@ -74,6 +75,7 @@ export class PanelManager {
         options.initialConversation,
         options.sessionId,
         options.totalCost,
+        options.branchMetadata,
       );
     }
 
@@ -91,6 +93,10 @@ export class PanelManager {
     this.createNewPanel(vscode.ViewColumn.Beside, false, {
       title,
       initialConversation: data.messages,
+      branchMetadata: {
+        parentConversationTitle: data.title,
+        forkIndex: userInputIndex,
+      },
     });
   }
 

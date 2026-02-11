@@ -7,6 +7,8 @@ import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { RestorePoint } from './RestorePoint'
+import { FollowUpSuggestions } from './FollowUpSuggestions'
+import { t } from '../i18n'
 
 // ============================================================================
 // Constants
@@ -178,16 +180,16 @@ function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }
 }
 
 const LOADING_PHRASES = [
-  'Analyzing',
-  'Thinking',
-  'Reasoning',
-  'Puzzling',
-  'Pondering',
-  'Processing',
-  'Working',
-  'Considering',
-  'Exploring',
-  'Evaluating',
+  t('thinking.analyzing'),
+  t('thinking.thinking'),
+  t('thinking.reasoning'),
+  t('thinking.puzzling'),
+  t('thinking.pondering'),
+  t('thinking.processing'),
+  t('thinking.working'),
+  t('thinking.considering'),
+  t('thinking.exploring'),
+  t('thinking.evaluating'),
 ]
 
 function LoadingIndicator() {
@@ -253,11 +255,12 @@ function LoadingIndicator() {
   )
 }
 
-function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessing }: {
+function MessageRenderer({ message, userInputIndex, onFork, onRewind, onEdit, isProcessing }: {
   message: ChatMessage
   userInputIndex?: number
   onFork?: (index: number) => void
   onRewind?: (index: number) => void
+  onEdit?: (index: number, newText: string) => void
   isProcessing?: boolean
 }) {
   switch (message.type) {
@@ -271,6 +274,7 @@ function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessi
           images={uImages}
           onFork={userInputIndex !== undefined && onFork ? () => onFork(userInputIndex) : undefined}
           onRewind={userInputIndex !== undefined && onRewind ? () => onRewind(userInputIndex) : undefined}
+          onEdit={userInputIndex !== undefined && onEdit ? (newText: string) => onEdit(userInputIndex, newText) : undefined}
           isProcessing={isProcessing}
         />
       )
@@ -285,12 +289,12 @@ function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessi
       return <LoadingIndicator />
     case 'compacting':
       return (message.data as { isCompacting: boolean }).isCompacting ? (
-        <div className="text-center text-xs opacity-50 py-1">Compacting conversation...</div>
+        <div className="text-center text-xs opacity-50 py-1">{t('compact.compacting')}</div>
       ) : null
     case 'compactBoundary':
       return (
         <div className="text-center text-xs opacity-40 py-1 border-t border-dashed border-(--vscode-panel-border)">
-          Conversation compacted
+          {t('compact.compacted')}
         </div>
       )
     case 'permissionRequest':
@@ -314,6 +318,7 @@ function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isColla
     <div style={{ marginBottom: '4px' }}>
       <button
         onClick={() => onToggle(step.id)}
+        aria-expanded={!isCollapsed}
         className="w-full text-left cursor-pointer border-none text-inherit"
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
@@ -348,6 +353,7 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
     <div style={{ marginBottom: '4px' }}>
       <button
         onClick={() => onTogglePlan(plan.id)}
+        aria-expanded={!isCollapsed}
         className="w-full text-left cursor-pointer border-none text-inherit"
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
@@ -403,9 +409,11 @@ interface Props {
   isProcessing: boolean
   onFork?: (userInputIndex: number) => void
   onRewind?: (userInputIndex: number) => void
+  onEdit?: (userInputIndex: number, newText: string) => void
+  onRegenerate?: () => void
 }
 
-export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Props) {
+export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEdit, onRegenerate }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
   const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
 
@@ -454,6 +462,16 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
     })
   }, [])
 
+  // Check if regenerate button should show: last item is a completed plan, not processing
+  const lastItem = items[items.length - 1]
+  const showRegenerate = !isProcessing && onRegenerate && lastItem?.kind === 'plan' && lastItem.status !== 'executing'
+
+  // Get last assistant text for follow-up suggestions
+  const lastAssistantText = useMemo(() => {
+    if (isProcessing || !lastItem || lastItem.kind !== 'plan') return ''
+    return lastItem.assistantMessage.type === 'output' ? String(lastItem.assistantMessage.data) : ''
+  }, [isProcessing, lastItem])
+
   return (
     <div className="space-y-4">
       {items.map((item) => {
@@ -466,6 +484,7 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
               userInputIndex={uiIdx}
               onFork={onFork}
               onRewind={onRewind}
+              onEdit={onEdit}
               isProcessing={isProcessing}
             />
           )
@@ -481,6 +500,48 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
           />
         )
       })}
+
+      {/* Regenerate button */}
+      {showRegenerate && (
+        <div className="flex items-center gap-2" style={{ animation: 'fadeIn 0.2s ease' }}>
+          <button
+            onClick={onRegenerate}
+            className="flex items-center gap-1.5 cursor-pointer border-none"
+            style={{
+              padding: '4px 12px',
+              borderRadius: '12px',
+              border: '1px solid var(--vscode-panel-border)',
+              background: 'rgba(128, 128, 128, 0.05)',
+              color: 'inherit',
+              fontSize: '11px',
+              opacity: 0.6,
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '1'
+              e.currentTarget.style.borderColor = 'var(--chatui-accent)'
+              e.currentTarget.style.color = 'var(--chatui-accent)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '0.6'
+              e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
+              e.currentTarget.style.color = 'inherit'
+            }}
+            title={t('message.regenerateResponse')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            {t('message.regenerate')}
+          </button>
+        </div>
+      )}
+
+      {/* Follow-up suggestions */}
+      {!isProcessing && lastAssistantText && (
+        <FollowUpSuggestions lastAssistantText={lastAssistantText} />
+      )}
     </div>
   )
 }

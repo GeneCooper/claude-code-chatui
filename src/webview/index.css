@@ -279,3 +279,41 @@ body {
 .loading-dot:nth-child(1) { animation-delay: -0.32s; }
 .loading-dot:nth-child(2) { animation-delay: -0.16s; }
 .loading-dot:nth-child(3) { animation-delay: 0s; }
+
+/* ===== Resize Handle ===== */
+.resize-handle {
+  height: 4px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+.resize-handle:hover {
+  background: var(--chatui-accent-subtle);
+}
+.resize-handle:active {
+  background: var(--chatui-accent);
+}
+
+/* ===== Screen reader only ===== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+.sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 4px 8px;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}

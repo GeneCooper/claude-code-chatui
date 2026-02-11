@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { postMessage } from '../hooks'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useUIStore } from '../store'
+import { t } from '../i18n'
 
 type Stage = 'prompt' | 'installing' | 'success' | 'error'
 
@@ -10,17 +12,19 @@ export function InstallModal() {
   const [stage, setStage] = useState<Stage>('prompt')
   const [errorMsg, setErrorMsg] = useState('')
 
+  const handleClose = () => {
+    setShow(false)
+    setStage('prompt')
+    setErrorMsg('')
+  }
+
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, handleClose)
+
   if (!show) return null
 
   const handleInstall = () => {
     setStage('installing')
     postMessage({ type: 'runInstallCommand' })
-  }
-
-  const handleClose = () => {
-    setShow(false)
-    setStage('prompt')
-    setErrorMsg('')
   }
 
   // Listen for install result
@@ -35,6 +39,10 @@ export function InstallModal() {
 
   return (
     <div
+      ref={focusTrapRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="install-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -85,11 +93,11 @@ export function InstallModal() {
                   <path d="M12 3V15M12 15L7 10M12 15L17 10" />
                 </svg>
               </div>
-              <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
-                Install Claude Code
+              <h3 id="install-modal-title" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
+                {t('install.title')}
               </h3>
               <p style={{ margin: '0 0 24px', fontSize: '12px', opacity: 0.6, lineHeight: 1.5 }}>
-                Claude Code CLI is required to use this extension
+                {t('install.required')}
               </p>
               <button
                 onClick={handleInstall}
@@ -109,7 +117,7 @@ export function InstallModal() {
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
               >
-                Install Now
+                {t('install.installNow')}
               </button>
               <a
                 href="https://docs.anthropic.com/en/docs/claude-code"
@@ -117,7 +125,7 @@ export function InstallModal() {
                 rel="noopener noreferrer"
                 style={{ fontSize: '11px', color: 'var(--chatui-accent)', opacity: 0.8, textDecoration: 'none' }}
               >
-                View documentation
+                {t('install.viewDocs')}
               </a>
             </>
           )}
@@ -130,8 +138,8 @@ export function InstallModal() {
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--chatui-accent)', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.16s' }} />
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--chatui-accent)', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.32s' }} />
               </div>
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: 500 }}>Installing Claude Code...</p>
-              <p style={{ margin: '4px 0 0', fontSize: '11px', opacity: 0.5 }}>This may take a minute</p>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 500 }}>{t('install.installing')}</p>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', opacity: 0.5 }}>{t('install.mayTakeMinute')}</p>
             </div>
           )}
 
@@ -143,9 +151,9 @@ export function InstallModal() {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600 }}>Installed</p>
+              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600 }}>{t('install.installed')}</p>
               <p style={{ margin: '0 0 20px', fontSize: '12px', opacity: 0.5 }}>
-                Now run <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>claude auth login</code> in terminal, then send a message to get started
+                {t('install.nowRun')} <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>claude auth login</code> {t('install.inTerminal')}
               </p>
               <button
                 onClick={handleClose}
@@ -159,7 +167,7 @@ export function InstallModal() {
                   cursor: 'pointer',
                 }}
               >
-                Close
+                {t('install.close')}
               </button>
             </>
           )}
@@ -174,12 +182,12 @@ export function InstallModal() {
                   <line x1="9" y1="9" x2="15" y2="15" />
                 </svg>
               </div>
-              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600 }}>Installation Failed</p>
+              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600 }}>{t('install.failed')}</p>
               <p style={{ margin: '0 0 12px', fontSize: '11px', opacity: 0.5, lineHeight: 1.4 }}>
                 {errorMsg}
               </p>
               <p style={{ margin: '0 0 20px', fontSize: '11px', opacity: 0.6 }}>
-                Try manually: <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>npm install -g @anthropic-ai/claude-code</code>
+                {t('install.tryManually')} <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>npm install -g @anthropic-ai/claude-code</code>
               </p>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                 <button
@@ -194,7 +202,7 @@ export function InstallModal() {
                     cursor: 'pointer',
                   }}
                 >
-                  Retry
+                  {t('install.retry')}
                 </button>
                 <button
                   onClick={handleClose}
@@ -208,7 +216,7 @@ export function InstallModal() {
                     cursor: 'pointer',
                   }}
                 >
-                  Close
+                  {t('install.close')}
                 </button>
               </div>
             </>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { computeLineDiff } from '../utils'
 import { postMessage } from '../hooks'
+import { t } from '../i18n'
 
 interface Props {
   oldContent: string
@@ -110,7 +111,7 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
             className="cursor-pointer border-none bg-transparent p-0 opacity-40 hover:opacity-100"
             style={{ color: 'inherit', lineHeight: 1 }}
             onClick={handleOpenDiff}
-            title="Open in VS Code diff editor"
+            title={t('diff.openInEditor')}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 3.5V2h5v1.5H2zm0 4V6h7v1.5H2zm0 4V10h5v1.5H2zm14-8V2H9v1.5h7zm0 4V6H9v1.5h7zm0 4V10H9v1.5h7z"/>
@@ -121,7 +122,7 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
               className="cursor-pointer border-none bg-transparent p-0 opacity-40 hover:opacity-100"
               style={{ color: 'inherit', lineHeight: 1 }}
               onClick={handleRevert}
-              title="Revert changes"
+              title={t('diff.revert')}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M3.5 2v3.5H0V7h4.5a1 1 0 001-1V2H3.5zM8 3a5 5 0 110 10A5 5 0 018 3zm0 1.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"/>
@@ -129,7 +130,7 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
             </button>
           )}
           {reverted && (
-            <span className="text-[10px] opacity-60">reverted</span>
+            <span className="text-[10px] opacity-60">{t('diff.reverted')}</span>
           )}
         </span>
       </div>

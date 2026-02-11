@@ -3,6 +3,8 @@ import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
 import { UsageIndicator } from './UsageIndicator'
+import { BranchIndicator } from './BranchIndicator'
+import { t } from '../i18n'
 
 declare global {
   interface Window { __ICON_URI__?: string }
@@ -25,11 +27,12 @@ function LogoIcon({ size = 20 }: { size?: number }) {
 export { LogoIcon }
 
 export function Header() {
-  const { sessionId, isProcessing } = useChatStore()
+  const { sessionId, isProcessing, branchMetadata } = useChatStore()
   const { activeView, setActiveView, requestStartTime } = useUIStore()
 
   return (
     <div
+      role="banner"
       className="flex items-center justify-between px-4 py-3"
       style={{
         borderBottom: '1px solid var(--chatui-glass-border)',
@@ -42,12 +45,15 @@ export function Header() {
       <div className="flex items-center gap-2">
         <LogoIcon size={20} />
         <h2 className="m-0" style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>
-          Claude Code ChatUI
+          {t('app.title')}
         </h2>
         {sessionId && (
           <span className="text-[10px] opacity-40 font-mono">
             {sessionId.substring(0, 8)}
           </span>
+        )}
+        {branchMetadata?.parentConversationTitle && (
+          <BranchIndicator parentTitle={branchMetadata.parentConversationTitle} />
         )}
         {isProcessing && (
           <>
@@ -69,7 +75,7 @@ export function Header() {
         <HeaderSep />
 
         <HeaderIconButton
-          title="New Chat"
+          title={t('header.newChat')}
           onClick={() => postMessage({ type: 'createNewPanel' })}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -79,7 +85,7 @@ export function Header() {
         </HeaderIconButton>
 
         <HeaderIconButton
-          title="History"
+          title={t('header.history')}
           active={activeView === 'history'}
           onClick={() => setActiveView(activeView === 'history' ? 'chat' : 'history')}
         >
@@ -146,6 +152,7 @@ function HeaderIconButton({
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       className="cursor-pointer border-none flex items-center justify-center"
       style={{
         background: 'transparent',

@@ -29,6 +29,9 @@ export const FILE_EDIT_TOOLS: string[] = ["Edit", "MultiEdit", "Write"];
 /** Tools whose results are hidden by default (unless error) */
 export const HIDDEN_RESULT_TOOLS: string[] = ["Read", "TodoWrite"];
 
+/** Default context window limit for Claude models (tokens) */
+export const MODEL_CONTEXT_LIMIT = 200_000;
+
 /** File extensions excluded from workspace file search */
 export const FILE_SEARCH_EXCLUDES =
     "**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/.next/**,**/.nuxt/**,**/target/**,**/bin/**,**/obj/**";

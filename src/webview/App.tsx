@@ -23,18 +23,21 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen" role="application">
+      <a href="#main-content" className="sr-only">Skip to content</a>
       <Header />
-      {activeView === 'chat' && (
-        <>
-          <ChatView onHintClick={handleHintClick} />
-          <TodoDisplay />
-          <StatusBar />
-          <InputArea />
-        </>
-      )}
-      {activeView === 'history' && <HistoryView />}
-      {activeView === 'settings' && <SettingsPanel />}
+      <div id="main-content">
+        {activeView === 'chat' && (
+          <>
+            <ChatView onHintClick={handleHintClick} />
+            <TodoDisplay />
+            <StatusBar />
+            <InputArea />
+          </>
+        )}
+        {activeView === 'history' && <HistoryView />}
+        {activeView === 'settings' && <SettingsPanel />}
+      </div>
       <MCPPanel />
       <InstallModal />
       <LoginModal />

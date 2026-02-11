@@ -1,10 +1,14 @@
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { t } from '../i18n'
 
 export function LoginModal() {
   const show = useUIStore((s) => s.showLoginModal)
   const setShow = useUIStore((s) => s.setShowLoginModal)
   const errorMessage = useUIStore((s) => s.loginErrorMessage)
+
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, () => setShow(false))
 
   if (!show) return null
 
@@ -15,6 +19,10 @@ export function LoginModal() {
 
   return (
     <div
+      ref={focusTrapRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -62,11 +70,11 @@ export function LoginModal() {
             </svg>
           </div>
 
-          <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
-            Authentication Required
+          <h3 id="login-modal-title" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
+            {t('login.title')}
           </h3>
           <p style={{ margin: '0 0 16px', fontSize: '12px', opacity: 0.6, lineHeight: 1.5 }}>
-            Please log in to Claude Code to continue
+            {t('login.message')}
           </p>
 
           {/* Error detail */}
@@ -110,11 +118,11 @@ export function LoginModal() {
             onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9' }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
           >
-            Open Login in Terminal
+            {t('login.openTerminal')}
           </button>
 
           <p style={{ margin: 0, fontSize: '11px', opacity: 0.5 }}>
-            Or run <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>claude auth login</code> manually
+            {t('login.orRun')} <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>claude auth login</code> {t('login.manually')}
           </p>
         </div>
       </div>

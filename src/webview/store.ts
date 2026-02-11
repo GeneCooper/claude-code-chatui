@@ -34,6 +34,12 @@ interface TotalsState {
   requestCount: number
 }
 
+export interface BranchMetadata {
+  parentSessionId?: string
+  parentConversationTitle?: string
+  forkIndex?: number
+}
+
 interface ChatState {
   messages: ChatMessage[]
   isProcessing: boolean
@@ -41,6 +47,7 @@ interface ChatState {
   tokens: TokenState
   totals: TotalsState
   todos: TodoItem[]
+  branchMetadata: BranchMetadata | null
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
@@ -52,7 +59,8 @@ interface ChatState {
   updateTotals: (totals: Partial<TotalsState>) => void
   updatePermissionStatus: (id: string, status: string) => void
   updateTodos: (todos: TodoItem[]) => void
-  restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
+  setBranchMetadata: (metadata: BranchMetadata | null) => void
+  restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number; branchMetadata?: BranchMetadata }) => void
 }
 
 let messageCounter = 0
@@ -62,6 +70,7 @@ export const useChatStore = create<ChatState>((set) => ({
   isProcessing: false,
   sessionId: null,
   todos: [],
+  branchMetadata: null,
   tokens: {
     totalTokensInput: 0, totalTokensOutput: 0,
     currentInputTokens: 0, currentOutputTokens: 0,
@@ -120,11 +129,14 @@ export const useChatStore = create<ChatState>((set) => ({
 
   updateTodos: (todos) => set({ todos }),
 
+  setBranchMetadata: (metadata) => set({ branchMetadata: metadata }),
+
   restoreState: (restored) =>
     set((state) => ({
       messages: restored.messages !== undefined ? restored.messages : state.messages,
       sessionId: restored.sessionId || null,
       totals: { totalCost: restored.totalCost || 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
+      branchMetadata: restored.branchMetadata || state.branchMetadata,
     })),
 }))
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { postMessage } from '../hooks'
+import { t } from '../i18n'
 
 const FILE_EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit']
 
@@ -70,7 +71,7 @@ export function ToolUseBlock({ data }: Props) {
             }}
             className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
-            Preview Diff
+            {t('tool.previewDiff')}
           </button>
         )}
         {rawInput?.file_path != null && (
@@ -81,7 +82,7 @@ export function ToolUseBlock({ data }: Props) {
             }}
             className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
-            Open
+            {t('tool.open')}
           </button>
         )}
       </div>

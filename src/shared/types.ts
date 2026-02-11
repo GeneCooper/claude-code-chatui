@@ -258,7 +258,9 @@ export type WebviewToExtensionMessage =
   | { type: 'pickImageFile' }
   | { type: 'pickWorkspaceFile' }
   | { type: 'getClipboardText' }
-  | { type: 'resolveDroppedFile'; uri: string };
+  | { type: 'resolveDroppedFile'; uri: string }
+  | { type: 'editMessage'; userInputIndex: number; newText: string }
+  | { type: 'regenerateResponse' };
 
 /** Messages from Extension to Webview */
 type ExtensionToWebviewMessage =
