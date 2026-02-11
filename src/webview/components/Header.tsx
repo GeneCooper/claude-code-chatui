@@ -73,12 +73,16 @@ export function Header() {
         )}
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center" style={{ fontSize: '11px' }}>
         {totals.totalCost > 0 && (
-          <span className="text-[11px] opacity-50">{formatCost(totals.totalCost)}</span>
+          <>
+            <span className="opacity-50">{formatCost(totals.totalCost)}</span>
+            <HeaderSep />
+          </>
         )}
 
         <UsageIndicator />
+        <HeaderSep />
 
         <HeaderIconButton
           title="History"
@@ -90,8 +94,7 @@ export function Header() {
             <polyline points="12 6 12 12 16 14" />
           </svg>
         </HeaderIconButton>
-
-        <span style={{ color: 'var(--vscode-panel-border)', opacity: 0.5, margin: '0 4px' }}>|</span>
+        <HeaderSep />
 
         <HeaderIconButton
           title="New Chat"
@@ -127,6 +130,10 @@ function RequestTimer({ startTime }: { startTime: number }) {
   return (
     <span className="text-[10px] opacity-40 font-mono">{formatTime(elapsed)}</span>
   )
+}
+
+function HeaderSep() {
+  return <span style={{ color: 'var(--vscode-panel-border)', opacity: 0.4, margin: '0 6px', userSelect: 'none', fontSize: '11px' }}>|</span>
 }
 
 function HeaderIconButton({

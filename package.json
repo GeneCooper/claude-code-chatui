@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -66,8 +66,8 @@
       "editor/title": [
         {
           "command": "claude-code-chatui.openChatWithFile",
-          "group": "navigation",
-          "when": "editorFocus"
+          "group": "navigation@1",
+          "when": "true"
         }
       ],
       "editor/context": [

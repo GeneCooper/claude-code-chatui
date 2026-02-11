@@ -46,7 +46,7 @@ export function PermissionDialog({ data }: Props) {
   }
 
   const handleEnableYolo = () => {
-    postMessage({ type: 'updateSettings', settings: { 'permissions.yoloMode': true } })
+    postMessage({ type: 'updateSettings', settings: { yoloMode: true } })
     handleRespond(true)
   }
 

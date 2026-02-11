@@ -371,6 +371,20 @@ export class UsageService implements vscode.Disposable {
     setTimeout(() => { if (!this._isDisposed) void this.fetchUsageData(); }, 1000);
   }
 
+  /** Accept rate-limit data parsed from the main Claude process stderr (real-time update). */
+  updateFromRateLimits(data: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number }): void {
+    if (this._isDisposed) return;
+    const rateLimits: RateLimitData = {
+      session5h: data.session5h ?? this._usageData?.currentSession.usageCost ?? 0,
+      weekly7d: data.weekly7d ?? this._usageData?.weekly.costLikely ?? 0,
+      reset5h: data.reset5h,
+      reset7d: data.reset7d,
+    };
+    this._saveToCache(rateLimits);
+    this._usageData = this._buildUsageDataFromRateLimits(rateLimits);
+    this._dataEmitter.emit('update', this._usageData);
+  }
+
   private async _doFetch(): Promise<void> {
     if (this._isDisposed) return;
     try {

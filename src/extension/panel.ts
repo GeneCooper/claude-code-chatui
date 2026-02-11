@@ -139,6 +139,9 @@ export class PanelProvider {
 
     this._usageService.onUsageUpdate((data) => { this._postMessage({ type: 'usageUpdate', data }); });
     this._usageService.onError((err) => { this._postMessage({ type: 'usageError', data: err }); });
+
+    // Real-time rate-limit updates from the main Claude process stderr
+    this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
   }
 
   private _setupClaudeServiceHandlers(): void {

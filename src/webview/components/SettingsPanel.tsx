@@ -21,7 +21,7 @@ export function SettingsPanel() {
     postMessage({ type: 'updateSettings', settings: { [key]: value } })
     if (key === 'thinking.intensity') {
       useSettingsStore.getState().updateSettings({ thinkingIntensity: value as string })
-    } else if (key === 'permissions.yoloMode') {
+    } else if (key === 'yoloMode') {
       useSettingsStore.getState().updateSettings({ yoloMode: value as boolean })
     }
   }
@@ -81,13 +81,13 @@ export function SettingsPanel() {
             <input
               type="checkbox"
               checked={yoloMode}
-              onChange={(e) => updateSetting('permissions.yoloMode', e.target.checked)}
+              onChange={(e) => updateSetting('yoloMode', e.target.checked)}
               className="accent-(--vscode-focusBorder)"
             />
             <span className="text-xs font-medium">YOLO Mode</span>
           </label>
           <p className="text-[10px] opacity-50 mt-1">
-            Skip all permission prompts. Use with caution â€?Claude will execute tools without asking.
+            Skip all permission prompts. Use with caution ï¿½?Claude will execute tools without asking.
           </p>
         </div>
 

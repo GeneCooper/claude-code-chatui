@@ -130,7 +130,7 @@ export function ToolResultBlock({ data }: Props) {
         >
           <span style={{ opacity: 0.8 }}>Tip: Enable YOLO mode to skip permission prompts</span>
           <button
-            onClick={() => postMessage({ type: 'updateSettings', settings: { 'permissions.yoloMode': true } })}
+            onClick={() => postMessage({ type: 'updateSettings', settings: { yoloMode: true } })}
             className="cursor-pointer border-none text-[10px] font-medium"
             style={{
               marginLeft: 'auto',

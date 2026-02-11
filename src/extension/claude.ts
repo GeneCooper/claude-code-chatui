@@ -141,6 +141,7 @@ export class ClaudeService implements vscode.Disposable {
   private _processEndEmitter = new EventEmitter();
   private _errorEmitter = new EventEmitter();
   private _permissionRequestEmitter = new EventEmitter();
+  private _rateLimitEmitter = new EventEmitter();
   private _accountInfoEmitter = new EventEmitter();
 
   constructor(private readonly _context: vscode.ExtensionContext) {
@@ -154,6 +155,7 @@ export class ClaudeService implements vscode.Disposable {
   onProcessEnd(cb: () => void): void { this._processEndEmitter.on('end', cb); }
   onError(cb: (err: string) => void): void { this._errorEmitter.on('error', cb); }
   onPermissionRequest(cb: (req: PermissionRequest) => void): void { this._permissionRequestEmitter.on('request', cb); }
+  onRateLimitUpdate(cb: (data: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number }) => void): void { this._rateLimitEmitter.on('ratelimit', cb); }
 
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
@@ -206,7 +208,7 @@ export class ClaudeService implements vscode.Disposable {
       detached: process.platform !== 'win32',
       cwd: options.cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+      env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1', ANTHROPIC_LOG: 'debug' },
     });
 
     this._process = claudeProcess;
@@ -266,7 +268,25 @@ export class ClaudeService implements vscode.Disposable {
       }
     });
 
-    claudeProcess.stderr?.on('data', (data: Buffer) => { errorOutput += data.toString(); });
+    claudeProcess.stderr?.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      errorOutput += chunk;
+      // Parse rate-limit headers from debug output in real-time
+      if (chunk.includes('ratelimit') || chunk.includes('utilization')) {
+        const rl: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number } = {};
+        const m5h = chunk.match(/anthropic-ratelimit-unified-5h-utilization["']?\s*[":]\s*["']?([0-9.]+)/i);
+        if (m5h) { const v = parseFloat(m5h[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.session5h = Math.min(1, v); }
+        const m7d = chunk.match(/anthropic-ratelimit-unified-7d-utilization["']?\s*[":]\s*["']?([0-9.]+)/i);
+        if (m7d) { const v = parseFloat(m7d[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.weekly7d = Math.min(1, v); }
+        const mr5h = chunk.match(/anthropic-ratelimit-unified-5h-reset["']?\s*[":]\s*["']?([0-9]+)/i);
+        if (mr5h) rl.reset5h = parseInt(mr5h[1], 10);
+        const mr7d = chunk.match(/anthropic-ratelimit-unified-7d-reset["']?\s*[":]\s*["']?([0-9]+)/i);
+        if (mr7d) rl.reset7d = parseInt(mr7d[1], 10);
+        if (rl.session5h !== undefined || rl.weekly7d !== undefined) {
+          this._rateLimitEmitter.emit('ratelimit', rl);
+        }
+      }
+    });
 
     claudeProcess.on('close', (code) => {
       if (!this._process) return;
@@ -478,5 +498,6 @@ export class ClaudeService implements vscode.Disposable {
     this._processEndEmitter.removeAllListeners();
     this._errorEmitter.removeAllListeners();
     this._permissionRequestEmitter.removeAllListeners();
+    this._rateLimitEmitter.removeAllListeners();
   }
 }
