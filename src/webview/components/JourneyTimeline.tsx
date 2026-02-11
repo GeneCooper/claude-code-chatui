@@ -348,6 +348,18 @@ export function JourneyTimeline({ messages, isProcessing }: Props) {
 
   const items = useMemo(() => buildTimelineItems(messages, isProcessing), [messages, isProcessing])
 
+  // After a batchReplay, auto-collapse all completed plan groups for performance
+  useEffect(() => {
+    const handler = () => {
+      const completedIds = items
+        .filter((it): it is PlanGroup => it.kind === 'plan' && it.status === 'completed')
+        .map((it) => it.id)
+      if (completedIds.length > 0) setCollapsedPlans(new Set(completedIds))
+    }
+    window.addEventListener('batchReplayDone', handler)
+    return () => window.removeEventListener('batchReplayDone', handler)
+  }, [items])
+
   const togglePlan = useCallback((id: string) => {
     setCollapsedPlans((prev) => {
       const next = new Set(prev)

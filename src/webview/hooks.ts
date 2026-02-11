@@ -97,6 +97,9 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
       useUIStore.getState().setRequestStartTime(Date.now())
       useChatStore.getState().addMessage({ type: 'loading', data: 'Claude is working...' })
     }
+
+    // Signal that this is a replay so the timeline can auto-collapse old groups
+    window.dispatchEvent(new CustomEvent('batchReplayDone', { detail: { messageCount: chatMessages.length } }))
   },
 
   userInput: (msg) => {
