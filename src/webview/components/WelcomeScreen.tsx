@@ -11,7 +11,7 @@ const HINTS = [
 
 const TIPS = [
   { key: '/', desc: 'Slash commands' },
-  { key: '@', desc: 'Reference files' },
+  { key: 'Drop', desc: 'Attach files' },
   { key: 'Think', desc: 'Deep reasoning mode' },
   { key: 'Plan', desc: 'Plan before executing' },
   { key: 'YOLO', desc: 'Skip permissions' },

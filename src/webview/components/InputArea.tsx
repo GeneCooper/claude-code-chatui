@@ -5,7 +5,6 @@ import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
-import { FilePicker } from './FilePicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
@@ -17,10 +16,13 @@ export function InputArea() {
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCountRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
-  const { showSlashPicker, showFilePicker, setShowSlashPicker, setShowFilePicker, draftText, setDraftText } = useUIStore()
+  const [attachedFiles, setAttachedFiles] = useState<string[]>([])
+  const { showSlashPicker, setShowSlashPicker, draftText, setDraftText } = useUIStore()
 
   const [slashFilter, setSlashFilter] = useState('')
 
@@ -85,12 +87,9 @@ export function InputArea() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { filePath: string }
       if (detail?.filePath) {
-        setText((prev) => {
-          const fileRef = `@${detail.filePath} `
-          // Avoid duplicate @file references
-          if (prev.includes(`@${detail.filePath}`)) return prev
-          return prev ? `${prev}${fileRef}` : fileRef
-        })
+        setAttachedFiles((prev) =>
+          prev.includes(detail.filePath) ? prev : [...prev, detail.filePath]
+        )
         textareaRef.current?.focus()
       }
     }
@@ -129,7 +128,8 @@ export function InputArea() {
 
   const handleSend = () => {
     const trimmed = text.trim()
-    if ((!trimmed && images.length === 0) || isProcessing) return
+    const hasFiles = attachedFiles.length > 0
+    if ((!trimmed && images.length === 0 && !hasFiles) || isProcessing) return
 
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
@@ -139,13 +139,17 @@ export function InputArea() {
       return
     }
 
+    // Prepend attached file paths as @references
+    const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
+    const fullText = fileRefs ? `${fileRefs} ${trimmed}` : trimmed
+
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
     // Optimistic update: immediately show message + processing state
     // This eliminates the IPC round-trip delay before the user sees their message
     const store = useChatStore.getState()
     markOptimisticUserInput()
-    store.addMessage({ type: 'userInput', data: { text: trimmed, images: imageData } })
+    store.addMessage({ type: 'userInput', data: { text: fullText, images: imageData } })
     store.setProcessing(true)
     store.addMessage({ type: 'loading', data: 'Claude is working...' })
     useUIStore.getState().setRequestStartTime(Date.now())
@@ -153,7 +157,7 @@ export function InputArea() {
     // Then tell extension to process
     postMessage({
       type: 'sendMessage',
-      text: trimmed,
+      text: fullText,
       planMode,
       thinkingMode,
       model: selectedModel !== 'default' ? selectedModel : undefined,
@@ -161,13 +165,14 @@ export function InputArea() {
     })
     setText('')
     setImages([])
+    setAttachedFiles([])
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
   const handleStop = () => { postMessage({ type: 'stopRequest' }) }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (showSlashPicker || showFilePicker) return
+    if (showSlashPicker) return
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -181,19 +186,8 @@ export function InputArea() {
     if (value === '/' || (value.startsWith('/') && !value.includes(' '))) {
       setSlashFilter(value.substring(1))
       setShowSlashPicker(true)
-      setShowFilePicker(false)
     } else if (!value.startsWith('/')) {
       setShowSlashPicker(false)
-    }
-
-    const cursorPos = e.target.selectionStart || 0
-    const textBefore = value.substring(0, cursorPos)
-    const atMatch = textBefore.match(/@(\S*)$/)
-    if (atMatch) {
-      setShowFilePicker(true)
-      setShowSlashPicker(false)
-    } else {
-      setShowFilePicker(false)
     }
   }
 
@@ -217,6 +211,8 @@ export function InputArea() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
+    dragCountRef.current = 0
+    setIsDragging(false)
 
     // Handle URI drops from VS Code explorer (text/uri-list)
     const uriList = e.dataTransfer.getData('text/uri-list')
@@ -243,6 +239,18 @@ export function InputArea() {
     e.dataTransfer.dropEffect = 'copy'
   }
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCountRef.current++
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCountRef.current--
+    if (dragCountRef.current === 0) setIsDragging(false)
+  }
+
   const addImageFile = (file: File) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -263,24 +271,6 @@ export function InputArea() {
     textareaRef.current?.focus()
   }
 
-  const handleFileSelect = (filePath: string) => {
-    const el = textareaRef.current
-    if (!el) return
-
-    const cursorPos = el.selectionStart || 0
-    const textBefore = text.substring(0, cursorPos)
-    const textAfter = text.substring(cursorPos)
-
-    const atIndex = textBefore.lastIndexOf('@')
-    if (atIndex >= 0) {
-      const newText = textBefore.substring(0, atIndex) + `@${filePath} ` + textAfter
-      setText(newText)
-    }
-
-    setShowFilePicker(false)
-    el.focus()
-  }
-
   const handleModelChange = (model: string) => {
     setSelectedModel(model)
     postMessage({ type: 'selectModel', model })
@@ -298,10 +288,11 @@ export function InputArea() {
       }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
     >
       {/* Pickers & Modals */}
       <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
-      <FilePicker onSelect={handleFileSelect} />
       <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
       <ModelSelectorModal
         show={showModelPicker}
@@ -426,15 +417,73 @@ export function InputArea() {
         </button>
       </div>
 
+      {/* Attached files */}
+      {attachedFiles.length > 0 && (
+        <div className="flex gap-1.5 pb-2 flex-wrap">
+          {attachedFiles.map((file) => (
+            <span
+              key={file}
+              className="flex items-center gap-1"
+              style={{
+                padding: '2px 6px 2px 8px',
+                fontSize: '11px',
+                borderRadius: '4px',
+                background: 'rgba(237, 110, 29, 0.1)',
+                color: 'var(--chatui-accent)',
+                border: '1px solid rgba(237, 110, 29, 0.2)',
+              }}
+            >
+              <span className="truncate" style={{ maxWidth: '200px' }}>{file}</span>
+              <button
+                onClick={() => setAttachedFiles((prev) => prev.filter((f) => f !== file))}
+                className="cursor-pointer border-none bg-transparent flex items-center justify-center"
+                style={{
+                  color: 'inherit',
+                  opacity: 0.6,
+                  padding: '0 2px',
+                  fontSize: '13px',
+                  lineHeight: 1,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Textarea container */}
       <div
         className="textarea-glow"
         style={{
           background: 'var(--vscode-input-background)',
-          border: '1px solid rgba(237, 110, 29, 0.3)',
+          border: isDragging ? '1px solid var(--chatui-accent)' : '1px solid rgba(237, 110, 29, 0.3)',
           borderRadius: 'var(--radius-md)',
+          position: 'relative',
         }}
       >
+        {/* Drag overlay */}
+        {isDragging && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 10,
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(237, 110, 29, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{ fontSize: '12px', color: 'var(--chatui-accent)', fontWeight: 500 }}>
+              Drop files to attach
+            </span>
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={text}
@@ -574,7 +623,7 @@ export function InputArea() {
                 <InputSep />
                 <button
                   onClick={handleSend}
-                  disabled={!text.trim() && images.length === 0}
+                  disabled={!text.trim() && images.length === 0 && attachedFiles.length === 0}
                   className="cursor-pointer flex items-center justify-center shrink-0"
                   style={{
                     background: 'transparent',
@@ -583,13 +632,13 @@ export function InputArea() {
                     width: '24px',
                     height: '24px',
                     borderRadius: 'var(--radius-md)',
-                    color: (text.trim() || images.length > 0) ? 'var(--chatui-accent)' : 'inherit',
-                    opacity: (text.trim() || images.length > 0) ? 1 : 0.4,
+                    color: (text.trim() || images.length > 0 || attachedFiles.length > 0) ? 'var(--chatui-accent)' : 'inherit',
+                    opacity: (text.trim() || images.length > 0 || attachedFiles.length > 0) ? 1 : 0.4,
                     transition: 'all 0.15s ease',
                   }}
                   title="Send message"
                   onMouseEnter={(e) => {
-                    if (text.trim() || images.length > 0) {
+                    if (text.trim() || images.length > 0 || attachedFiles.length > 0) {
                       e.currentTarget.style.background = 'rgba(100,149,237,0.1)'
                     }
                   }}
