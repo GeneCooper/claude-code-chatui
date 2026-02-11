@@ -137,10 +137,13 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
   if (currentPlan) {
     if (isProcessing) {
       currentPlan.status = 'executing'
-    } else if (currentPlan.steps.some((s) => s.toolResult && (s.toolResult.data as Record<string, unknown>)?.isError)) {
-      currentPlan.status = 'failed'
-    } else if (currentPlan.steps.length === 0 || currentPlan.steps.every((s) => s.toolResult)) {
-      currentPlan.status = 'completed'
+    } else {
+      // Not processing — use same logic as flushPlan
+      if (currentPlan.steps.some((s) => s.toolResult && (s.toolResult.data as Record<string, unknown>)?.isError)) {
+        currentPlan.status = 'failed'
+      } else {
+        currentPlan.status = 'completed'
+      }
     }
     timeline.push(currentPlan)
   }

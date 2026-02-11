@@ -9,7 +9,8 @@
       "Bash(npm run compile:*)",
       "Bash(npm run build:webview:*)",
       "Bash(ls -la \"e:\\\\project-liu\\\\claude-code-chatui\\\\src\\\\extension\"\" 2>/dev/null || echo \"Checking src directory structure \")",
-      "mcp__filesystem__read_text_file"
+      "mcp__filesystem__read_text_file",
+      "Bash(npx vsce:*)"
     ]
   }
 }
