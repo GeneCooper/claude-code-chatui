@@ -40,28 +40,18 @@ export function TodoDisplay() {
             {activeTask.activeForm || activeTask.content}
           </span>
         )}
-        {/* Progress bar */}
-        <div
+        {/* Progress percentage */}
+        <span
           className="ml-auto"
           style={{
-            width: '60px',
-            height: '4px',
-            borderRadius: '2px',
-            background: 'rgba(128, 128, 128, 0.2)',
-            overflow: 'hidden',
+            fontSize: '10px',
+            fontWeight: 600,
+            color: progress === 100 ? '#00d26a' : 'var(--chatui-accent)',
             flexShrink: 0,
           }}
         >
-          <div
-            style={{
-              width: `${progress}%`,
-              height: '100%',
-              borderRadius: '2px',
-              background: progress === 100 ? '#00d26a' : 'var(--chatui-accent)',
-              transition: 'width 0.3s ease',
-            }}
-          />
-        </div>
+          {progress}%
+        </span>
       </div>
 
       {/* Todo items - collapsible */}

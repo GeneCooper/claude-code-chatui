@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ComponentPropsWithoutRef } from 'react'
@@ -19,6 +20,48 @@ const markdownComponents = {
   pre: ({ children }: ComponentPropsWithoutRef<'pre'>) => <>{children}</>,
   a: LinkComponent,
   p: ParagraphWithPaths,
+  table: ({ children, ...props }: ComponentPropsWithoutRef<'table'>) => (
+    <div style={{ overflowX: 'auto', margin: '8px 0' }}>
+      <table
+        {...props}
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '12px',
+          border: '1px solid var(--vscode-panel-border)',
+          borderRadius: '6px',
+        }}
+      >
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children, ...props }: ComponentPropsWithoutRef<'th'>) => (
+    <th
+      {...props}
+      style={{
+        padding: '6px 10px',
+        textAlign: 'left',
+        fontWeight: 600,
+        borderBottom: '1px solid var(--vscode-panel-border)',
+        background: 'rgba(128, 128, 128, 0.1)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }: ComponentPropsWithoutRef<'td'>) => (
+    <td
+      {...props}
+      style={{
+        padding: '5px 10px',
+        borderBottom: '1px solid rgba(128, 128, 128, 0.1)',
+      }}
+    >
+      {children}
+    </td>
+  ),
 }
 
 export function AssistantMessage({ text }: Props) {
@@ -32,7 +75,7 @@ export function AssistantMessage({ text }: Props) {
 
   // Memoize markdown rendering — only re-parse when text actually changes
   const renderedMarkdown = useMemo(() => (
-    <ReactMarkdown components={markdownComponents}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
       {text}
     </ReactMarkdown>
   ), [text])

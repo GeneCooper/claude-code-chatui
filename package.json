@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -10,11 +10,20 @@
     "type": "git",
     "url": "https://github.com/GeneCooper/claude-code-chatui"
   },
-  "keywords": ["claude", "ai", "chat", "coding-assistant", "claude-code"],
+  "keywords": [
+    "claude",
+    "ai",
+    "chat",
+    "coding-assistant",
+    "claude-code"
+  ],
   "engines": {
     "vscode": "^1.109.0"
   },
-  "categories": ["AI", "Chat"],
+  "categories": [
+    "AI",
+    "Chat"
+  ],
   "activationEvents": [],
   "main": "./out/extension/extension.js",
   "contributes": {
@@ -60,8 +69,12 @@
     },
     "menus": {
       "commandPalette": [
-        { "command": "claude-code-chatui.openChat" },
-        { "command": "claude-code-chatui.openChatWithFile" }
+        {
+          "command": "claude-code-chatui.openChat"
+        },
+        {
+          "command": "claude-code-chatui.openChatWithFile"
+        }
       ],
       "editor/title": [
         {
@@ -83,7 +96,12 @@
       "properties": {
         "claudeCodeChatUI.thinking.intensity": {
           "type": "string",
-          "enum": ["think", "think-hard", "think-harder", "ultrathink"],
+          "enum": [
+            "think",
+            "think-hard",
+            "think-harder",
+            "ultrathink"
+          ],
           "default": "think",
           "description": "Thinking mode intensity level"
         },
@@ -112,21 +130,22 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "zustand": "^5.0.11",
-    "lucide-react": "^0.563.0",
     "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^16.1.0"
+    "react-syntax-highlighter": "^16.1.0",
+    "remark-gfm": "^4.0.1",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^25.2.2",
-    "@types/vscode": "^1.109.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/vscode": "^1.109.0",
     "@vitejs/plugin-react": "^5.1.1",
-    "@tailwindcss/vite": "^4.1.18",
     "@vscode/vsce": "^3.7.1",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
