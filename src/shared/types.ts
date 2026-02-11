@@ -253,7 +253,8 @@ export type WebviewToExtensionMessage =
   | { type: 'refreshUsage' }
   | { type: 'openCCUsageTerminal' }
   | { type: 'pickImageFile' }
-  | { type: 'getClipboardText' };
+  | { type: 'getClipboardText' }
+  | { type: 'resolveDroppedFile'; uri: string };
 
 /** Messages from Extension to Webview */
 export type ExtensionToWebviewMessage =
@@ -294,7 +295,9 @@ export type ExtensionToWebviewMessage =
   | { type: 'accountInfo'; data: { subscriptionType: 'pro' | 'max' | undefined } }
   | { type: 'platformInfo'; data: { platform: string; isWindows: boolean } }
   | { type: 'imageFilePicked'; data: { name: string; dataUrl: string } }
-  | { type: 'clipboardContent'; data: { text: string } };
+  | { type: 'clipboardContent'; data: { text: string } }
+  | { type: 'attachFileContext'; data: { filePath: string } }
+  | { type: 'fileDropped'; data: { filePath: string } };
 
 export interface SettingsData {
   thinkingIntensity: string;

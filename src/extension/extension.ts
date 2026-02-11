@@ -42,6 +42,21 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
+  // Register command to open chat with current file context
+  const openChatWithFileCmd = vscode.commands.registerCommand(
+    'claude-code-chatui.openChatWithFile',
+    () => {
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+        panelProvider.show(vscode.ViewColumn.Beside, false);
+        panelProvider.attachFileContext(relativePath);
+      } else {
+        panelProvider.show(vscode.ViewColumn.Beside);
+      }
+    },
+  );
+
   // Register sidebar webview provider
   const webviewProviderReg = vscode.window.registerWebviewViewProvider(
     'claude-code-chatui.chatView',
@@ -63,6 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     openChatCmd,
+    openChatWithFileCmd,
     loadConvCmd,
     webviewProviderReg,
     diffProvider,

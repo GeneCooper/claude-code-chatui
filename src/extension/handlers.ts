@@ -930,6 +930,16 @@ const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
   }
 };
 
+const handleResolveDroppedFile: MessageHandler = (_msg, ctx) => {
+  const uriStr = _msg.uri as string;
+  if (!uriStr) return;
+  try {
+    const uri = vscode.Uri.parse(uriStr);
+    const relativePath = vscode.workspace.asRelativePath(uri, false);
+    ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
+  } catch { /* ignore invalid URIs */ }
+};
+
 const handleGetClipboard: MessageHandler = async (_msg, ctx) => {
   try {
     const text = await vscode.env.clipboard.readText();
@@ -982,6 +992,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   openCCUsageTerminal: handleOpenCCUsageTerminal,
   pickImageFile: handlePickImageFile,
   getClipboardText: handleGetClipboard,
+  resolveDroppedFile: handleResolveDroppedFile,
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

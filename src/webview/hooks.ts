@@ -197,6 +197,20 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     window.dispatchEvent(new CustomEvent('clipboardContent', { detail: msg.data }))
   },
 
+  attachFileContext: (msg) => {
+    const data = msg.data as { filePath: string }
+    if (data?.filePath) {
+      window.dispatchEvent(new CustomEvent('attachFileContext', { detail: data }))
+    }
+  },
+
+  fileDropped: (msg) => {
+    const data = msg.data as { filePath: string }
+    if (data?.filePath) {
+      window.dispatchEvent(new CustomEvent('attachFileContext', { detail: data }))
+    }
+  },
+
   todosUpdate: (msg) => {
     const todosData = msg.data as { todos: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }> }
     useChatStore.getState().updateTodos(todosData.todos)

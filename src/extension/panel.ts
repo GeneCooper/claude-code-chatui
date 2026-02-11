@@ -196,24 +196,26 @@ export class PanelProvider {
 
   // ==================== Public API ====================
 
-  show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two): void {
+  show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two, preserveFocus = false): void {
     const actualColumn = column instanceof vscode.Uri ? vscode.ViewColumn.Two : column;
 
     if (this._panel) {
-      this._panel.reveal(actualColumn);
-      void vscode.commands.executeCommand('workbench.view.explorer');
+      this._panel.reveal(actualColumn, preserveFocus);
       return;
     }
 
     this._panel = vscode.window.createWebviewPanel(
-      'claudeCodeChatUI', 'Claude Code ChatUI', actualColumn,
+      'claudeCodeChatUI', 'Claude Code ChatUI',
+      { viewColumn: actualColumn, preserveFocus },
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [this._extensionUri] },
     );
 
     this._panel.webview.html = getWebviewHtml(this._panel.webview, this._extensionUri);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);
-    void vscode.commands.executeCommand('workbench.view.explorer');
+
+    // Lock the editor group so the chat panel stays pinned
+    void vscode.commands.executeCommand('workbench.action.lockEditorGroup');
   }
 
   showInWebview(webview: vscode.Webview, webviewView?: vscode.WebviewView): void {
@@ -226,6 +228,13 @@ export class PanelProvider {
     this._webviewView = webviewView;
     this._webview.html = getWebviewHtml(this._webview, this._extensionUri);
     this._setupWebviewMessageHandler(this._webview);
+  }
+
+  attachFileContext(relativePath: string): void {
+    // Send with a small delay to ensure webview is ready after show()
+    setTimeout(() => {
+      this._postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
+    }, 100);
   }
 
   closeMainPanel(): void {
@@ -415,3 +424,4 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     });
   }
 }
+

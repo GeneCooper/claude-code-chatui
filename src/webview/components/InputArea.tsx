@@ -78,6 +78,24 @@ export function InputArea() {
     return () => window.removeEventListener('clipboardContent', handler)
   }, [])
 
+  // Listen for file context attachment (from editor title button or file drop)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { filePath: string }
+      if (detail?.filePath) {
+        setText((prev) => {
+          const fileRef = `@${detail.filePath} `
+          // Avoid duplicate @file references
+          if (prev.includes(`@${detail.filePath}`)) return prev
+          return prev ? `${prev}${fileRef}` : fileRef
+        })
+        textareaRef.current?.focus()
+      }
+    }
+    window.addEventListener('attachFileContext', handler)
+    return () => window.removeEventListener('attachFileContext', handler)
+  }, [])
+
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
@@ -197,12 +215,31 @@ export function InputArea() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
+
+    // Handle URI drops from VS Code explorer (text/uri-list)
+    const uriList = e.dataTransfer.getData('text/uri-list')
+    if (uriList) {
+      for (const uri of uriList.split('\n').filter(Boolean)) {
+        postMessage({ type: 'resolveDroppedFile', uri: uri.trim() })
+      }
+      return
+    }
+
+    // Handle file drops (images from outside VS Code)
     for (const file of e.dataTransfer.files) {
-      if (file.type.startsWith('image/')) addImageFile(file)
+      if (file.type.startsWith('image/')) {
+        addImageFile(file)
+      } else if (file.name) {
+        // Non-image file drop — try to resolve as workspace file
+        postMessage({ type: 'resolveDroppedFile', uri: `file://${file.name}` })
+      }
     }
   }
 
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault() }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
 
   const addImageFile = (file: File) => {
     const reader = new FileReader()

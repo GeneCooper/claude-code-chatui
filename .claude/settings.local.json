@@ -3,7 +3,11 @@
     "allow": [
       "mcp__filesystem__list_directory",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "mcp__filesystem__directory_tree",
+      "Bash(npx tsc:*)",
+      "Bash(npm run compile:*)",
+      "Bash(npm run build:webview:*)"
     ]
   }
 }

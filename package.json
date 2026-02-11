@@ -24,6 +24,12 @@
         "title": "Open Claude Code ChatUI",
         "category": "Claude Code ChatUI",
         "icon": "media/icon.png"
+      },
+      {
+        "command": "claude-code-chatui.openChatWithFile",
+        "title": "Chat with this file",
+        "category": "Claude Code ChatUI",
+        "icon": "media/icon.png"
       }
     ],
     "keybindings": [
@@ -54,11 +60,19 @@
     },
     "menus": {
       "commandPalette": [
-        { "command": "claude-code-chatui.openChat" }
+        { "command": "claude-code-chatui.openChat" },
+        { "command": "claude-code-chatui.openChatWithFile" }
+      ],
+      "editor/title": [
+        {
+          "command": "claude-code-chatui.openChatWithFile",
+          "group": "navigation",
+          "when": "editorFocus"
+        }
       ],
       "editor/context": [
         {
-          "command": "claude-code-chatui.openChat",
+          "command": "claude-code-chatui.openChatWithFile",
           "group": "claude@1",
           "when": "editorTextFocus"
         }
