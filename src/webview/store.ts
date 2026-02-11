@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { UsageData } from '../shared/types'
+import type { UsageData, TabInfo } from '../shared/types'
 
 // ============================================================================
 // Chat Store
@@ -311,4 +311,36 @@ export const useUIStore = create<UIState>((set, get) => ({
   dismissNotification: (id) => {
     set({ notifications: get().notifications.filter((n) => n.id !== id) })
   },
+}))
+
+// ============================================================================
+// Tab Store
+// ============================================================================
+
+interface TabStoreState {
+  tabs: TabInfo[]
+  activeTabId: string | null
+  processingTabId: string | null
+
+  setTabs: (tabs: TabInfo[]) => void
+  setActiveTabId: (tabId: string) => void
+  addTab: (tab: TabInfo) => void
+  removeTab: (tabId: string) => void
+  updateTab: (tabId: string, updates: Partial<TabInfo>) => void
+  setProcessingTabId: (tabId: string | null) => void
+}
+
+export const useTabStore = create<TabStoreState>((set) => ({
+  tabs: [],
+  activeTabId: null,
+  processingTabId: null,
+
+  setTabs: (tabs) => set({ tabs }),
+  setActiveTabId: (tabId) => set({ activeTabId: tabId }),
+  addTab: (tab) => set((s) => ({ tabs: [...s.tabs, tab] })),
+  removeTab: (tabId) => set((s) => ({ tabs: s.tabs.filter((t) => t.tabId !== tabId) })),
+  updateTab: (tabId, updates) => set((s) => ({
+    tabs: s.tabs.map((t) => (t.tabId === tabId ? { ...t, ...updates } : t)),
+  })),
+  setProcessingTabId: (tabId) => set({ processingTabId: tabId }),
 }))

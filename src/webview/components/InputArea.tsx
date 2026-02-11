@@ -3,6 +3,7 @@ import { postMessage, getState, setState } from '../hooks'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
+import { useTabStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
@@ -22,6 +23,9 @@ export function InputArea() {
   const dragCountRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
+  const processingTabId = useTabStore((s) => s.processingTabId)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const busyElsewhere = !!(processingTabId && processingTabId !== activeTabId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
@@ -144,7 +148,7 @@ export function InputArea() {
   const handleSend = () => {
     const trimmed = text.trim()
     const hasFiles = attachedFiles.length > 0
-    if ((!trimmed && images.length === 0 && !hasFiles) || isProcessing) return
+    if ((!trimmed && images.length === 0 && !hasFiles) || isProcessing || busyElsewhere) return
 
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
@@ -191,6 +195,7 @@ export function InputArea() {
       thinkingMode: effectiveThinking,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
+      tabId: useTabStore.getState().activeTabId || undefined,
     })
     setText('')
     setImages([])
@@ -582,7 +587,7 @@ export function InputArea() {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={ctrlEnterSend ? 'Type your message... (Ctrl+Enter to send)' : 'Type your message to Claude Code...'}
+          placeholder={busyElsewhere ? 'Claude is busy in another tab...' : ctrlEnterSend ? 'Type your message... (Ctrl+Enter to send)' : 'Type your message to Claude Code...'}
           rows={1}
           className="w-full resize-none border-none focus:outline-none"
           style={{

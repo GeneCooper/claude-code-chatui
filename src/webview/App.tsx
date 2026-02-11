@@ -1,6 +1,6 @@
 import { useVSCode } from './hooks'
 import { useUIStore } from './store'
-import { Header } from './components/Header'
+import { Header, TabBar } from './components/Header'
 import { ChatView } from './components/ChatView'
 import { InputArea } from './components/InputArea'
 import { StatusBar } from './components/StatusBar'
@@ -25,6 +25,7 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen">
       <Header />
+      <TabBar />
       {activeView === 'chat' && (
         <>
           <ChatView onHintClick={handleHintClick} />

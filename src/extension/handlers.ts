@@ -4,6 +4,7 @@ import type {
   ConversationMessage,
   ToolUseData,
   MCPServerConfig,
+  TabInfo,
 } from '../shared/types';
 import { FILE_EDIT_TOOLS, FILE_SEARCH_EXCLUDES, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
@@ -650,7 +651,13 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
+  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], tabId?: string): void;
+  createNewTab(): string | undefined;
+  switchTab(tabId: string): void;
+  closeTab(tabId: string): void;
+  getTabsState(): { tabs: TabInfo[]; activeTabId: string; processingTabId: string | null };
+  activeTabId: string | null;
+  processingTabId: string | null;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -667,6 +674,7 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
     msg.planMode as boolean | undefined,
     msg.thinkingMode as boolean | undefined,
     msg.images as string[] | undefined,
+    (msg.tabId as string | undefined) || ctx.activeTabId || undefined,
   );
 };
 
@@ -681,7 +689,10 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   });
   checkCliAvailable(ctx);
 
-  // Replay current conversation to restore webview state (batched for performance)
+  // Send tab state
+  ctx.postMessage({ type: 'tabsState', data: ctx.getTabsState() });
+
+  // Replay active tab's conversation to restore webview state
   const conversation = ctx.messageProcessor.currentConversation;
   if (conversation.length > 0) {
     const replayMessages = conversation.map((msg) => ({ type: msg.messageType, data: msg.data }));
@@ -966,6 +977,10 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
   });
 }
 
+const handleCreateTab: MessageHandler = (_msg, ctx) => { ctx.createNewTab(); };
+const handleSwitchTab: MessageHandler = (msg, ctx) => { ctx.switchTab(msg.tabId as string); };
+const handleCloseTab: MessageHandler = (msg, ctx) => { ctx.closeTab(msg.tabId as string); };
+
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
   newSession: handleNewSession,
@@ -1003,6 +1018,9 @@ const messageHandlers: Record<string, MessageHandler> = {
   pickWorkspaceFile: handlePickWorkspaceFile,
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
+  createTab: handleCreateTab,
+  switchTab: handleSwitchTab,
+  closeTab: handleCloseTab,
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

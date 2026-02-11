@@ -222,13 +222,27 @@ export interface TodoItem {
 }
 
 // ============================================================================
+// Tab types
+// ============================================================================
+
+export interface TabInfo {
+  tabId: string;
+  title: string;
+  isProcessing: boolean;
+  sessionId: string | null;
+}
+
+// ============================================================================
 // Webview communication types
 // ============================================================================
 
 /** Messages from Webview to Extension */
 export type WebviewToExtensionMessage =
-  | { type: 'sendMessage'; text: string; planMode?: boolean; thinkingMode?: boolean; model?: string; images?: string[] }
+  | { type: 'sendMessage'; text: string; planMode?: boolean; thinkingMode?: boolean; model?: string; images?: string[]; tabId?: string }
   | { type: 'newSession' }
+  | { type: 'createTab' }
+  | { type: 'switchTab'; tabId: string }
+  | { type: 'closeTab'; tabId: string }
   | { type: 'stopRequest' }
   | { type: 'ready' }
   | { type: 'permissionResponse'; id: string; approved: boolean; alwaysAllow?: boolean }
@@ -300,7 +314,12 @@ type ExtensionToWebviewMessage =
   | { type: 'attachFileContext'; data: { filePath: string } }
   | { type: 'fileDropped'; data: { filePath: string } }
   | { type: 'editorSelection'; data: { filePath: string; startLine: number; endLine: number; text: string } | null }
-  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
+  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } }
+  | { type: 'tabsState'; data: { tabs: TabInfo[]; activeTabId: string; processingTabId: string | null } }
+  | { type: 'tabCreated'; data: { tabId: string; title: string } }
+  | { type: 'tabClosed'; data: { tabId: string; newActiveTabId: string } }
+  | { type: 'tabTitleUpdated'; data: { tabId: string; title: string } }
+  | { type: 'tabProcessingChanged'; data: { tabId: string; isProcessing: boolean } };
 
 interface SettingsData {
   thinkingIntensity: string;

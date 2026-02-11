@@ -11,7 +11,7 @@ import {
   type WebviewMessage,
 } from './handlers';
 import { createModuleLogger } from '../shared/logger';
-import type { ClaudeMessage, WebviewToExtensionMessage } from '../shared/types';
+import type { ClaudeMessage, WebviewToExtensionMessage, TabInfo } from '../shared/types';
 
 const log = createModuleLogger('PanelProvider');
 
@@ -101,6 +101,14 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 // PanelProvider
 // ============================================================================
 
+interface TabContext {
+  tabId: string;
+  title: string;
+  messageProcessor: ClaudeMessageProcessor;
+  stateManager: SessionStateManager;
+  sessionId: string | undefined;
+}
+
 export class PanelProvider {
   private _panel: vscode.WebviewPanel | undefined;
   private _webview: vscode.Webview | undefined;
@@ -108,9 +116,14 @@ export class PanelProvider {
   private _disposables: vscode.Disposable[] = [];
   private _messageHandlerDisposable: vscode.Disposable | undefined;
 
-  private readonly _messageProcessor: ClaudeMessageProcessor;
-  private readonly _stateManager = new SessionStateManager();
   private readonly _settingsManager = new SettingsManager();
+
+  // Multi-tab state
+  private _tabs = new Map<string, TabContext>();
+  private _activeTabId: string | null = null;
+  private _processingTabId: string | null = null;
+  private _tabCounter = 0;
+  private static readonly MAX_TABS = 10;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -122,18 +135,11 @@ export class PanelProvider {
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
   ) {
-    this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
     log.info('PanelProvider initialized');
 
-    const poster: MessagePoster = {
-      postMessage: (msg) => this._postMessage(msg),
-      sendAndSaveMessage: (msg) => this._postMessage(msg),
-    };
-
-    this._messageProcessor = new ClaudeMessageProcessor(poster, this._stateManager, {
-      onSessionIdReceived: (sessionId) => { this._claudeService.setSessionId(sessionId); },
-      onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
-    });
+    // Create default first tab
+    const defaultTab = this._createTab();
+    this._activeTabId = defaultTab.tabId;
 
     this._setupClaudeServiceHandlers();
 
@@ -166,23 +172,149 @@ export class PanelProvider {
     );
   }
 
+  // ==================== Tab Management ====================
+
+  private _createTab(title = 'New Chat'): TabContext {
+    const tabId = `tab-${++this._tabCounter}`;
+    const stateManager = new SessionStateManager();
+    stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
+
+    const poster: MessagePoster = {
+      postMessage: (msg) => this._postMessage(msg),
+      sendAndSaveMessage: (msg) => this._postMessage(msg),
+    };
+
+    const tab: TabContext = { tabId, title, stateManager, sessionId: undefined, messageProcessor: undefined as unknown as ClaudeMessageProcessor };
+
+    tab.messageProcessor = new ClaudeMessageProcessor(poster, stateManager, {
+      onSessionIdReceived: (sessionId) => {
+        this._claudeService.setSessionId(sessionId);
+        tab.sessionId = sessionId;
+      },
+      onProcessingComplete: (result) => { this._saveTabConversation(tabId, result.sessionId); },
+    });
+
+    this._tabs.set(tabId, tab);
+    return tab;
+  }
+
+  private _getActiveTab(): TabContext | undefined {
+    return this._activeTabId ? this._tabs.get(this._activeTabId) : undefined;
+  }
+
+  createNewTab(): string | undefined {
+    if (this._tabs.size >= PanelProvider.MAX_TABS) return undefined;
+
+    const tab = this._createTab();
+    this._activeTabId = tab.tabId;
+
+    this._postMessage({ type: 'tabCreated', data: { tabId: tab.tabId, title: tab.title } });
+    this._postMessage({ type: 'sessionCleared' });
+    return tab.tabId;
+  }
+
+  switchTab(tabId: string): void {
+    if (!this._tabs.has(tabId) || tabId === this._activeTabId) return;
+    this._activeTabId = tabId;
+    const tab = this._tabs.get(tabId)!;
+    this._replayTabConversation(tab);
+  }
+
+  closeTab(tabId: string): void {
+    const tab = this._tabs.get(tabId);
+    if (!tab) return;
+
+    // Save conversation before closing
+    this._saveTabConversation(tabId, tab.sessionId);
+
+    // If this tab is processing, stop the process
+    if (this._processingTabId === tabId) {
+      void this._claudeService.stopProcess();
+      this._processingTabId = null;
+    }
+
+    this._tabs.delete(tabId);
+
+    // If closing active tab, switch to another
+    if (this._activeTabId === tabId) {
+      const remaining = [...this._tabs.keys()];
+      if (remaining.length === 0) {
+        const fresh = this._createTab();
+        this._activeTabId = fresh.tabId;
+        this._postMessage({ type: 'tabCreated', data: { tabId: fresh.tabId, title: fresh.title } });
+        this._postMessage({ type: 'tabClosed', data: { tabId, newActiveTabId: fresh.tabId } });
+        this._postMessage({ type: 'sessionCleared' });
+        return;
+      }
+      this._activeTabId = remaining[remaining.length - 1];
+      this._postMessage({ type: 'tabClosed', data: { tabId, newActiveTabId: this._activeTabId } });
+      this.switchTab(this._activeTabId);
+    } else {
+      this._postMessage({ type: 'tabClosed', data: { tabId, newActiveTabId: this._activeTabId! } });
+    }
+  }
+
+  getTabsState(): { tabs: TabInfo[]; activeTabId: string; processingTabId: string | null } {
+    const tabs: TabInfo[] = [...this._tabs.values()].map((t) => ({
+      tabId: t.tabId,
+      title: t.title,
+      isProcessing: this._processingTabId === t.tabId,
+      sessionId: t.sessionId || null,
+    }));
+    return { tabs, activeTabId: this._activeTabId || '', processingTabId: this._processingTabId };
+  }
+
+  private _replayTabConversation(tab: TabContext): void {
+    const conversation = tab.messageProcessor.currentConversation;
+    if (conversation.length > 0) {
+      const replayMessages = conversation.map((msg) => ({ type: msg.messageType, data: msg.data }));
+      this._postMessage({
+        type: 'batchReplay',
+        data: {
+          messages: replayMessages,
+          sessionId: tab.sessionId,
+          totalCost: tab.stateManager.totalCost,
+          isProcessing: tab.stateManager.isProcessing,
+        },
+      });
+    } else {
+      this._postMessage({ type: 'sessionCleared' });
+    }
+  }
+
   private _setupClaudeServiceHandlers(): void {
     this._claudeService.onMessage((message: ClaudeMessage) => {
-      void this._messageProcessor.processMessage(message);
+      const tab = this._processingTabId ? this._tabs.get(this._processingTabId) : undefined;
+      if (tab) void tab.messageProcessor.processMessage(message);
     });
 
     this._claudeService.onProcessEnd(() => {
-      this._stateManager.isProcessing = false;
-      this._postMessage({ type: 'clearLoading' });
-      this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+      const tab = this._processingTabId ? this._tabs.get(this._processingTabId) : undefined;
+      if (tab) {
+        tab.stateManager.isProcessing = false;
+        // Only send chat messages if this is the active tab
+        if (this._processingTabId === this._activeTabId) {
+          this._postMessage({ type: 'clearLoading' });
+          this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+        }
+        this._postMessage({ type: 'tabProcessingChanged', data: { tabId: this._processingTabId, isProcessing: false } });
+      }
+      this._processingTabId = null;
       this._usageService.onClaudeSessionEnd();
     });
 
     this._claudeService.onError((error) => {
       log.error('Claude service error', { message: error });
-      this._stateManager.isProcessing = false;
-      this._postMessage({ type: 'clearLoading' });
-      this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+      const tab = this._processingTabId ? this._tabs.get(this._processingTabId) : undefined;
+      if (tab) {
+        tab.stateManager.isProcessing = false;
+        if (this._processingTabId === this._activeTabId) {
+          this._postMessage({ type: 'clearLoading' });
+          this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+        }
+        this._postMessage({ type: 'tabProcessingChanged', data: { tabId: this._processingTabId!, isProcessing: false } });
+      }
+      this._processingTabId = null;
 
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });
@@ -203,9 +335,6 @@ export class PanelProvider {
     });
 
     this._claudeService.onPermissionRequest((request) => {
-      // When YOLO mode is enabled, auto-approve permission requests that
-      // somehow still reach us (the CLI flag should prevent them, but this
-      // acts as a safety-net fallback).
       if (this._settingsManager.isYoloModeEnabled()) {
         log.info('YOLO mode: auto-approving permission', { tool: request.toolName });
         this._claudeService.sendPermissionResponse(request.requestId, true);
@@ -290,18 +419,25 @@ export class PanelProvider {
   }
 
   async newSession(): Promise<void> {
-    this._saveConversation(this._claudeService.sessionId);
-
-    this._stateManager.isProcessing = false;
-    this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
-    this._postMessage({ type: 'clearLoading' });
-
-    await this._claudeService.stopProcess();
-    this._claudeService.setSessionId(undefined);
-    this._messageProcessor.resetSession();
-    this._stateManager.resetSession();
-
-    this._postMessage({ type: 'sessionCleared' });
+    // Creates a new tab (or resets current if at max)
+    const created = this.createNewTab();
+    if (!created) {
+      // At max tabs — reset current tab instead
+      const tab = this._getActiveTab();
+      if (tab) {
+        this._saveTabConversation(tab.tabId, tab.sessionId);
+        if (this._processingTabId === tab.tabId) {
+          await this._claudeService.stopProcess();
+          this._processingTabId = null;
+        }
+        tab.messageProcessor.resetSession();
+        tab.stateManager.resetSession();
+        tab.sessionId = undefined;
+        tab.title = 'New Chat';
+        this._postMessage({ type: 'sessionCleared' });
+        this._postMessage({ type: 'tabTitleUpdated', data: { tabId: tab.tabId, title: tab.title } });
+      }
+    }
   }
 
   async loadConversation(filename: string): Promise<void> {
@@ -311,23 +447,39 @@ export class PanelProvider {
       return;
     }
 
-    await this._claudeService.stopProcess();
-    this._claudeService.setSessionId(conversation.sessionId);
-    this._messageProcessor.resetSession();
-    this._stateManager.restoreFromConversation({
+    // Create a new tab for the loaded conversation (or reuse current if at max)
+    let tab: TabContext;
+    if (this._tabs.size < PanelProvider.MAX_TABS) {
+      tab = this._createTab();
+    } else {
+      tab = this._getActiveTab()!;
+      tab.messageProcessor.resetSession();
+      tab.stateManager.resetSession();
+    }
+
+    tab.sessionId = conversation.sessionId;
+    tab.stateManager.restoreFromConversation({
       totalCost: conversation.totalCost,
       totalTokens: conversation.totalTokens,
     });
 
-    this._postMessage({ type: 'sessionCleared' });
+    // Populate the processor's conversation array for replay
     for (const msg of conversation.messages) {
-      this._postMessage({ type: msg.messageType, data: msg.data } as Record<string, unknown>);
+      tab.messageProcessor.currentConversation.push(msg);
     }
 
-    this._postMessage({
-      type: 'restoreState',
-      state: { sessionId: conversation.sessionId, totalCost: conversation.totalCost },
-    });
+    // Derive title from first user message
+    const firstUser = conversation.messages.find((m) => m.messageType === 'userInput');
+    if (firstUser) {
+      const text = typeof firstUser.data === 'string'
+        ? firstUser.data
+        : ((firstUser.data as Record<string, unknown>)?.text as string || '');
+      tab.title = text.substring(0, 30) + (text.length > 30 ? '...' : '');
+    }
+
+    this._activeTabId = tab.tabId;
+    this._postMessage({ type: 'tabCreated', data: { tabId: tab.tabId, title: tab.title } });
+    this._replayTabConversation(tab);
   }
 
   dispose(): void {
@@ -357,6 +509,14 @@ export class PanelProvider {
   }
 
   private _createHandlerContext() {
+    const activeTab = this._getActiveTab();
+    const fallbackStateManager = activeTab?.stateManager ?? new SessionStateManager();
+    const fallbackProcessor = activeTab?.messageProcessor ?? new ClaudeMessageProcessor(
+      { postMessage: () => {}, sendAndSaveMessage: () => {} },
+      fallbackStateManager,
+      { onSessionIdReceived: () => {}, onProcessingComplete: () => {} },
+    );
+
     return {
       claudeService: this._claudeService,
       conversationService: this._conversationService,
@@ -364,27 +524,43 @@ export class PanelProvider {
       backupService: this._backupService,
       usageService: this._usageService,
       permissionService: this._permissionService,
-      stateManager: this._stateManager,
+      stateManager: fallbackStateManager,
       settingsManager: this._settingsManager,
-      messageProcessor: this._messageProcessor,
+      messageProcessor: fallbackProcessor,
       extensionContext: this._context,
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
-        this._handleSendMessage(text, planMode, thinkingMode, images),
+      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], tabId?: string) =>
+        this._handleSendMessage(text, planMode, thinkingMode, images, tabId),
+      createNewTab: () => this.createNewTab(),
+      switchTab: (tabId: string) => this.switchTab(tabId),
+      closeTab: (tabId: string) => this.closeTab(tabId),
+      getTabsState: () => this.getTabsState(),
+      activeTabId: this._activeTabId,
+      processingTabId: this._processingTabId,
     };
   }
 
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
-    if (this._stateManager.isProcessing) return;
-    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
+  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], tabId?: string): void {
+    const effectiveTabId = tabId || this._activeTabId;
+    const tab = effectiveTabId ? this._tabs.get(effectiveTabId) : undefined;
+    if (!tab) return;
+    if (tab.stateManager.isProcessing) return;
+    if (this._processingTabId) return; // Another tab is processing
+
+    log.info('Sending message', { tabId: effectiveTabId, planMode, thinkingMode, hasImages: !!images?.length });
+
+    this._processingTabId = effectiveTabId;
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
 
-    this._stateManager.isProcessing = true;
-    this._stateManager.draftMessage = '';
+    tab.stateManager.isProcessing = true;
+    tab.stateManager.draftMessage = '';
+
+    // Set Claude service session to this tab's session
+    this._claudeService.setSessionId(tab.sessionId);
 
     void this._backupService.createCheckpoint(text).then((commit) => {
       if (commit) this._postMessage({ type: 'restorePoint', data: commit });
@@ -392,7 +568,7 @@ export class PanelProvider {
 
     // Save userInput to conversation so it replays on webview reload (tab switch)
     const userInputData = { text, images };
-    this._messageProcessor.currentConversation.push({
+    tab.messageProcessor.currentConversation.push({
       timestamp: new Date().toISOString(),
       messageType: 'userInput',
       data: userInputData,
@@ -400,6 +576,13 @@ export class PanelProvider {
     this._postMessage({ type: 'userInput', data: userInputData });
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
+    this._postMessage({ type: 'tabProcessingChanged', data: { tabId: effectiveTabId!, isProcessing: true } });
+
+    // Update tab title from first message
+    if (tab.title === 'New Chat') {
+      tab.title = text.substring(0, 30) + (text.length > 30 ? '...' : '');
+      this._postMessage({ type: 'tabTitleUpdated', data: { tabId: effectiveTabId!, title: tab.title } });
+    }
 
     const yoloMode = this._settingsManager.isYoloModeEnabled();
     const mcpServers = this._mcpService.loadServers();
@@ -407,21 +590,23 @@ export class PanelProvider {
 
     void this._claudeService.sendMessage(text, {
       cwd, planMode, thinkingMode, yoloMode,
-      model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
+      model: tab.stateManager.selectedModel !== 'default' ? tab.stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });
   }
 
-  private _saveConversation(sessionId?: string): void {
+  private _saveTabConversation(tabId: string, sessionId?: string): void {
     if (!sessionId) return;
-    const conversation = this._messageProcessor.currentConversation;
+    const tab = this._tabs.get(tabId);
+    if (!tab) return;
+    const conversation = tab.messageProcessor.currentConversation;
     if (conversation.length === 0) return;
 
     void this._conversationService.saveConversation(
       sessionId, conversation,
-      this._stateManager.totalCost,
-      this._stateManager.totalTokensInput,
-      this._stateManager.totalTokensOutput,
+      tab.stateManager.totalCost,
+      tab.stateManager.totalTokensInput,
+      tab.stateManager.totalTokensOutput,
     );
   }
 

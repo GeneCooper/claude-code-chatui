@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
+import { useTabStore } from '../store'
 import { postMessage } from '../hooks'
 import { UsageIndicator } from './UsageIndicator'
 
@@ -29,7 +30,7 @@ export function Header() {
   const { activeView, setActiveView, requestStartTime } = useUIStore()
 
   const handleNewSession = () => {
-    postMessage({ type: 'newSession' })
+    postMessage({ type: 'createTab' })
   }
 
   return (
@@ -166,5 +167,123 @@ function HeaderIconButton({
     >
       {children}
     </button>
+  )
+}
+
+export function TabBar() {
+  const tabs = useTabStore((s) => s.tabs)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const processingTabId = useTabStore((s) => s.processingTabId)
+
+  if (tabs.length <= 1) return null
+
+  return (
+    <div
+      className="flex items-center"
+      style={{
+        borderBottom: '1px solid var(--vscode-panel-border)',
+        background: 'var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-panel-background))',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        minHeight: '30px',
+        fontSize: '11px',
+        scrollbarWidth: 'none',
+      }}
+    >
+      {tabs.map((tab) => {
+        const isActive = tab.tabId === activeTabId
+        const isProcessing = tab.tabId === processingTabId
+        return (
+          <div
+            key={tab.tabId}
+            onClick={() => {
+              if (!isActive) {
+                useChatStore.getState().clearMessages()
+                useChatStore.getState().setSessionId(null)
+                useUIStore.getState().setRequestStartTime(null)
+                useTabStore.getState().setActiveTabId(tab.tabId)
+                postMessage({ type: 'switchTab', tabId: tab.tabId })
+              }
+            }}
+            className="flex items-center gap-1 cursor-pointer shrink-0 group"
+            style={{
+              padding: '0 10px',
+              height: '30px',
+              borderRight: '1px solid var(--vscode-panel-border)',
+              background: isActive
+                ? 'var(--vscode-tab-activeBackground, var(--vscode-editor-background))'
+                : 'transparent',
+              borderBottom: isActive
+                ? '2px solid var(--chatui-accent)'
+                : '2px solid transparent',
+              opacity: isActive ? 1 : 0.7,
+              transition: 'all 0.15s ease',
+              maxWidth: '160px',
+            }}
+            onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.opacity = '0.9' }}
+            onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.opacity = '0.7' }}
+          >
+            {isProcessing && (
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                style={{
+                  background: '#ff9500',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              />
+            )}
+            <span className="truncate" style={{ maxWidth: '120px' }}>{tab.title}</span>
+            {tabs.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  postMessage({ type: 'closeTab', tabId: tab.tabId })
+                }}
+                className="cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
+                style={{
+                  color: 'inherit',
+                  opacity: 0,
+                  padding: '0 2px',
+                  fontSize: '12px',
+                  lineHeight: 1,
+                  transition: 'opacity 0.1s',
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '3px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0'
+                  e.currentTarget.style.background = 'transparent'
+                }}
+                title="Close tab"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )
+      })}
+      <button
+        onClick={() => postMessage({ type: 'createTab' })}
+        className="cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
+        style={{
+          color: 'inherit',
+          opacity: 0.5,
+          padding: '0 8px',
+          height: '30px',
+          fontSize: '14px',
+          transition: 'opacity 0.15s',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5' }}
+        title="New tab"
+      >
+        +
+      </button>
+    </div>
   )
 }
