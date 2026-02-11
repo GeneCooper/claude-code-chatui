@@ -3,12 +3,12 @@ import { ClaudeService, PermissionService } from './claude';
 import { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { DiffContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider } from './panel';
+import { PanelManager } from './panelManager';
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log('Claude Code ChatUI extension is being activated');
 
-  // Initialize services
-  const claudeService = new ClaudeService(context);
+  // Initialize shared services
   const conversationService = new ConversationService(context);
   const mcpService = new MCPService(context);
   const backupService = new BackupService(context);
@@ -25,20 +25,33 @@ export function activate(context: vscode.ExtensionContext): void {
     new DiffContentProvider(),
   );
 
-  // Create the main panel provider
-  const panelProvider = new PanelProvider(
-    context.extensionUri, context, claudeService,
+  // Create panel manager for multi-panel support
+  const panelManager = new PanelManager(
+    context.extensionUri,
+    context,
+    conversationService,
+    mcpService,
+    backupService,
+    usageService,
+    permissionService,
+  );
+
+  // Sidebar gets its own dedicated ClaudeService + PanelProvider
+  const sidebarClaudeService = new ClaudeService(context);
+  const sidebarProvider = new PanelProvider(
+    context.extensionUri, context, sidebarClaudeService,
     conversationService, mcpService, backupService, usageService, permissionService,
+    panelManager,
   );
 
   // Create sidebar webview provider
-  const webviewProvider = new WebviewProvider(context.extensionUri, context, panelProvider);
+  const webviewProvider = new WebviewProvider(context.extensionUri, context, sidebarProvider);
 
-  // Register command to open chat
+  // Register command to open chat (creates new panel)
   const openChatCmd = vscode.commands.registerCommand(
     'claude-code-chatui.openChat',
     (column?: vscode.ViewColumn) => {
-      panelProvider.show(column);
+      panelManager.createNewPanel(column || vscode.ViewColumn.Two);
     },
   );
 
@@ -47,12 +60,10 @@ export function activate(context: vscode.ExtensionContext): void {
     'claude-code-chatui.openChatWithFile',
     () => {
       const editor = vscode.window.activeTextEditor;
+      const panel = panelManager.createNewPanel(vscode.ViewColumn.Beside, false);
       if (editor) {
         const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-        panelProvider.show(vscode.ViewColumn.Beside, false);
-        panelProvider.attachFileContext(relativePath);
-      } else {
-        panelProvider.show(vscode.ViewColumn.Beside);
+        panel.attachFileContext(relativePath);
       }
     },
   );
@@ -64,10 +75,13 @@ export function activate(context: vscode.ExtensionContext): void {
     { webviewOptions: { retainContextWhenHidden: true } },
   );
 
-  // Register command to load a specific conversation
+  // Register command to load a specific conversation (creates new panel)
   const loadConvCmd = vscode.commands.registerCommand(
     'claude-code-chatui.loadConversation',
-    (filename: string) => { panelProvider.show(); void panelProvider.loadConversation(filename); },
+    (filename: string) => {
+      const panel = panelManager.createNewPanel();
+      void panel.loadConversation(filename);
+    },
   );
 
   // Status bar item
@@ -84,11 +98,12 @@ export function activate(context: vscode.ExtensionContext): void {
     webviewProviderReg,
     diffProvider,
     statusBarItem,
-    claudeService,
+    sidebarClaudeService,
     permissionService,
     usageService,
     outputChannel,
-    { dispose: () => panelProvider.disposeAll() },
+    { dispose: () => panelManager.disposeAll() },
+    { dispose: () => sidebarProvider.disposeAll() },
   );
 
   console.log('Claude Code ChatUI extension activated successfully');

@@ -4,8 +4,8 @@ import type {
   ConversationMessage,
   ToolUseData,
   MCPServerConfig,
-  TabInfo,
 } from '../shared/types';
+import type { PanelManager } from './panelManager';
 import { FILE_EDIT_TOOLS, FILE_SEARCH_EXCLUDES, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
@@ -517,7 +517,7 @@ const DEFAULTS = {
   THINKING_ENABLED: true,
   THINKING_INTENSITY: 'think',
   THINKING_SHOW_PROCESS: true,
-  YOLO_MODE: false,
+  YOLO_MODE: true,
   AUTO_APPROVE_PATTERNS: [] as string[],
   MAX_HISTORY_SIZE: 100,
   STREAM_RESPONSES: true,
@@ -635,7 +635,7 @@ export class SettingsManager {
   }
 
   isYoloModeEnabled(): boolean {
-    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, false);
+    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
   }
 }
 
@@ -657,13 +657,8 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], tabId?: string): void;
-  createNewTab(): string | undefined;
-  switchTab(tabId: string): void;
-  closeTab(tabId: string): void;
-  getTabsState(): { tabs: TabInfo[]; activeTabId: string; processingTabId: string | null };
-  activeTabId: string | null;
-  processingTabId: string | null;
+  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
+  panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
   forkFromMessage(userInputIndex: number): void;
 }
@@ -682,7 +677,6 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
     msg.planMode as boolean | undefined,
     msg.thinkingMode as boolean | undefined,
     msg.images as string[] | undefined,
-    (msg.tabId as string | undefined) || ctx.activeTabId || undefined,
   );
 };
 
@@ -697,10 +691,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   });
   checkCliAvailable(ctx);
 
-  // Send tab state
-  ctx.postMessage({ type: 'tabsState', data: ctx.getTabsState() });
-
-  // Replay active tab's conversation to restore webview state
+  // Replay conversation to restore webview state
   const conversation = ctx.messageProcessor.currentConversation;
   if (conversation.length > 0) {
     const replayMessages = conversation.map((msg) => ({ type: msg.messageType, data: msg.data }));
@@ -985,9 +976,7 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
   });
 }
 
-const handleCreateTab: MessageHandler = (_msg, ctx) => { ctx.createNewTab(); };
-const handleSwitchTab: MessageHandler = (msg, ctx) => { ctx.switchTab(msg.tabId as string); };
-const handleCloseTab: MessageHandler = (msg, ctx) => { ctx.closeTab(msg.tabId as string); };
+const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
@@ -1026,9 +1015,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   pickWorkspaceFile: handlePickWorkspaceFile,
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
-  createTab: handleCreateTab,
-  switchTab: handleSwitchTab,
-  closeTab: handleCloseTab,
+  createNewPanel: handleCreateNewPanel,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
 };

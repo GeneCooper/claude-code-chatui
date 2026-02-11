@@ -4,7 +4,6 @@ import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
 import { useUIStore } from './store'
-import { useTabStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
@@ -276,49 +275,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 }
 
-// Tab-related message handlers (always processed regardless of active tab)
-const tabMessageHandlers: Record<string, WebviewMessageHandler> = {
-  tabsState: (msg) => {
-    const data = msg.data as { tabs: Array<{ tabId: string; title: string; isProcessing: boolean; sessionId: string | null }>; activeTabId: string; processingTabId: string | null }
-    useTabStore.getState().setTabs(data.tabs)
-    useTabStore.getState().setActiveTabId(data.activeTabId)
-    useTabStore.getState().setProcessingTabId(data.processingTabId)
-  },
-
-  tabCreated: (msg) => {
-    const data = msg.data as { tabId: string; title: string }
-    useTabStore.getState().addTab({ tabId: data.tabId, title: data.title, isProcessing: false, sessionId: null })
-    useTabStore.getState().setActiveTabId(data.tabId)
-  },
-
-  tabClosed: (msg) => {
-    const data = msg.data as { tabId: string; newActiveTabId: string }
-    useTabStore.getState().removeTab(data.tabId)
-    useTabStore.getState().setActiveTabId(data.newActiveTabId)
-  },
-
-  tabTitleUpdated: (msg) => {
-    const data = msg.data as { tabId: string; title: string }
-    useTabStore.getState().updateTab(data.tabId, { title: data.title })
-  },
-
-  tabProcessingChanged: (msg) => {
-    const data = msg.data as { tabId: string; isProcessing: boolean }
-    useTabStore.getState().updateTab(data.tabId, { isProcessing: data.isProcessing })
-    if (data.isProcessing) {
-      useTabStore.getState().setProcessingTabId(data.tabId)
-    } else if (useTabStore.getState().processingTabId === data.tabId) {
-      useTabStore.getState().setProcessingTabId(null)
-    }
-  },
-}
-
 function handleExtensionMessage(msg: ExtensionMessage): void {
-  // Tab management messages (always processed)
-  const tabHandler = tabMessageHandlers[msg.type]
-  if (tabHandler) { tabHandler(msg); return }
-
-  // Chat/global messages
   const handler = webviewMessageHandlers[msg.type]
   if (handler) handler(msg)
   else log.warn('Unhandled message type', { type: msg.type })

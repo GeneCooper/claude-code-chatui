@@ -114,13 +114,11 @@ export function StatusBar() {
           <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
         )}
 
-        {/* Context usage indicator */}
-        {tokens.currentInputTokens > 0 && (
-          <ContextIndicator
-            inputTokens={tokens.currentInputTokens}
-            isProcessing={isProcessing}
-          />
-        )}
+        {/* Context usage indicator — use last known input tokens as context size */}
+        <ContextIndicator
+          inputTokens={tokens.currentInputTokens || tokens.totalTokensInput}
+          isProcessing={isProcessing}
+        />
 
       </div>
 
