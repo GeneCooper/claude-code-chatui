@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { postMessage } from '../hooks'
+import { useChatStore } from '../store'
+import { markOptimisticPermission } from '../mutations'
 
 interface Props {
   data: Record<string, unknown>
@@ -36,6 +38,10 @@ export function PermissionDialog({ data }: Props) {
   }
 
   const handleRespond = (approved: boolean, alwaysAllow?: boolean) => {
+    // Optimistic: update UI immediately before extension confirms
+    markOptimisticPermission(id)
+    useChatStore.getState().updatePermissionStatus(id, approved ? 'approved' : 'denied')
+    // Then tell extension
     postMessage({ type: 'permissionResponse', id, approved, alwaysAllow: alwaysAllow || false })
   }
 

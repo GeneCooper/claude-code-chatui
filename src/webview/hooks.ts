@@ -6,6 +6,7 @@ import { useMCPStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
+import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
 import type { UsageData } from '../shared/types'
 
 // ============================================================================
@@ -53,7 +54,10 @@ type WebviewMessageHandler = (msg: ExtensionMessage) => void
 const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   ready: () => {},
 
-  userInput: (msg) => { useChatStore.getState().addMessage({ type: 'userInput', data: msg.data }) },
+  userInput: (msg) => {
+    if (consumeOptimisticUserInput()) return // Already added optimistically
+    useChatStore.getState().addMessage({ type: 'userInput', data: msg.data })
+  },
 
   output: (msg) => {
     useChatStore.getState().removeLoading()
@@ -65,7 +69,11 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useChatStore.getState().addMessage({ type: 'thinking', data: msg.data })
   },
 
-  loading: (msg) => { useChatStore.getState().addMessage({ type: 'loading', data: msg.data }) },
+  loading: (msg) => {
+    // Skip if a loading message already exists (optimistic update already added one)
+    const hasLoading = useChatStore.getState().messages.some((m) => m.type === 'loading')
+    if (!hasLoading) useChatStore.getState().addMessage({ type: 'loading', data: msg.data })
+  },
   clearLoading: () => { useChatStore.getState().removeLoading() },
 
   error: (msg) => {
@@ -81,7 +89,10 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   setProcessing: (msg) => {
     const isProcessing = (msg.data as { isProcessing: boolean }).isProcessing
-    useChatStore.getState().setProcessing(isProcessing)
+    const store = useChatStore.getState()
+    // Skip if already in the target state (optimistic update already applied)
+    if (store.isProcessing === isProcessing) return
+    store.setProcessing(isProcessing)
     useUIStore.getState().setRequestStartTime(isProcessing ? Date.now() : null)
   },
 
@@ -114,6 +125,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   updatePermissionStatus: (msg) => {
     const perm = msg.data as { id: string; status: string }
+    if (consumeOptimisticPermission(perm.id)) return // Already updated optimistically
     useChatStore.getState().updatePermissionStatus(perm.id, perm.status)
   },
 

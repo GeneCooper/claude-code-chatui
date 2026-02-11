@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import type { ChatMessage } from '../store'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
@@ -174,13 +174,35 @@ function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }
   )
 }
 
-function LoadingDots() {
+function LoadingIndicator() {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const formatTime = (s: number) => {
+    if (s < 60) return `${s}s`
+    return `${Math.floor(s / 60)}m ${s % 60}s`
+  }
+
   return (
-    <span className="inline-flex gap-0.5">
-      <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
-      <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
-      <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
-    </span>
+    <div
+      className="flex items-center gap-3 px-3 py-2 text-xs"
+      style={{ opacity: 0.6 }}
+    >
+      <span
+        className="inline-block w-3 h-3 rounded-full"
+        style={{
+          border: '2px solid rgba(255,255,255,0.2)',
+          borderTopColor: 'var(--chatui-accent)',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
+      <span>Claude is thinking...</span>
+      <span style={{ opacity: 0.5, fontSize: '10px' }}>{formatTime(elapsed)}</span>
+    </div>
   )
 }
 
@@ -199,12 +221,7 @@ function MessageRenderer({ message }: { message: ChatMessage }) {
         </div>
       )
     case 'loading':
-      return (
-        <div className="flex items-center gap-2 px-3 py-2 text-sm opacity-60">
-          <LoadingDots />
-          {String(message.data)}
-        </div>
-      )
+      return <LoadingIndicator />
     case 'compacting':
       return (message.data as { isCompacting: boolean }).isCompacting ? (
         <div className="text-center text-xs opacity-50 py-1">Compacting conversation...</div>
@@ -296,7 +313,7 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
       {!isCollapsed && (
         <div style={{ paddingLeft: '12px', borderLeft: '1px solid rgba(255, 255, 255, 0.06)', marginLeft: '10px', marginTop: '4px' }}>
           {plan.assistantMessage.type === 'output' && (
-            <AssistantMessage text={String(plan.assistantMessage.data)} />
+            <AssistantMessage text={String(plan.assistantMessage.data)} timestamp={plan.assistantMessage.timestamp} />
           )}
           {plan.thinkingMessage && <ThinkingBlock text={String(plan.thinkingMessage.data)} />}
           {plan.assistantMessage.type === 'thinking' && !plan.thinkingMessage && (

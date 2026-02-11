@@ -3,6 +3,7 @@ import { postMessage, getState, setState } from '../hooks'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
+import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { FilePicker } from './FilePicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
@@ -125,6 +126,17 @@ export function InputArea() {
     }
 
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
+
+    // Optimistic update: immediately show message + processing state
+    // This eliminates the IPC round-trip delay before the user sees their message
+    const store = useChatStore.getState()
+    markOptimisticUserInput()
+    store.addMessage({ type: 'userInput', data: { text: trimmed, images: imageData } })
+    store.setProcessing(true)
+    store.addMessage({ type: 'loading', data: 'Claude is working...' })
+    useUIStore.getState().setRequestStartTime(Date.now())
+
+    // Then tell extension to process
     postMessage({
       type: 'sendMessage',
       text: trimmed,

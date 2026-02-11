@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -10,10 +10,32 @@ const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-
 
 interface Props {
   text: string
+  timestamp?: string
 }
 
-export function AssistantMessage({ text }: Props) {
+export function AssistantMessage({ text, timestamp }: Props) {
   const [copied, setCopied] = useState(false)
+
+  // Typewriter effect: reveal text progressively for new messages
+  const isNewMessage = !!timestamp && (Date.now() - new Date(timestamp).getTime()) < 2000
+  const [revealedLength, setRevealedLength] = useState(isNewMessage ? 0 : text.length)
+  const rafRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (revealedLength >= text.length) return
+
+    // Complete reveal in ~1.5s regardless of length, minimum 3 chars/frame
+    const charsPerFrame = Math.max(3, Math.ceil(text.length / 100))
+
+    rafRef.current = requestAnimationFrame(() => {
+      setRevealedLength((prev) => Math.min(prev + charsPerFrame, text.length))
+    })
+
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [text.length, revealedLength])
+
+  const displayText = revealedLength >= text.length ? text : text.substring(0, revealedLength)
+  const isRevealing = revealedLength < text.length
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(text)
@@ -55,8 +77,17 @@ export function AssistantMessage({ text }: Props) {
             p: ParagraphWithPaths,
           }}
         >
-          {text}
+          {displayText}
         </ReactMarkdown>
+        {isRevealing && (
+          <span
+            className="inline-block w-0.5 h-4 align-middle"
+            style={{
+              background: 'var(--chatui-accent)',
+              animation: 'blink 0.8s step-end infinite',
+            }}
+          />
+        )}
       </div>
     </div>
   )
