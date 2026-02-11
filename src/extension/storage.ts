@@ -151,7 +151,41 @@ export class ConversationService {
 
   getConversationList(): ConversationIndexEntry[] {
     const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
+    // Auto-rebuild entries with missing firstUserMessage (one-time migration)
+    const needsRebuild = index.some((e) => !e.firstUserMessage);
+    if (needsRebuild) { void this._rebuildIndex(); }
     return [...index].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime());
+  }
+
+  private async _rebuildIndex(): Promise<void> {
+    if (!fs.existsSync(this._conversationsDir)) return;
+    const files = fs.readdirSync(this._conversationsDir).filter((f) => f.endsWith('.json'));
+    const newIndex: ConversationIndexEntry[] = [];
+    for (const file of files) {
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(this._conversationsDir, file), 'utf8')) as ConversationData;
+        let firstUserMessage = '';
+        let lastUserMessage = '';
+        for (const msg of data.messages) {
+          if (msg.messageType === 'userInput') {
+            const text = typeof msg.data === 'string'
+              ? msg.data
+              : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
+            if (text && !firstUserMessage) firstUserMessage = text;
+            if (text) lastUserMessage = text;
+          }
+        }
+        newIndex.push({
+          filename: data.filename || file, sessionId: data.sessionId,
+          startTime: data.startTime || data.endTime, endTime: data.endTime,
+          messageCount: data.messageCount, totalCost: data.totalCost,
+          firstUserMessage: firstUserMessage.substring(0, 100),
+          lastUserMessage: lastUserMessage.substring(0, 100),
+        });
+      } catch { /* skip corrupted files */ }
+    }
+    const sorted = newIndex.sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime()).slice(0, 100);
+    await this._context.globalState.update('claude.conversationIndex', sorted);
   }
 
   async deleteConversation(filename: string): Promise<boolean> {
@@ -195,9 +229,11 @@ export class ConversationService {
     let lastUserMessage = '';
     for (const msg of data.messages) {
       if (msg.messageType === 'userInput') {
-        const text = typeof msg.data === 'string' ? msg.data : '';
-        if (!firstUserMessage) firstUserMessage = text;
-        lastUserMessage = text;
+        const text = typeof msg.data === 'string'
+          ? msg.data
+          : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
+        if (text && !firstUserMessage) firstUserMessage = text;
+        if (text) lastUserMessage = text;
       }
     }
     const filtered = index.filter((e) => e.sessionId !== data.sessionId);

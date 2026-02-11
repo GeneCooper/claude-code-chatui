@@ -512,51 +512,60 @@ export function InputArea() {
             {/* Slash command button */}
             <button
               onClick={() => { setShowSlashPicker(true); setSlashFilter('') }}
-              className="cursor-pointer border-none flex items-center justify-center"
+              className="cursor-pointer flex items-center justify-center"
               style={{
                 background: 'transparent',
-                padding: '0 6px',
+                border: '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
+                padding: '0 8px',
                 height: '24px',
-                borderRadius: 'var(--radius-sm)',
+                borderRadius: 'var(--radius-md)',
                 fontSize: '13px',
                 fontWeight: 600,
                 color: 'inherit',
+                opacity: 0.7,
                 transition: 'all 0.15s ease',
               }}
               title="Slash commands"
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                e.currentTarget.style.opacity = '1'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.opacity = '0.7'
+              }}
             >
               /
             </button>
 
-            <InputSep />
-
             {/* Stop button (only visible when processing) */}
             {isProcessing && (
-              <button
-                onClick={handleStop}
-                className="cursor-pointer border-none flex items-center justify-center gap-1 shrink-0"
-                style={{
-                  background: 'transparent',
-                  color: '#e74c3c',
-                  border: '1px solid rgba(231, 76, 60, 0.3)',
-                  padding: '0 8px',
-                  height: '24px',
-                  fontSize: '12px',
-                  borderRadius: 'var(--radius-md)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
-                Stop
-              </button>
+              <>
+                <InputSep />
+                <button
+                  onClick={handleStop}
+                  className="cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                  style={{
+                    background: 'transparent',
+                    color: '#e74c3c',
+                    border: '1px solid rgba(231, 76, 60, 0.3)',
+                    padding: '0 8px',
+                    height: '24px',
+                    fontSize: '12px',
+                    borderRadius: 'var(--radius-md)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+                  Stop
+                </button>
+              </>
             )}
 
             {/* Send button (only visible when not processing) */}
@@ -599,5 +608,17 @@ export function InputArea() {
 }
 
 function InputSep() {
-  return <span style={{ color: 'var(--vscode-panel-border)', opacity: 0.4, margin: '0 4px', userSelect: 'none', fontSize: '11px' }}>|</span>
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: '1px',
+        height: '12px',
+        background: 'var(--vscode-panel-border, rgba(255,255,255,0.2))',
+        opacity: 0.5,
+        margin: '0 6px',
+        verticalAlign: 'middle',
+      }}
+    />
+  )
 }

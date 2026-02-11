@@ -27,7 +27,7 @@ export function UsageIndicator() {
       <div
         className="flex items-center gap-1"
         style={{
-          padding: '4px 6px',
+          padding: '0 6px',
           borderRadius: 'var(--radius-sm)',
           fontSize: '10px',
           fontWeight: 500,
@@ -35,6 +35,8 @@ export function UsageIndicator() {
           color: indicatorColor,
           cursor: 'default',
           transition: 'all 0.2s ease',
+          height: '28px',
+          lineHeight: '28px',
         }}
         title={`Usage: ${sessionPercent}% (5h) / ${weeklyPercent}% (7d)`}
       >

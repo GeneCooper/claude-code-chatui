@@ -73,10 +73,10 @@ export function Header() {
         )}
       </div>
 
-      <div className="flex items-center" style={{ fontSize: '11px' }}>
+      <div className="flex items-center" style={{ fontSize: '11px', height: '28px' }}>
         {totals.totalCost > 0 && (
           <>
-            <span className="opacity-50">{formatCost(totals.totalCost)}</span>
+            <span className="opacity-50" style={{ lineHeight: '28px' }}>{formatCost(totals.totalCost)}</span>
             <HeaderSep />
           </>
         )}
@@ -133,7 +133,19 @@ function RequestTimer({ startTime }: { startTime: number }) {
 }
 
 function HeaderSep() {
-  return <span style={{ color: 'var(--vscode-panel-border)', opacity: 0.4, margin: '0 6px', userSelect: 'none', fontSize: '11px' }}>|</span>
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: '1px',
+        height: '14px',
+        background: 'var(--vscode-panel-border, rgba(255,255,255,0.2))',
+        opacity: 0.5,
+        margin: '0 8px',
+        verticalAlign: 'middle',
+      }}
+    />
+  )
 }
 
 function HeaderIconButton({
@@ -154,11 +166,12 @@ function HeaderIconButton({
       className="cursor-pointer border-none flex items-center justify-center"
       style={{
         background: 'transparent',
-        padding: '4px 8px',
+        padding: '0 8px',
         borderRadius: 'var(--radius-sm)',
         opacity: active ? 1 : 0.75,
         color: active ? 'var(--chatui-accent)' : 'inherit',
         transition: 'all 0.2s ease',
+        height: '28px',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = '0.75' }}
