@@ -570,35 +570,41 @@ export function InputArea() {
 
             {/* Send button (only visible when not processing) */}
             {!isProcessing && (
-              <button
-                onClick={handleSend}
-                disabled={!text.trim() && images.length === 0}
-                className="cursor-pointer border-none flex items-center justify-center shrink-0"
-                style={{
-                  background: 'transparent',
-                  padding: '4px',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: 'var(--radius-sm)',
-                  color: (text.trim() || images.length > 0) ? 'var(--chatui-accent)' : 'inherit',
-                  opacity: (text.trim() || images.length > 0) ? 1 : 0.3,
-                  transition: 'all 0.15s ease',
-                }}
-                title="Send message"
-                onMouseEnter={(e) => {
-                  if (text.trim() || images.length > 0) {
-                    e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-              </button>
+              <>
+                <InputSep />
+                <button
+                  onClick={handleSend}
+                  disabled={!text.trim() && images.length === 0}
+                  className="cursor-pointer flex items-center justify-center shrink-0"
+                  style={{
+                    background: 'transparent',
+                    border: (text.trim() || images.length > 0)
+                      ? '1px solid var(--chatui-accent, rgba(100,149,237,0.4))'
+                      : '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
+                    padding: '0',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: 'var(--radius-md)',
+                    color: (text.trim() || images.length > 0) ? 'var(--chatui-accent)' : 'inherit',
+                    opacity: (text.trim() || images.length > 0) ? 1 : 0.4,
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Send message"
+                  onMouseEnter={(e) => {
+                    if (text.trim() || images.length > 0) {
+                      e.currentTarget.style.background = 'rgba(100,149,237,0.1)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                </button>
+              </>
             )}
           </div>
         </div>

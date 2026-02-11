@@ -19,7 +19,7 @@ export function StatusBar() {
     return `$${cost.toFixed(2)}`
   }
 
-  const statusText = isProcessing ? 'Processing...' : 'Ready'
+  const statusText = isProcessing ? 'Claude is working...' : 'Ask anything or type / for commands'
 
   // Calculate cache savings percentage
   const totalInput = tokens.totalTokensInput
@@ -45,21 +45,26 @@ export function StatusBar() {
         onClick={() => setShowDetails(!showDetails)}
       >
         {/* Status indicator */}
-        <div
-          style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            flexShrink: 0,
-            background: isProcessing ? '#ff9500' : '#00d26a',
-            boxShadow: isProcessing
-              ? '0 0 6px rgba(255, 149, 0, 0.5)'
-              : '0 0 6px rgba(0, 210, 106, 0.5)',
-            animation: isProcessing ? 'pulse 1.5s ease-in-out infinite' : 'none',
-          }}
-        />
+        {isProcessing ? (
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              flexShrink: 0,
+              background: '#ff9500',
+              boxShadow: '0 0 6px rgba(255, 149, 0, 0.5)',
+              animation: 'pulse 1.5s ease-in-out infinite',
+            }}
+          />
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4, flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        )}
 
-        <span className="flex-1">{statusText}</span>
+        <span className="flex-1" style={{ opacity: isProcessing ? 1 : 0.5 }}>{statusText}</span>
 
         {totals.totalCost > 0 && (
           <span style={{ opacity: 0.7 }}>{formatCost(totals.totalCost)}</span>
