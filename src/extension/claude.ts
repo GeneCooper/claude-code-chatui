@@ -170,7 +170,13 @@ export class ClaudeService implements vscode.Disposable {
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
     args.push(
       '--append-system-prompt',
-      'Respond concisely. Prefer showing code over explaining it. Avoid repeating the question or restating what you are about to do. Get straight to the solution.',
+      [
+        'Be an efficient agent: act, don\'t explain.',
+        'Do NOT narrate your plan, restate the question, or describe what you\'re about to do.',
+        'Execute tool calls immediately without preamble.',
+        'When done, give a one-line summary of what changed — nothing more.',
+        'Prefer code over prose. Skip pleasantries.',
+      ].join(' '),
     );
 
     if (options.yoloMode) {
@@ -187,6 +193,8 @@ export class ClaudeService implements vscode.Disposable {
     if (options.disallowedTools?.length) {
       for (const tool of options.disallowedTools) args.push('--disallowedTools', tool);
     }
+    const maxTurns = vscode.workspace.getConfiguration('claudeCodeChatUI').get<number>('maxTurns', 0);
+    if (maxTurns > 0) args.push('--max-turns', String(maxTurns));
     if (options.continueConversation && this._sessionId) args.push('--continue');
     if (this._sessionId) args.push('--resume', this._sessionId);
 

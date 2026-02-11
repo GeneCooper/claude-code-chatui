@@ -178,6 +178,15 @@ export class PanelProvider {
     });
 
     this._claudeService.onPermissionRequest((request) => {
+      // When YOLO mode is enabled, auto-approve permission requests that
+      // somehow still reach us (the CLI flag should prevent them, but this
+      // acts as a safety-net fallback).
+      if (this._settingsManager.isYoloModeEnabled()) {
+        log.info('YOLO mode: auto-approving permission', { tool: request.toolName });
+        this._claudeService.sendPermissionResponse(request.requestId, true);
+        return;
+      }
+
       this._postMessage({
         type: 'permissionRequest',
         data: {
