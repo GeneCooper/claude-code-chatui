@@ -5,10 +5,16 @@
   "version": "0.1.0",
   "publisher": "GeneCooper",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GeneCooper/claude-code-chatui"
+  },
+  "keywords": ["claude", "ai", "chat", "coding-assistant", "claude-code"],
   "engines": {
     "vscode": "^1.100.0"
   },
-  "categories": ["Other"],
+  "categories": ["AI", "Chat"],
   "activationEvents": [],
   "main": "./out/extension/extension.js",
   "contributes": {
