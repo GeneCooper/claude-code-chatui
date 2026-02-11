@@ -22,66 +22,32 @@ export function UserMessage({ text, images }: Props) {
         style={{ animation: 'fadeInUp 0.3s var(--ease-out-expo)' }}
       >
         <div
-          className="group relative max-w-[85%] message-bar-user"
+          className="group relative max-w-[85%]"
           style={{
-            background: 'linear-gradient(135deg, var(--chatui-accent-subtle) 0%, transparent 100%)',
-            border: '1px solid rgba(237, 110, 29, 0.2)',
-            borderRadius: 'var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-sm)',
-            padding: '10px 14px',
+            background: 'var(--chatui-user-bubble)',
+            borderRadius: '18px',
+            padding: '10px 16px',
           }}
         >
-          {/* Message header */}
-          <div
-            className="flex items-center gap-2"
+          {/* Copy button - appears above on hover */}
+          <button
+            onClick={handleCopy}
+            className="absolute -top-6 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
             style={{
-              marginBottom: '8px',
-              paddingBottom: '8px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              transition: 'opacity 0.2s ease',
+              color: 'var(--vscode-descriptionForeground)',
             }}
+            title="Copy message"
           >
-            <div
-              className="flex items-center justify-center shrink-0"
-              style={{
-                width: '20px',
-                height: '20px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'linear-gradient(135deg, var(--chatui-accent) 0%, var(--chatui-accent-dark) 100%)',
-                fontSize: '10px',
-                color: 'white',
-                fontWeight: 600,
-              }}
-            >
-              U
-            </div>
-            <span
-              style={{
-                fontWeight: 500,
-                fontSize: '12px',
-                opacity: 0.8,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-            >
-              User
-            </span>
-            <button
-              onClick={handleCopy}
-              className="ml-auto opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none text-inherit"
-              style={{
-                padding: '4px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '10px',
-                transition: 'opacity 0.2s ease',
-              }}
-              title="Copy message"
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
 
           {/* Image thumbnails */}
           {images && images.length > 0 && (
-            <div className="flex gap-2 flex-wrap" style={{ paddingLeft: '8px', marginBottom: text ? '8px' : 0 }}>
+            <div className="flex gap-2 flex-wrap" style={{ marginBottom: text ? '8px' : 0 }}>
               {images.map((src, idx) => (
                 <img
                   key={idx}
@@ -91,7 +57,7 @@ export function UserMessage({ text, images }: Props) {
                   style={{
                     width: '80px',
                     height: '80px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
                     transition: 'opacity 0.15s ease',
                   }}
                   onClick={() => setPreviewSrc(src)}
@@ -104,7 +70,7 @@ export function UserMessage({ text, images }: Props) {
 
           {/* Message content */}
           {text && (
-            <div className="text-sm whitespace-pre-wrap wrap-break-word" style={{ paddingLeft: '8px' }}>
+            <div className="text-sm whitespace-pre-wrap wrap-break-word">
               {text}
             </div>
           )}

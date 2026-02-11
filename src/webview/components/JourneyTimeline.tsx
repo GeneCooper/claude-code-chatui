@@ -13,9 +13,9 @@ import { RestorePoint } from './RestorePoint'
 // ============================================================================
 
 const STATUS_COLORS = {
-  executing: '#ff9500',
-  completed: '#00d26a',
-  failed: '#ff453a',
+  executing: 'rgba(255, 255, 255, 0.4)',
+  completed: 'rgba(255, 255, 255, 0.3)',
+  failed: '#e74c3c',
 } as const
 
 const STATUS_ICONS = {
@@ -163,8 +163,8 @@ function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }
     <span
       style={{
         color: STATUS_COLORS[status],
-        fontSize: '14px',
-        fontWeight: 600,
+        fontSize: '12px',
+        fontWeight: 500,
         animation: status === 'executing' ? 'spin 1.5s linear infinite' : 'none',
         display: 'inline-block',
       }}
@@ -264,7 +264,6 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
   plan: PlanGroup; isCollapsed: boolean; collapsedSteps: Set<string>;
   onTogglePlan: (id: string) => void; onToggleStep: (id: string) => void;
 }) {
-  const statusColor = STATUS_COLORS[plan.status]
   const summaryText = getPlanSummary(plan)
 
   return (
@@ -275,12 +274,12 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           padding: '6px 10px', borderRadius: 'var(--radius-sm)',
-          background: 'rgba(128, 128, 128, 0.06)',
-          border: `1px solid ${plan.status === 'executing' ? 'rgba(255, 149, 0, 0.2)' : 'transparent'}`,
+          background: 'transparent',
+          border: '1px solid transparent',
           transition: 'all 0.2s ease', fontSize: '12px',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(128, 128, 128, 0.12)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(128, 128, 128, 0.06)' }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
       >
         <StatusIcon status={plan.status} />
         <span className="flex-1 truncate" style={{ opacity: 0.8 }}>
@@ -295,7 +294,7 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
       </button>
 
       {!isCollapsed && (
-        <div style={{ paddingLeft: '12px', borderLeft: `2px solid ${statusColor}20`, marginLeft: '10px', marginTop: '4px' }}>
+        <div style={{ paddingLeft: '12px', borderLeft: '1px solid rgba(255, 255, 255, 0.06)', marginLeft: '10px', marginTop: '4px' }}>
           {plan.assistantMessage.type === 'output' && (
             <AssistantMessage text={String(plan.assistantMessage.data)} />
           )}
@@ -349,7 +348,7 @@ export function JourneyTimeline({ messages, isProcessing }: Props) {
   }, [])
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {items.map((item) => {
         if (item.kind === 'message') {
           return <MessageRenderer key={item.message.id} message={item.message} />

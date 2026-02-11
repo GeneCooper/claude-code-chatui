@@ -41,9 +41,9 @@ export function ToolUseBlock({ data }: Props) {
 
   return (
     <div
-      className="message-bar-tool overflow-hidden text-xs"
+      className="overflow-hidden text-xs"
       style={{
-        border: '1px solid rgba(120, 139, 237, 0.12)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
         borderRadius: 'var(--radius-md)',
         animation: 'fadeInUp 0.3s var(--ease-out-expo)',
       }}
@@ -53,29 +53,14 @@ export function ToolUseBlock({ data }: Props) {
         className="flex items-center gap-2 cursor-pointer"
         style={{
           padding: '8px 12px',
-          paddingLeft: '16px',
-          borderBottom: showInput ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+          borderBottom: showInput ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
         }}
         onClick={() => setShowInput(!showInput)}
       >
-        {/* Tool icon */}
-        <div
-          className="flex items-center justify-center shrink-0"
-          style={{
-            width: '18px',
-            height: '18px',
-            borderRadius: '4px',
-            background: 'linear-gradient(135deg, #7c8bed 0%, #5d6fe1 100%)',
-            fontSize: '10px',
-            color: 'white',
-            fontWeight: 600,
-          }}
-        >
-          T
-        </div>
+        <span style={{ opacity: 0.4, fontSize: '10px' }}>&#9654;</span>
         <span style={{ fontWeight: 500, fontSize: '13px', opacity: 0.9 }}>{toolName}</span>
         {summary && (
-          <span className="opacity-50 truncate flex-1 font-mono text-[11px]">{summary}</span>
+          <span className="opacity-40 truncate flex-1 font-mono text-[11px]">{summary}</span>
         )}
         {canPreviewDiff && (
           <button
@@ -102,7 +87,7 @@ export function ToolUseBlock({ data }: Props) {
       </div>
 
       {showInput && rawInput && (
-        <div className="px-3 py-2 max-h-40 overflow-y-auto" style={{ paddingLeft: '16px' }}>
+        <div className="px-3 py-2 max-h-40 overflow-y-auto" style={{ paddingLeft: '12px' }}>
           <pre className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0">
             {JSON.stringify(rawInput, null, 2)}
           </pre>
@@ -114,8 +99,7 @@ export function ToolUseBlock({ data }: Props) {
           className="opacity-70 whitespace-pre-wrap"
           style={{
             padding: '6px 12px',
-            paddingLeft: '16px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
           {String(data.toolInput)}

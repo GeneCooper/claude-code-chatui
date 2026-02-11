@@ -23,67 +23,30 @@ export function AssistantMessage({ text }: Props) {
 
   return (
     <div
-      className="group max-w-[95%] message-bar-claude"
+      className="group relative max-w-[95%]"
       style={{
-        background: 'var(--chatui-glass-bg)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid var(--chatui-glass-border)',
-        borderRadius: 'var(--radius-md)',
-        padding: '10px 14px',
+        padding: '4px 0',
         animation: 'fadeInUp 0.3s var(--ease-out-expo)',
       }}
     >
-      {/* Message header */}
-      <div
-        className="flex items-center gap-2"
+      {/* Copy button - appears above on hover */}
+      <button
+        onClick={handleCopyMessage}
+        className="absolute -top-5 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
         style={{
-          marginBottom: '8px',
-          paddingBottom: '8px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          fontSize: '11px',
+          transition: 'opacity 0.2s ease',
+          color: 'var(--vscode-descriptionForeground)',
         }}
+        title="Copy message"
       >
-        <div
-          className="flex items-center justify-center shrink-0"
-          style={{
-            width: '20px',
-            height: '20px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'linear-gradient(135deg, #ff9500 0%, var(--chatui-accent) 100%)',
-            fontSize: '10px',
-            color: 'white',
-            fontWeight: 600,
-          }}
-        >
-          C
-        </div>
-        <span
-          style={{
-            fontWeight: 500,
-            fontSize: '12px',
-            opacity: 0.8,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
-          Claude
-        </span>
-        <button
-          onClick={handleCopyMessage}
-          className="ml-auto opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none text-inherit"
-          style={{
-            padding: '4px',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '10px',
-            transition: 'opacity 0.2s ease',
-          }}
-          title="Copy message"
-        >
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
-      </div>
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
 
       {/* Message content */}
-      <div className="markdown-content text-sm leading-relaxed" style={{ paddingLeft: '8px' }}>
+      <div className="markdown-content text-sm leading-relaxed">
         <ReactMarkdown
           components={{
             code: CodeComponent,
@@ -193,7 +156,7 @@ function CopyButton({ text }: { text: string }) {
       className="cursor-pointer border-none"
       style={{
         background: 'none',
-        color: copied ? '#2ecc71' : 'var(--vscode-descriptionForeground)',
+        color: copied ? '#4ade80' : 'var(--vscode-descriptionForeground)',
         padding: '4px 8px',
         borderRadius: 'var(--radius-sm)',
         display: 'flex',
@@ -206,12 +169,10 @@ function CopyButton({ text }: { text: string }) {
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--chatui-surface-2)'
         e.currentTarget.style.opacity = '1'
-        if (!copied) e.currentTarget.style.color = 'var(--chatui-accent)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'none'
         e.currentTarget.style.opacity = copied ? '1' : '0.7'
-        if (!copied) e.currentTarget.style.color = 'var(--vscode-descriptionForeground)'
       }}
     >
       {copied ? 'Copied!' : 'Copy'}
@@ -228,7 +189,7 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
       <div
         className="my-2 overflow-hidden"
         style={{
-          border: '1px solid var(--chatui-glass-border)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
           borderRadius: '8px',
           background: 'var(--vscode-textCodeBlock-background)',
         }}
@@ -238,13 +199,13 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
           style={{
             padding: '8px 12px',
             background: 'var(--chatui-surface-2)',
-            borderBottom: '1px solid var(--chatui-glass-border)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
             fontSize: '11px',
           }}
         >
           <span
             style={{
-              color: 'var(--chatui-accent)',
+              color: 'rgba(255, 255, 255, 0.5)',
               fontFamily: 'var(--vscode-editor-font-family)',
               fontWeight: 600,
               textTransform: 'uppercase',
@@ -277,7 +238,7 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
     <code
       style={{
         background: 'var(--vscode-textCodeBlock-background)',
-        border: '1px solid var(--vscode-panel-border)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
         borderRadius: 'var(--radius-sm)',
         padding: '4px 4px',
         fontSize: '0.9em',

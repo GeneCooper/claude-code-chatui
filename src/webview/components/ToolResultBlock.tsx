@@ -50,15 +50,14 @@ export function ToolResultBlock({ data }: Props) {
 
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const showYoloHint = isError && isPermissionError(content) && !yoloMode
-  const barClass = isError ? 'message-bar-error' : 'message-bar-result'
 
   return (
     <div
-      className={`${barClass} overflow-hidden text-xs`}
+      className="overflow-hidden text-xs"
       style={{
         border: isError
-          ? '1px solid rgba(231, 76, 60, 0.3)'
-          : '1px solid rgba(28, 192, 140, 0.2)',
+          ? '1px solid rgba(231, 76, 60, 0.15)'
+          : '1px solid rgba(255, 255, 255, 0.06)',
         borderRadius: 'var(--radius-md)',
         animation: 'fadeInUp 0.3s var(--ease-out-expo)',
       }}
@@ -67,11 +66,16 @@ export function ToolResultBlock({ data }: Props) {
         className="flex items-center gap-2"
         style={{
           padding: '6px 12px',
-          paddingLeft: '16px',
           background: 'var(--chatui-surface-1)',
         }}
       >
-        <span>{isError ? '❌' : '✅'}</span>
+        <span style={{
+          display: 'inline-block',
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          background: isError ? '#e74c3c' : '#4ade80',
+        }} />
         <span style={{ opacity: 0.6 }}>
           {toolName ? `${toolName} result` : 'Result'}
         </span>
@@ -102,7 +106,7 @@ export function ToolResultBlock({ data }: Props) {
       </div>
 
       {hasDiff && (
-        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           <DiffView
             oldContent={fileContentBefore!}
             newContent={fileContentAfter!}
@@ -118,7 +122,7 @@ export function ToolResultBlock({ data }: Props) {
           className="flex items-center gap-2 text-[11px]"
           style={{
             padding: '6px 12px',
-            paddingLeft: '16px',
+            paddingLeft: '12px',
             background: 'rgba(255, 149, 0, 0.08)',
             borderTop: '1px solid rgba(255, 149, 0, 0.2)',
             color: 'var(--vscode-editorWarning-foreground, #ff9500)',
@@ -142,7 +146,7 @@ export function ToolResultBlock({ data }: Props) {
       )}
 
       {!hasDiff && content && content !== 'Tool executed successfully' && (
-        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           {language ? (
             <SyntaxHighlighter
               style={vscDarkPlus}
@@ -151,7 +155,7 @@ export function ToolResultBlock({ data }: Props) {
               customStyle={{
                 margin: 0,
                 padding: '8px 12px',
-                paddingLeft: '16px',
+                paddingLeft: '12px',
                 fontSize: '11px',
                 background: 'transparent',
                 maxHeight: expanded ? 'none' : '200px',
@@ -165,7 +169,7 @@ export function ToolResultBlock({ data }: Props) {
               className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0"
               style={{
                 padding: '8px 12px',
-                paddingLeft: '16px',
+                paddingLeft: '12px',
                 maxHeight: expanded ? 'none' : '200px',
                 overflow: expanded ? 'visible' : 'auto',
               }}
