@@ -248,7 +248,7 @@ export function InputArea() {
     <div
       className="relative"
       style={{
-        padding: '12px',
+        padding: '10px 10px 12px',
         borderTop: '1px solid var(--vscode-panel-border)',
         background: 'var(--vscode-panel-background)',
       }}

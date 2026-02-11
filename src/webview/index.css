@@ -185,10 +185,11 @@ body {
 /* ===== Textarea Focus Glow ===== */
 .textarea-glow {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
 }
 .textarea-glow:focus-within {
   border-color: var(--chatui-accent) !important;
-  box-shadow: 0 0 0 1px var(--chatui-accent-glow), 0 0 12px var(--chatui-accent-glow), 0 0 24px rgba(237, 110, 29, 0.1);
+  box-shadow: 0 0 8px var(--chatui-accent-glow), 0 0 20px rgba(237, 110, 29, 0.08);
 }
 
 /* ===== Markdown Content ===== */
