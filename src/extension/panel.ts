@@ -316,6 +316,7 @@ export class PanelProvider {
       permissionService: this._permissionService,
       stateManager: this._stateManager,
       settingsManager: this._settingsManager,
+      messageProcessor: this._messageProcessor,
       extensionContext: this._context,
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),

@@ -645,6 +645,7 @@ export interface MessageHandlerContext {
   permissionService: PermissionService;
   stateManager: SessionStateManager;
   settingsManager: SettingsManager;
+  messageProcessor: ClaudeMessageProcessor;
   extensionContext: vscode.ExtensionContext;
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
@@ -679,6 +680,25 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     data: { platform: process.platform, isWindows: process.platform === 'win32' },
   });
   checkCliAvailable(ctx);
+
+  // Replay current conversation to restore webview state
+  const conversation = ctx.messageProcessor.currentConversation;
+  if (conversation.length > 0) {
+    for (const msg of conversation) {
+      ctx.postMessage({ type: msg.messageType, data: msg.data } as Record<string, unknown>);
+    }
+    ctx.postMessage({
+      type: 'restoreState',
+      state: {
+        sessionId: ctx.claudeService.sessionId,
+        totalCost: ctx.stateManager.totalCost,
+      },
+    });
+    if (ctx.stateManager.isProcessing) {
+      ctx.postMessage({ type: 'setProcessing', data: { isProcessing: true } });
+      ctx.postMessage({ type: 'loading', data: 'Claude is working...' });
+    }
+  }
 };
 
 const handlePermissionResponse: MessageHandler = (msg, ctx) => {
