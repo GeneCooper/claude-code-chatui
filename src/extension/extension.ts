@@ -1,13 +1,8 @@
 import * as vscode from 'vscode';
-import { ClaudeService } from './services/ClaudeService';
-import { ConversationService } from './services/ConversationService';
-import { MCPService } from './services/MCPService';
-import { BackupService } from './services/BackupService';
-import { UsageService } from './services/UsageService';
-import { PermissionService } from './services/PermissionService';
-import { DiffContentProvider } from './providers/DiffContentProvider';
-import { PanelProvider } from './webview/PanelProvider';
-import { WebviewProvider } from './webview/WebviewProvider';
+import { ClaudeService, PermissionService } from './claude';
+import { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import { DiffContentProvider } from './handlers';
+import { PanelProvider, WebviewProvider } from './panel';
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log('Claude Code ChatUI extension is being activated');

@@ -1,23 +1,106 @@
 import * as vscode from 'vscode';
-import { ClaudeService } from '../services/ClaudeService';
-import { ConversationService } from '../services/ConversationService';
-import { MCPService } from '../services/MCPService';
-import { BackupService } from '../services/BackupService';
-import { UsageService } from '../services/UsageService';
-import { PermissionService } from '../services/PermissionService';
-import { ClaudeMessageProcessor, type MessagePoster } from './ClaudeMessageProcessor';
-import { SessionStateManager } from './SessionStateManager';
-import { SettingsManager } from './SettingsManager';
-import { handleWebviewMessage, type WebviewMessage } from './messageHandlers';
-import { getWebviewHtml } from './html';
-import { createModuleLogger } from '../../shared/utils/logger';
-import type { ClaudeMessage, WebviewToExtensionMessage } from '../../shared/types';
+import { ClaudeService } from './claude';
+import { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import { PermissionService } from './claude';
+import {
+  ClaudeMessageProcessor,
+  SessionStateManager,
+  SettingsManager,
+  handleWebviewMessage,
+  type MessagePoster,
+  type WebviewMessage,
+} from './handlers';
+import { createModuleLogger } from '../shared/utils/logger';
+import type { ClaudeMessage, WebviewToExtensionMessage } from '../shared/types';
 
 const log = createModuleLogger('PanelProvider');
 
-/**
- * Manages the webview panel lifecycle, message routing, and Claude CLI interaction.
- */
+// ============================================================================
+// HTML Generator
+// ============================================================================
+
+function getNonce(): string {
+  let text = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 32; i++) {
+    text += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return text;
+}
+
+export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
+  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'assets', 'main.js'));
+  const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'assets', 'style.css'));
+  const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'icon.png'));
+  const nonce = getNonce();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none';
+      style-src ${webview.cspSource} 'unsafe-inline';
+      script-src 'nonce-${nonce}';
+      img-src ${webview.cspSource} https: data:;
+      font-src ${webview.cspSource};">
+  <link href="${styleUri}" rel="stylesheet">
+  <title>Claude Code ChatUI</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+    }
+    #root {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--vscode-input-border);
+      border-top-color: var(--vscode-focusBorder);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div>Loading...</div>
+    </div>
+  </div>
+  <script nonce="${nonce}">window.__ICON_URI__="${iconUri}";</script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>`;
+}
+
+// ============================================================================
+// PanelProvider
+// ============================================================================
+
 export class PanelProvider {
   private _panel: vscode.WebviewPanel | undefined;
   private _webview: vscode.Webview | undefined;
@@ -39,35 +122,23 @@ export class PanelProvider {
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
   ) {
-    // Load saved preferences
     this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
     log.info('PanelProvider initialized');
 
-    // Create message processor
     const poster: MessagePoster = {
       postMessage: (msg) => this._postMessage(msg),
       sendAndSaveMessage: (msg) => this._postMessage(msg),
     };
 
     this._messageProcessor = new ClaudeMessageProcessor(poster, this._stateManager, {
-      onSessionIdReceived: (sessionId) => {
-        this._claudeService.setSessionId(sessionId);
-      },
-      onProcessingComplete: (result) => {
-        this._saveConversation(result.sessionId);
-      },
+      onSessionIdReceived: (sessionId) => { this._claudeService.setSessionId(sessionId); },
+      onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
     });
 
-    // Wire up Claude service events
     this._setupClaudeServiceHandlers();
 
-    // Wire up usage service events
-    this._usageService.onUsageUpdate((data) => {
-      this._postMessage({ type: 'usageUpdate', data });
-    });
-    this._usageService.onError((err) => {
-      this._postMessage({ type: 'usageError', data: err });
-    });
+    this._usageService.onUsageUpdate((data) => { this._postMessage({ type: 'usageUpdate', data }); });
+    this._usageService.onError((err) => { this._postMessage({ type: 'usageError', data: err }); });
   }
 
   private _setupClaudeServiceHandlers(): void {
@@ -91,19 +162,12 @@ export class PanelProvider {
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });
       } else if (error.includes('authentication') || error.includes('login') || error.includes('API key') || error.includes('unauthorized') || error.includes('401')) {
-        this._postMessage({
-          type: 'showLoginRequired',
-          data: { message: error },
-        });
+        this._postMessage({ type: 'showLoginRequired', data: { message: error } });
       } else {
         this._postMessage({ type: 'error', data: error });
-        // Suggest YOLO if it's a permission error
         if (error.includes('permission') || error.includes('denied')) {
           if (!this._settingsManager.isYoloModeEnabled()) {
-            this._postMessage({
-              type: 'error',
-              data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.',
-            });
+            this._postMessage({ type: 'error', data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.' });
           }
         }
       }
@@ -128,7 +192,6 @@ export class PanelProvider {
 
   // ==================== Public API ====================
 
-  /** Show the panel in the editor area */
   show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two): void {
     const actualColumn = column instanceof vscode.Uri ? vscode.ViewColumn.Two : column;
 
@@ -138,14 +201,8 @@ export class PanelProvider {
     }
 
     this._panel = vscode.window.createWebviewPanel(
-      'claudeCodeChatUI',
-      'Claude Code ChatUI',
-      actualColumn,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [this._extensionUri],
-      },
+      'claudeCodeChatUI', 'Claude Code ChatUI', actualColumn,
+      { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [this._extensionUri] },
     );
 
     this._panel.webview.html = getWebviewHtml(this._panel.webview, this._extensionUri);
@@ -153,7 +210,6 @@ export class PanelProvider {
     this._setupWebviewMessageHandler(this._panel.webview);
   }
 
-  /** Show in a sidebar webview */
   showInWebview(webview: vscode.Webview, webviewView?: vscode.WebviewView): void {
     if (this._panel) {
       this._panel.dispose();
@@ -174,13 +230,10 @@ export class PanelProvider {
   }
 
   reinitializeWebview(): void {
-    if (this._webview) {
-      this._setupWebviewMessageHandler(this._webview);
-    }
+    if (this._webview) this._setupWebviewMessageHandler(this._webview);
   }
 
   async newSession(): Promise<void> {
-    // Save current conversation before clearing
     this._saveConversation(this._claudeService.sessionId);
 
     this._stateManager.isProcessing = false;
@@ -202,7 +255,6 @@ export class PanelProvider {
       return;
     }
 
-    // Stop current process and clear
     await this._claudeService.stopProcess();
     this._claudeService.setSessionId(conversation.sessionId);
     this._messageProcessor.resetSession();
@@ -211,7 +263,6 @@ export class PanelProvider {
       totalTokens: conversation.totalTokens,
     });
 
-    // Replay messages to webview
     this._postMessage({ type: 'sessionCleared' });
     for (const msg of conversation.messages) {
       this._postMessage({ type: msg.messageType, data: msg.data } as Record<string, unknown>);
@@ -219,10 +270,7 @@ export class PanelProvider {
 
     this._postMessage({
       type: 'restoreState',
-      state: {
-        sessionId: conversation.sessionId,
-        totalCost: conversation.totalCost,
-      },
+      state: { sessionId: conversation.sessionId, totalCost: conversation.totalCost },
     });
   }
 
@@ -230,9 +278,7 @@ export class PanelProvider {
     this._panel = undefined;
     this._messageHandlerDisposable?.dispose();
     this._messageHandlerDisposable = undefined;
-    while (this._disposables.length) {
-      this._disposables.pop()?.dispose();
-    }
+    while (this._disposables.length) this._disposables.pop()?.dispose();
   }
 
   disposeAll(): void {
@@ -283,37 +329,22 @@ export class PanelProvider {
     this._stateManager.isProcessing = true;
     this._stateManager.draftMessage = '';
 
-    // Create backup checkpoint before sending
     void this._backupService.createCheckpoint(text).then((commit) => {
-      if (commit) {
-        this._postMessage({ type: 'restorePoint', data: commit });
-      }
+      if (commit) this._postMessage({ type: 'restorePoint', data: commit });
     });
 
-    // Show user message in chat
     this._postMessage({ type: 'userInput', data: text });
-
-    // Set processing state
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
-
-    // Show loading
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
-    // Get yolo mode from settings manager
     const yoloMode = this._settingsManager.isYoloModeEnabled();
-
-    // Pass MCP config path if servers are configured
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
     void this._claudeService.sendMessage(text, {
-      cwd,
-      planMode,
-      thinkingMode,
-      yoloMode,
+      cwd, planMode, thinkingMode, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath,
-      images,
+      mcpConfigPath, images,
     });
   }
 
@@ -323,8 +354,7 @@ export class PanelProvider {
     if (conversation.length === 0) return;
 
     void this._conversationService.saveConversation(
-      sessionId,
-      conversation,
+      sessionId, conversation,
       this._stateManager.totalCost,
       this._stateManager.totalTokensInput,
       this._stateManager.totalTokensOutput,
@@ -337,5 +367,37 @@ export class PanelProvider {
     } else if (this._webview) {
       this._webview.postMessage(message);
     }
+  }
+}
+
+// ============================================================================
+// WebviewProvider (sidebar)
+// ============================================================================
+
+export class WebviewProvider implements vscode.WebviewViewProvider {
+  constructor(
+    private readonly _extensionUri: vscode.Uri,
+    private readonly _context: vscode.ExtensionContext,
+    private readonly _panelProvider: PanelProvider,
+  ) {}
+
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ): void {
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this._extensionUri],
+    };
+
+    this._panelProvider.showInWebview(webviewView.webview, webviewView);
+
+    webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) {
+        this._panelProvider.closeMainPanel();
+        this._panelProvider.reinitializeWebview();
+      }
+    });
   }
 }
