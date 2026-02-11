@@ -228,7 +228,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 type ActiveView = 'chat' | 'history' | 'settings'
 type NotificationType = 'info' | 'success' | 'warning' | 'error'
 
-export interface Notification {
+interface Notification {
   id: string
   type: NotificationType
   title: string
@@ -239,7 +239,7 @@ export interface Notification {
 interface UIState {
   activeView: ActiveView
   showSlashPicker: boolean
-  showFilePicker: boolean
+
   showIntensityModal: boolean
   showMCPModal: boolean
   showInstallModal: boolean
@@ -254,7 +254,7 @@ interface UIState {
 
   setActiveView: (view: ActiveView) => void
   setShowSlashPicker: (show: boolean) => void
-  setShowFilePicker: (show: boolean) => void
+
   setShowIntensityModal: (show: boolean) => void
   setShowMCPModal: (show: boolean) => void
   setShowInstallModal: (show: boolean) => void
@@ -274,7 +274,7 @@ let notifCounter = 0
 export const useUIStore = create<UIState>((set, get) => ({
   activeView: 'chat',
   showSlashPicker: false,
-  showFilePicker: false,
+
   showIntensityModal: false,
   showMCPModal: false,
   showInstallModal: false,
@@ -289,7 +289,7 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   setActiveView: (view) => set({ activeView: view }),
   setShowSlashPicker: (show) => set({ showSlashPicker: show }),
-  setShowFilePicker: (show) => set({ showFilePicker: show }),
+
   setShowIntensityModal: (show) => set({ showIntensityModal: show }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
   setShowInstallModal: (show) => set({ showInstallModal: show }),

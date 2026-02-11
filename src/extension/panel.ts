@@ -244,6 +244,7 @@ export class PanelProvider {
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [this._extensionUri] },
     );
 
+    this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png');
     this._panel.webview.html = getWebviewHtml(this._panel.webview, this._extensionUri);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);

@@ -1,6 +1,6 @@
-export type DiffOperation = 'equal' | 'insert' | 'delete';
+type DiffOperation = 'equal' | 'insert' | 'delete';
 
-export interface DiffLine {
+interface DiffLine {
   type: DiffOperation;
   content: string;
   oldLineNumber?: number;
@@ -14,7 +14,7 @@ export interface DiffResult {
   unchanged: number;
 }
 
-export interface DiffOptions {
+interface DiffOptions {
   ignoreWhitespace?: boolean;
   contextLines?: number;
 }
@@ -93,59 +93,6 @@ export function computeLineDiff(oldContent: string, newContent: string, options?
   }
 
   return { lines, additions, deletions, unchanged };
-}
-
-export function computeContextualDiff(oldContent: string, newContent: string, options?: DiffOptions): DiffResult {
-  const fullDiff = computeLineDiff(oldContent, newContent, options);
-  const contextLines = options?.contextLines ?? 3;
-
-  const showIndices = new Set<number>();
-  fullDiff.lines.forEach((line, idx) => {
-    if (line.type !== 'equal') {
-      for (let c = Math.max(0, idx - contextLines); c <= Math.min(fullDiff.lines.length - 1, idx + contextLines); c++) {
-        showIndices.add(c);
-      }
-    }
-  });
-
-  const lines: DiffLine[] = [];
-  let lastShown = -1;
-
-  fullDiff.lines.forEach((line, idx) => {
-    if (showIndices.has(idx)) {
-      if (lastShown >= 0 && idx - lastShown > 1) lines.push({ type: 'equal', content: '···' });
-      lines.push(line);
-      lastShown = idx;
-    }
-  });
-
-  return { lines, additions: fullDiff.additions, deletions: fullDiff.deletions, unchanged: fullDiff.unchanged };
-}
-
-export function formatUnifiedDiff(diff: DiffResult, oldPath: string, newPath: string): string {
-  const lines: string[] = [`--- ${oldPath}`, `+++ ${newPath}`];
-  for (const line of diff.lines) {
-    if (line.type === 'delete') lines.push(`-${line.content}`);
-    else if (line.type === 'insert') lines.push(`+${line.content}`);
-    else lines.push(` ${line.content}`);
-  }
-  return lines.join('\n');
-}
-
-export function formatDiffStats(diff: DiffResult): string {
-  const parts: string[] = [];
-  if (diff.additions > 0) parts.push(`+${diff.additions}`);
-  if (diff.deletions > 0) parts.push(`-${diff.deletions}`);
-  if (parts.length === 0) return 'No changes';
-  return parts.join(', ');
-}
-
-export function applyDiff(oldContent: string, diff: DiffResult): string {
-  const result: string[] = [];
-  for (const line of diff.lines) {
-    if (line.type === 'equal' || line.type === 'insert') result.push(line.content);
-  }
-  return result.join('\n');
 }
 
 // ============================================================================

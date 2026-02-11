@@ -10,13 +10,13 @@ import { THINKING_INTENSITIES, ThinkingIntensity } from '../shared/constants';
 // PermissionService
 // ============================================================================
 
-export interface PermissionEntry {
+interface PermissionEntry {
   toolName: string;
   pattern: string;
   createdAt: string;
 }
 
-export interface Permissions {
+interface Permissions {
   allowedPatterns: PermissionEntry[];
 }
 
@@ -108,7 +108,7 @@ export class PermissionService implements vscode.Disposable {
 // ClaudeService
 // ============================================================================
 
-export interface SendMessageOptions {
+interface SendMessageOptions {
   cwd: string;
   planMode?: boolean;
   thinkingMode?: boolean;

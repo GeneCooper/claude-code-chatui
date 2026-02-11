@@ -2,7 +2,7 @@
  * Centralized Logger Utility
  */
 
-export enum LogLevel {
+enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
@@ -10,7 +10,7 @@ export enum LogLevel {
   NONE = 4,
 }
 
-export interface LogEntry {
+interface LogEntry {
   level: LogLevel;
   message: string;
   error?: Error;
@@ -19,7 +19,7 @@ export interface LogEntry {
   module?: string;
 }
 
-export interface LoggerConfig {
+interface LoggerConfig {
   minLevel: LogLevel;
   includeTimestamp: boolean;
   includeModule: boolean;
@@ -34,13 +34,6 @@ const defaultConfig: LoggerConfig = {
 
 let globalConfig = { ...defaultConfig };
 
-export function configureLogger(config: Partial<LoggerConfig>): void {
-  globalConfig = { ...globalConfig, ...config };
-}
-
-export function resetLoggerConfig(): void {
-  globalConfig = { ...defaultConfig };
-}
 
 function formatMessage(module: string | undefined, message: string): string {
   if (globalConfig.includeModule && module) {
@@ -87,25 +80,6 @@ function log(
       break;
   }
 }
-
-export const logger = {
-  debug: (message: string, options?: { data?: Record<string, unknown>; module?: string }): void => {
-    log(LogLevel.DEBUG, message, options);
-  },
-  info: (message: string, options?: { data?: Record<string, unknown>; module?: string }): void => {
-    log(LogLevel.INFO, message, options);
-  },
-  warn: (message: string, options?: { error?: Error; data?: Record<string, unknown>; module?: string }): void => {
-    log(LogLevel.WARN, message, options);
-  },
-  error: (message: string, errorOrOptions?: Error | { error?: Error; data?: Record<string, unknown>; module?: string }): void => {
-    if (errorOrOptions instanceof Error) {
-      log(LogLevel.ERROR, message, { error: errorOrOptions });
-    } else {
-      log(LogLevel.ERROR, message, errorOrOptions);
-    }
-  },
-};
 
 export function createModuleLogger(module: string) {
   return {

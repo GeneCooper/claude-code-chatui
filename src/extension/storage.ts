@@ -14,7 +14,7 @@ import type {
 // RateLimitCache
 // ============================================================================
 
-export interface CachedRateLimits {
+interface CachedRateLimits {
   session5h: number;
   weekly7d: number;
   reset5h?: number;
@@ -24,7 +24,7 @@ export interface CachedRateLimits {
 
 const CACHE_FILE_PATH = path.join(os.homedir(), '.claude', 'rate-limit-cache.json');
 
-export function readRateLimitCache(): CachedRateLimits | null {
+function readRateLimitCache(): CachedRateLimits | null {
   try {
     if (!fs.existsSync(CACHE_FILE_PATH)) return null;
     const data = JSON.parse(fs.readFileSync(CACHE_FILE_PATH, 'utf-8')) as CachedRateLimits;
@@ -33,7 +33,7 @@ export function readRateLimitCache(): CachedRateLimits | null {
   } catch { return null; }
 }
 
-export function writeRateLimitCache(data: Omit<CachedRateLimits, 'timestamp'>): void {
+function writeRateLimitCache(data: Omit<CachedRateLimits, 'timestamp'>): void {
   try {
     const claudeDir = path.dirname(CACHE_FILE_PATH);
     if (!fs.existsSync(claudeDir)) fs.mkdirSync(claudeDir, { recursive: true });
@@ -41,7 +41,7 @@ export function writeRateLimitCache(data: Omit<CachedRateLimits, 'timestamp'>): 
   } catch { /* silently fail */ }
 }
 
-export function getCacheAgeMinutes(cache: CachedRateLimits): number {
+function getCacheAgeMinutes(cache: CachedRateLimits): number {
   return Math.round((Date.now() - cache.timestamp) / (60 * 1000));
 }
 

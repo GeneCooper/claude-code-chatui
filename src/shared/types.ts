@@ -2,12 +2,12 @@
 // Claude CLI Message Types (from stdout stream-json)
 // ============================================================================
 
-export interface ClaudeCliMessage {
+interface ClaudeCliMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
 }
 
 // System messages
-export interface SystemInitMessage extends ClaudeCliMessage {
+interface SystemInitMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'init';
   session_id: string;
@@ -15,13 +15,13 @@ export interface SystemInitMessage extends ClaudeCliMessage {
   mcp_servers?: unknown[];
 }
 
-export interface SystemStatusMessage extends ClaudeCliMessage {
+interface SystemStatusMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'status';
   status: 'compacting' | null;
 }
 
-export interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
+interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'compact_boundary';
   compact_metadata?: {
@@ -30,20 +30,20 @@ export interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
   };
 }
 
-export type SystemMessage = SystemInitMessage | SystemStatusMessage | SystemCompactBoundaryMessage;
+type SystemMessage = SystemInitMessage | SystemStatusMessage | SystemCompactBoundaryMessage;
 
 // Content blocks
-export interface TextContent {
+interface TextContent {
   type: 'text';
   text: string;
 }
 
-export interface ThinkingContent {
+interface ThinkingContent {
   type: 'thinking';
   thinking: string;
 }
 
-export interface ToolUseContent {
+interface ToolUseContent {
   type: 'tool_use';
   id?: string;
   tool_use_id?: string;
@@ -51,17 +51,17 @@ export interface ToolUseContent {
   input?: Record<string, unknown>;
 }
 
-export interface ToolResultContent {
+interface ToolResultContent {
   type: 'tool_result';
   tool_use_id?: string;
   content?: string | unknown;
   is_error?: boolean;
 }
 
-export type ContentBlock = TextContent | ThinkingContent | ToolUseContent | ToolResultContent;
+type ContentBlock = TextContent | ThinkingContent | ToolUseContent | ToolResultContent;
 
 // Token usage
-export interface TokenUsage {
+interface TokenUsage {
   input_tokens: number;
   output_tokens: number;
   cache_read_input_tokens?: number;
@@ -69,7 +69,7 @@ export interface TokenUsage {
 }
 
 // Assistant message
-export interface AssistantMessage extends ClaudeCliMessage {
+interface AssistantMessage extends ClaudeCliMessage {
   type: 'assistant';
   message?: {
     content: ContentBlock[];
@@ -78,7 +78,7 @@ export interface AssistantMessage extends ClaudeCliMessage {
 }
 
 // User message (tool results)
-export interface UserMessage extends ClaudeCliMessage {
+interface UserMessage extends ClaudeCliMessage {
   type: 'user';
   message?: {
     content: (TextContent | ToolResultContent)[];
@@ -86,7 +86,7 @@ export interface UserMessage extends ClaudeCliMessage {
 }
 
 // Result message
-export interface ResultMessage extends ClaudeCliMessage {
+interface ResultMessage extends ClaudeCliMessage {
   type: 'result';
   subtype: 'success' | 'error';
   session_id?: string;
@@ -257,7 +257,7 @@ export type WebviewToExtensionMessage =
   | { type: 'resolveDroppedFile'; uri: string };
 
 /** Messages from Extension to Webview */
-export type ExtensionToWebviewMessage =
+type ExtensionToWebviewMessage =
   | { type: 'ready'; data: string }
   | { type: 'userInput'; data: { text: string; images?: string[] } }
   | { type: 'output'; data: string }
@@ -301,12 +301,12 @@ export type ExtensionToWebviewMessage =
   | { type: 'editorSelection'; data: { filePath: string; startLine: number; endLine: number; text: string } | null }
   | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
 
-export interface SettingsData {
+interface SettingsData {
   thinkingIntensity: string;
   yoloMode: boolean;
 }
 
-export interface TotalsData {
+interface TotalsData {
   totalCost: number;
   totalTokensInput: number;
   totalTokensOutput: number;
@@ -316,7 +316,7 @@ export interface TotalsData {
   currentTurns?: number;
 }
 
-export interface TokensData {
+interface TokensData {
   totalTokensInput: number;
   totalTokensOutput: number;
   currentInputTokens: number;
@@ -335,7 +335,7 @@ export interface ToolUseData {
   startLines?: number[];
 }
 
-export interface ToolResultData {
+interface ToolResultData {
   content: string;
   isError: boolean;
   toolUseId?: string;
@@ -348,7 +348,7 @@ export interface ToolResultData {
   hidden?: boolean;
 }
 
-export interface PermissionRequestData {
+interface PermissionRequestData {
   id: string;
   tool: string;
   input: Record<string, unknown>;

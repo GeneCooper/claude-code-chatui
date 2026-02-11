@@ -46,7 +46,7 @@ export class DiffContentProvider implements vscode.TextDocumentContentProvider {
 // SessionStateManager
 // ============================================================================
 
-export interface ToolUseMetric {
+interface ToolUseMetric {
   startTime: number;
   tokens?: number;
   cacheReadTokens?: number;
@@ -58,7 +58,7 @@ export interface ToolUseMetric {
   startLines?: number[];
 }
 
-export interface SessionState {
+interface SessionState {
   totalCost: number;
   totalTokensInput: number;
   totalTokensOutput: number;
@@ -71,7 +71,7 @@ export interface SessionState {
   selectedModel: string;
 }
 
-export interface TokenUsageUpdate {
+interface TokenUsageUpdate {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
@@ -464,7 +464,7 @@ export class ClaudeMessageProcessor {
 // SettingsManager
 // ============================================================================
 
-export interface WebviewSettings {
+interface WebviewSettings {
   selectedModel: string;
   thinkingMode: boolean;
   thinkingIntensity: string;

@@ -34,7 +34,7 @@ export function setState<T>(state: T): void {
   vscode?.setState(state)
 }
 
-export function onMessage(handler: (message: Record<string, unknown>) => void): () => void {
+function onMessage(handler: (message: Record<string, unknown>) => void): () => void {
   const listener = (event: MessageEvent) => handler(event.data)
   window.addEventListener('message', listener)
   return () => window.removeEventListener('message', listener)
@@ -275,7 +275,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 }
 
-export function handleExtensionMessage(msg: ExtensionMessage): void {
+function handleExtensionMessage(msg: ExtensionMessage): void {
   const handler = webviewMessageHandlers[msg.type]
   if (handler) handler(msg)
   else log.warn('Unhandled message type', { type: msg.type })
@@ -299,7 +299,7 @@ export function useVSCode(): void {
 // useAutoScroll Hook
 // ============================================================================
 
-export interface UseAutoScrollOptions {
+interface UseAutoScrollOptions {
   threshold?: number
   enabled?: boolean
   behavior?: ScrollBehavior
@@ -308,7 +308,7 @@ export interface UseAutoScrollOptions {
   onScrollToBottom?: () => void
 }
 
-export interface UseAutoScrollReturn<T extends HTMLElement> {
+interface UseAutoScrollReturn<T extends HTMLElement> {
   containerRef: RefObject<T | null>
   isNearBottom: boolean
   isAutoScrollEnabled: boolean
@@ -402,11 +402,3 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>(
   }
 }
 
-export function scrollElementToBottom(element: HTMLElement, options?: { behavior?: ScrollBehavior }): void {
-  element.scrollTo({ top: element.scrollHeight, behavior: options?.behavior ?? 'smooth' })
-}
-
-export function isElementAtBottom(element: HTMLElement, threshold = 100): boolean {
-  const { scrollTop, scrollHeight, clientHeight } = element
-  return scrollHeight - scrollTop - clientHeight <= threshold
-}
