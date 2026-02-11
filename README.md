@@ -16,17 +16,20 @@ Requires VS Code 1.94+. The extension expects `claude` on your PATH.
 ## Features
 
 - **Chat Interface** — Real-time streaming responses, markdown rendering, syntax-highlighted code blocks
-- **File Context** — Type `@` to reference any workspace file; drag & drop or paste images
+- **Editor Title Bar Icon** — Click the icon in the editor title bar to open chat with the current file auto-attached
+- **File Context** — Type `@` to reference any workspace file; drag & drop files from the explorer or paste images
 - **Slash Commands** — Type `/` to access 23+ built-in Claude Code commands
 - **Model Selection** — Switch between Opus, Sonnet, or your configured default
 - **Plan & Thinking Modes** — Plan-first mode and configurable thinking intensity (Think → Ultrathink)
+- **YOLO Mode** — Skip all permission prompts for uninterrupted workflows (auto-approves any remaining checks)
 - **Checkpoint & Restore** — Git-based automatic backups; one-click restore to any previous state
 - **Inline Diff Viewer** — See file changes inline with expand/collapse; open in VS Code's native diff editor
 - **MCP Server Management** — Install, configure, enable/disable MCP servers through UI
 - **Permission System** — Interactive permission dialogs, always-allow patterns, YOLO mode
 - **Conversation History** — Automatic session saving, browsing, and restoration
 - **Token & Cost Tracking** — Real-time API usage monitoring
-- **Sidebar & Panel** — Use as sidebar view or standalone editor panel
+- **Max Turns Control** — Limit agentic tool-use turns per request to manage token consumption
+- **Sidebar & Panel** — Use as sidebar view or standalone editor panel (auto-locks editor group)
 
 ## Getting Started
 
@@ -44,19 +47,27 @@ Requires VS Code 1.94+. The extension expects `claude` on your PATH.
 | `@` | Open file picker |
 | `/` | Open slash commands |
 
+## Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `claudeCodeChatUI.thinking.intensity` | `think` | Thinking intensity: think, think-hard, think-harder, ultrathink |
+| `claudeCodeChatUI.permissions.yoloMode` | `false` | Skip all permission checks |
+| `claudeCodeChatUI.maxTurns` | `0` | Max agentic turns per request (0 = unlimited) |
+
 ## Architecture
 
 ```
 ┌─────────────────────────────────────┐
 │           VS Code Extension         │
 │  ┌───────────────────────────────┐  │
-│  │     WebView Panel (HTML/JS)   │  │  ← Chat UI
+│  │  React 19 + Zustand WebView  │  │  ← Chat UI
 │  └──────────┬────────────────────┘  │
 │             │ postMessage           │
 │  ┌──────────▼────────────────────┐  │
 │  │    Extension Host (Node.js)   │  │  ← Message routing
 │  └──────────┬────────────────────┘  │
-│             │ spawn / SDK           │
+│             │ spawn + stream-json   │
 │  ┌──────────▼────────────────────┐  │
 │  │     Claude Code CLI           │  │  ← Engine (untouched)
 │  └───────────────────────────────┘  │
@@ -65,18 +76,39 @@ Requires VS Code 1.94+. The extension expects `claude` on your PATH.
 
 ## Source Structure
 
-| File | Lines | Role |
-|------|-------|------|
-| `src/extension.ts` | ~3,000 | Extension host — CLI process management, session/conversation handling, permissions, MCP, diff |
-| `src/script.ts` | ~3,300 | WebView JS — message rendering, UI interactions, settings logic |
-| `src/ui-styles.ts` | ~3,200 | WebView CSS — all styles |
-| `src/ui.ts` | ~800 | WebView HTML — page template |
+```
+src/
+├── extension/
+│   ├── extension.ts    — Entry point, command registration
+│   ├── panel.ts        — WebviewPanel & sidebar provider
+│   ├── claude.ts       — Claude CLI process management, permission service
+│   ├── handlers.ts     — Message handlers, settings manager, state manager
+│   └── storage.ts      — Conversation, backup, MCP, usage services
+├── webview/
+│   ├── App.tsx         — Root React component
+│   ├── store.ts        — Zustand stores (chat, settings, UI, MCP)
+│   ├── hooks.ts        — VS Code API bridge, message handlers
+│   └── components/
+│       ├── ChatView.tsx          — Chat container with auto-scroll
+│       ├── JourneyTimeline.tsx   — Message grouping & timeline rendering
+│       ├── InputArea.tsx         — Input textarea, file picker, settings
+│       ├── AssistantMessage.tsx  — Markdown rendering
+│       ├── DiffView.tsx          — Inline diff viewer
+│       ├── ToolUseBlock.tsx      — Tool invocation display
+│       ├── ToolResultBlock.tsx   — Tool result display
+│       ├── PermissionDialog.tsx  — Permission request UI
+│       └── TodoDisplay.tsx       — Task list display
+└── shared/
+    ├── types.ts        — Shared type definitions
+    ├── constants.ts    — Shared constants
+    └── logger.ts       — Logging utility
+```
 
 ## Development
 
 ```bash
 git clone <repo-url>
-cd claude-code-ui
+cd claude-code-chatui
 npm install
 # Press F5 in VS Code to launch Extension Development Host
 ```

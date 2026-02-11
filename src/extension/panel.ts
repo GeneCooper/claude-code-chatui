@@ -233,10 +233,15 @@ export class PanelProvider {
       this._panel = undefined;
     }
 
+    const isSameWebview = this._webview === webview;
     this._webview = webview;
     this._webviewView = webviewView;
-    this._webview.html = getWebviewHtml(this._webview, this._extensionUri);
-    this._setupWebviewMessageHandler(this._webview);
+
+    if (!isSameWebview) {
+      // Only set HTML on a fresh webview; skip if retainContextWhenHidden kept it alive
+      this._webview.html = getWebviewHtml(this._webview, this._extensionUri);
+      this._setupWebviewMessageHandler(this._webview);
+    }
   }
 
   attachFileContext(relativePath: string): void {
@@ -254,7 +259,8 @@ export class PanelProvider {
   }
 
   reinitializeWebview(): void {
-    if (this._webview) this._setupWebviewMessageHandler(this._webview);
+    // No-op: with retainContextWhenHidden the webview stays alive,
+    // so we don't need to re-bind handlers on visibility change.
   }
 
   async newSession(): Promise<void> {
