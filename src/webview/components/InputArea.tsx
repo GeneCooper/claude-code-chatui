@@ -7,13 +7,7 @@ import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { FilePicker } from './FilePicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
-
-const MODELS = [
-  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
-  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '◆' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '●' },
-  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '○' },
-]
+import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
 export function InputArea() {
   const [text, setText] = useState('')
@@ -250,7 +244,6 @@ export function InputArea() {
 
   const handleModelChange = (model: string) => {
     setSelectedModel(model)
-    setShowModelPicker(false)
     postMessage({ type: 'selectModel', model })
   }
 
@@ -271,6 +264,12 @@ export function InputArea() {
       <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
       <FilePicker onSelect={handleFileSelect} />
       <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
+      <ModelSelectorModal
+        show={showModelPicker}
+        selectedModel={selectedModel}
+        onSelect={handleModelChange}
+        onClose={() => setShowModelPicker(false)}
+      />
 
       {/* Image previews */}
       {images.length > 0 && (
@@ -430,126 +429,28 @@ export function InputArea() {
           {/* Left controls */}
           <div className="flex items-center gap-1">
             {/* Model selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowModelPicker(!showModelPicker)}
-                className="cursor-pointer border-none flex items-center gap-1"
-                style={{
-                  background: 'transparent',
-                  padding: '2px 4px',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  opacity: 0.7,
-                  color: currentModel.color,
-                  transition: 'all 0.2s ease',
-                }}
-                title="Select model"
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24" />
-                </svg>
-                <span>{currentModel.label}</span>
-              </button>
-
-              {/* Model popup panel */}
-              {showModelPicker && (
-                <>
-                <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 999 }}
-                  onClick={() => setShowModelPicker(false)}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 'calc(100% + 8px)',
-                    left: 0,
-                    width: '260px',
-                    background: 'var(--vscode-editor-background)',
-                    border: '1px solid var(--vscode-panel-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '16px',
-                    zIndex: 1000,
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-                  }}
-                >
-                  <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '12px', opacity: 0.7 }}>
-                    Select Model
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {MODELS.map((model) => (
-                      <button
-                        key={model.value}
-                        onClick={() => handleModelChange(model.value)}
-                        className="flex items-center gap-2.5 cursor-pointer border-none text-left text-inherit"
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 'var(--radius-md)',
-                          border: model.value === selectedModel ? `1px solid ${model.color}` : '1px solid transparent',
-                          background: model.value === selectedModel ? `${model.color}15` : 'rgba(128, 128, 128, 0.04)',
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (model.value !== selectedModel) {
-                            e.currentTarget.style.background = 'rgba(128, 128, 128, 0.1)'
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (model.value !== selectedModel) {
-                            e.currentTarget.style.background = 'rgba(128, 128, 128, 0.04)'
-                          }
-                        }}
-                      >
-                        <div
-                          className="flex items-center justify-center shrink-0"
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: 'var(--radius-sm)',
-                            background: `${model.color}20`,
-                            color: model.color,
-                            fontSize: '14px',
-                          }}
-                        >
-                          {model.icon}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '12px', fontWeight: 600 }}>{model.label}</div>
-                          <div style={{ fontSize: '10px', opacity: 0.7 }}>{model.desc}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  {/* Configure in Terminal footer */}
-                  <div
-                    className="flex items-center gap-1.5 cursor-pointer"
-                    style={{
-                      marginTop: '8px',
-                      paddingTop: '8px',
-                      borderTop: '1px solid var(--vscode-panel-border)',
-                      fontSize: '11px',
-                      opacity: 0.7,
-                      transition: 'all 0.2s ease',
-                    }}
-                    onClick={() => {
-                      postMessage({ type: 'openModelTerminal' })
-                      setShowModelPicker(false)
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="4 17 10 11 4 5" />
-                      <line x1="12" y1="19" x2="20" y2="19" />
-                    </svg>
-                    <span>Configure in Terminal</span>
-                  </div>
-                </div>
-                </>
-              )}
-            </div>
+            <button
+              onClick={() => setShowModelPicker(true)}
+              className="cursor-pointer border-none flex items-center gap-1"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontSize: '11px',
+                fontWeight: 500,
+                opacity: 0.7,
+                color: currentModel.color,
+                transition: 'all 0.2s ease',
+              }}
+              title="Select model"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24" />
+              </svg>
+              <span>{currentModel.label}</span>
+            </button>
 
             {/* Separator */}
             <span style={{ color: 'var(--vscode-panel-border)', fontSize: '11px', userSelect: 'none' }}>|</span>
