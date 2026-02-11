@@ -10,10 +10,9 @@ const HINTS = [
 ]
 
 const TIPS = [
+  { key: 'Agent', desc: 'Auto-adaptive mode' },
   { key: '/', desc: 'Slash commands' },
   { key: 'Drop', desc: 'Attach files' },
-  { key: 'Think', desc: 'Deep reasoning mode' },
-  { key: 'Plan', desc: 'Plan before executing' },
   { key: 'YOLO', desc: 'Skip permissions' },
   { key: 'Shift+Enter', desc: 'New line' },
 ]
