@@ -402,27 +402,25 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>(
   }, [])
 
   // Auto-scroll when content inside the scroll container changes size
+  // Use refs to avoid re-creating observers when state changes
+  const autoScrollStateRef = useRef({ isAutoScrollEnabled, isNearBottom, scrollToBottom })
+  autoScrollStateRef.current = { isAutoScrollEnabled, isNearBottom, scrollToBottom }
+
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const observer = new MutationObserver(() => {
-      if (isAutoScrollEnabled && isNearBottom) {
-        scrollToBottom({ behavior: 'instant' })
-      }
-    })
-    // Watch for any child additions/removals and subtree changes that affect scroll height
-    observer.observe(container, { childList: true, subtree: true, characterData: true })
-    // Also observe child element resizes (e.g. expanding messages, TodoDisplay)
-    const resizeObserver = new ResizeObserver(() => {
-      if (isAutoScrollEnabled && isNearBottom) {
-        scrollToBottom({ behavior: 'instant' })
-      }
-    })
-    for (const child of container.children) {
-      resizeObserver.observe(child)
+    const doScroll = () => {
+      const { isAutoScrollEnabled: enabled, isNearBottom: near, scrollToBottom: scroll } = autoScrollStateRef.current
+      if (enabled && near) scroll({ behavior: 'instant' })
     }
+    const observer = new MutationObserver(doScroll)
+    observer.observe(container, { childList: true, subtree: true })
+    // Observe the container itself for size changes — no need to observe every child
+    const resizeObserver = new ResizeObserver(doScroll)
+    resizeObserver.observe(container)
     return () => { observer.disconnect(); resizeObserver.disconnect() }
-  }, [isAutoScrollEnabled, isNearBottom, scrollToBottom])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return {
     containerRef, isNearBottom, isAutoScrollEnabled,

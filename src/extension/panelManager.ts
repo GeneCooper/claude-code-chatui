@@ -57,6 +57,9 @@ export class PanelManager {
 
     provider.bindToWebview(panel.webview);
 
+    // Lock the editor group so the chat panel stays pinned
+    void vscode.commands.executeCommand('workbench.action.lockEditorGroup');
+
     this._panels.set(panelId, { provider, claudeService, panel });
 
     panel.onDidDispose(() => {

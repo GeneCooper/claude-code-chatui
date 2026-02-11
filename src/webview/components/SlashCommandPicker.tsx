@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 
@@ -72,34 +72,35 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
     }
   }, [show, filter])
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!show || filtered.length === 0) return
+  // Use ref to avoid re-attaching the global keydown listener on every state change
+  const handlerRef = useRef({ show, filtered, selectedIndex, onSelect, setShow })
+  handlerRef.current = { show, filtered, selectedIndex, onSelect, setShow }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const { show: s, filtered: f, selectedIndex: idx, onSelect: sel, setShow: ss } = handlerRef.current
+      if (!s || f.length === 0) return
 
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex((i) => (i + 1) % filtered.length)
+        setSelectedIndex((i) => (i + 1) % f.length)
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
-        setSelectedIndex((i) => (i - 1 + filtered.length) % filtered.length)
+        setSelectedIndex((i) => (i - 1 + f.length) % f.length)
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
-        const cmd = filtered[selectedIndex]
-        // Custom snippets behave like regular snippets
-        onSelect(cmd.command, cmd.category === 'custom' ? 'snippet' : cmd.category)
-        setShow(false)
+        const cmd = f[idx]
+        sel(cmd.command, cmd.category === 'custom' ? 'snippet' : cmd.category)
+        ss(false)
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        setShow(false)
+        ss(false)
       }
-    },
-    [show, filtered, selectedIndex, onSelect, setShow],
-  )
-
-  useEffect(() => {
+    }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!show) return null
 

@@ -51,8 +51,11 @@ export function InputArea() {
 
   useEffect(() => {
     setState({ draft: text, model: selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend })
+  }, [text, selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend])
+
+  useEffect(() => {
     debouncedSave(text)
-  }, [text, selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend, debouncedSave])
+  }, [text, debouncedSave])
 
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
 
@@ -65,32 +68,20 @@ export function InputArea() {
   }, [draftText, setDraftText])
 
 
-  // Listen for image file picked via native dialog
+  // Listen for all custom events from extension in a single effect
   useEffect(() => {
-    const handler = (e: Event) => {
+    const onImagePicked = (e: Event) => {
       const detail = (e as CustomEvent).detail as { name: string; dataUrl: string }
       if (detail) setImages((prev) => [...prev, detail])
     }
-    window.addEventListener('imageFilePicked', handler)
-    return () => window.removeEventListener('imageFilePicked', handler)
-  }, [])
-
-  // Listen for clipboard content fallback from extension
-  useEffect(() => {
-    const handler = (e: Event) => {
+    const onClipboard = (e: Event) => {
       const detail = (e as CustomEvent).detail as { text: string }
       if (detail?.text) {
         setText((prev) => prev + detail.text)
         textareaRef.current?.focus()
       }
     }
-    window.addEventListener('clipboardContent', handler)
-    return () => window.removeEventListener('clipboardContent', handler)
-  }, [])
-
-  // Listen for file context attachment (from editor title button or file drop)
-  useEffect(() => {
-    const handler = (e: Event) => {
+    const onAttachFile = (e: Event) => {
       const detail = (e as CustomEvent).detail as { filePath: string }
       if (detail?.filePath) {
         setAttachedFiles((prev) =>
@@ -99,28 +90,27 @@ export function InputArea() {
         textareaRef.current?.focus()
       }
     }
-    window.addEventListener('attachFileContext', handler)
-    return () => window.removeEventListener('attachFileContext', handler)
-  }, [])
-
-  // Listen for editor text selection changes
-  useEffect(() => {
-    const handler = (e: Event) => {
+    const onEditorSelection = (e: Event) => {
       const detail = (e as CustomEvent).detail as { filePath: string; startLine: number; endLine: number; text: string } | null
       setEditorSelection(detail)
     }
-    window.addEventListener('editorSelection', handler)
-    return () => window.removeEventListener('editorSelection', handler)
-  }, [])
-
-  // Listen for active file changes
-  useEffect(() => {
-    const handler = (e: Event) => {
+    const onActiveFile = (e: Event) => {
       const detail = (e as CustomEvent).detail as { filePath: string; languageId: string } | null
       setActiveFile(detail)
     }
-    window.addEventListener('activeFileChanged', handler)
-    return () => window.removeEventListener('activeFileChanged', handler)
+
+    window.addEventListener('imageFilePicked', onImagePicked)
+    window.addEventListener('clipboardContent', onClipboard)
+    window.addEventListener('attachFileContext', onAttachFile)
+    window.addEventListener('editorSelection', onEditorSelection)
+    window.addEventListener('activeFileChanged', onActiveFile)
+    return () => {
+      window.removeEventListener('imageFilePicked', onImagePicked)
+      window.removeEventListener('clipboardContent', onClipboard)
+      window.removeEventListener('attachFileContext', onAttachFile)
+      window.removeEventListener('editorSelection', onEditorSelection)
+      window.removeEventListener('activeFileChanged', onActiveFile)
+    }
   }, [])
 
   const adjustHeight = useCallback(() => {

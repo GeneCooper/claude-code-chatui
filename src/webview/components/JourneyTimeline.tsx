@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage } from '../store'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
@@ -196,18 +196,19 @@ function LoadingIndicator() {
   const [fadeClass, setFadeClass] = useState(true)
 
   useEffect(() => {
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
-    return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
+    let tick = 0
     const id = setInterval(() => {
-      setFadeClass(false)
-      setTimeout(() => {
-        setPhraseIndex((i) => (i + 1) % LOADING_PHRASES.length)
-        setFadeClass(true)
-      }, 200)
-    }, 3000)
+      tick++
+      setElapsed(tick)
+      // Rotate phrase every 3 seconds
+      if (tick % 3 === 0) {
+        setFadeClass(false)
+        setTimeout(() => {
+          setPhraseIndex((i) => (i + 1) % LOADING_PHRASES.length)
+          setFadeClass(true)
+        }, 200)
+      }
+    }, 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -423,16 +424,19 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
   }, [messages])
 
   // After a batchReplay, auto-collapse all completed plan groups for performance
+  const itemsRef = useRef(items)
+  itemsRef.current = items
   useEffect(() => {
     const handler = () => {
-      const completedIds = items
+      const completedIds = itemsRef.current
         .filter((it): it is PlanGroup => it.kind === 'plan' && it.status === 'completed')
         .map((it) => it.id)
       if (completedIds.length > 0) setCollapsedPlans(new Set(completedIds))
     }
     window.addEventListener('batchReplayDone', handler)
     return () => window.removeEventListener('batchReplayDone', handler)
-  }, [items])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const togglePlan = useCallback((id: string) => {
     setCollapsedPlans((prev) => {

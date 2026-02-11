@@ -216,7 +216,14 @@ function processChildren(children: React.ReactNode): React.ReactNode {
   return children
 }
 
+// Simple LRU-ish cache for linkifyFilePaths to avoid re-running regex on same text
+const linkifyCache = new Map<string, React.ReactNode>()
+const LINKIFY_CACHE_MAX = 200
+
 function linkifyFilePaths(text: string): React.ReactNode {
+  const cached = linkifyCache.get(text)
+  if (cached !== undefined) return cached
+
   const parts: React.ReactNode[] = []
   let lastIndex = 0
 
@@ -245,11 +252,22 @@ function linkifyFilePaths(text: string): React.ReactNode {
     lastIndex = startIndex + path.length
   }
 
-  if (lastIndex === 0) return text
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex))
+  let result: React.ReactNode
+  if (lastIndex === 0) {
+    result = text
+  } else {
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex))
+    }
+    result = parts
   }
-  return parts
+  // Store in cache, evict oldest entries if too large
+  if (linkifyCache.size >= LINKIFY_CACHE_MAX) {
+    const firstKey = linkifyCache.keys().next().value
+    if (firstKey !== undefined) linkifyCache.delete(firstKey)
+  }
+  linkifyCache.set(text, result)
+  return result
 }
 
 function CopyButton({ text }: { text: string }) {
