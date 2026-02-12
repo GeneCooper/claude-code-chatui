@@ -352,7 +352,7 @@ export function InputArea() {
 
   return (
     <div
-      className="relative"
+      className="relative shrink-0"
       style={{
         padding: '10px 10px 12px',
         borderTop: '1px solid var(--vscode-panel-border)',

@@ -8,7 +8,6 @@ import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
 import type { UsageData } from '../shared/types'
-import { setLocale } from './i18n'
 
 // ============================================================================
 // VS Code API Bridge
@@ -280,11 +279,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   activeFileChanged: (msg) => {
     const data = msg.data as { filePath: string; languageId: string } | null
     window.dispatchEvent(new CustomEvent('activeFileChanged', { detail: data }))
-  },
-
-  locale: (msg) => {
-    const data = msg.data as { locale: string }
-    if (data?.locale) setLocale(data.locale)
   },
 
   autoContextInfo: (msg) => {

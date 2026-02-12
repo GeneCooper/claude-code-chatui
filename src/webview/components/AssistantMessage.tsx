@@ -160,10 +160,10 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
       className="group relative max-w-[95%]"
       style={{ padding: '4px 0' }}
     >
-      {/* Copy button - appears above on hover */}
+      {/* Copy button - appears on hover, inline at bottom-right */}
       <button
         onClick={handleCopyMessage}
-        className="absolute -top-5 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
+        className="absolute -bottom-4 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
         style={{
           padding: '2px 6px',
           borderRadius: '4px',

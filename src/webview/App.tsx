@@ -26,7 +26,7 @@ export default function App() {
     <div className="flex flex-col h-screen" role="application">
       <a href="#main-content" className="sr-only">Skip to content</a>
       <Header />
-      <div id="main-content">
+      <div id="main-content" className="flex flex-col flex-1 min-h-0">
         {activeView === 'chat' && (
           <>
             <ChatView onHintClick={handleHintClick} />

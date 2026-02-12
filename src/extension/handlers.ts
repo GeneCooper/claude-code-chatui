@@ -707,7 +707,6 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     type: 'platformInfo',
     data: { platform: process.platform, isWindows: process.platform === 'win32' },
   });
-  ctx.postMessage({ type: 'locale', data: { locale: vscode.env.language } });
   checkCliAvailable(ctx);
 
   // Send current settings so webview has correct initial state
