@@ -6,6 +6,8 @@ import { PanelProvider, WebviewProvider } from './panel';
 import { PanelManager } from './panelManager';
 import { ContextCollector } from './contextCollector';
 import { RulesService } from './rulesService';
+import { ProjectProfiler } from './projectProfiler';
+import { IntentAnalyzer } from './intentAnalyzer';
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log('Claude Code ChatUI extension is being activated');
@@ -19,6 +21,8 @@ export function activate(context: vscode.ExtensionContext): void {
   // Initialize new intelligent services
   const contextCollector = new ContextCollector();
   const rulesService = new RulesService(context);
+  const projectProfiler = new ProjectProfiler();
+  const intentAnalyzer = new IntentAnalyzer();
 
   // Register diff content provider
   const diffProvider = vscode.workspace.registerTextDocumentContentProvider(
@@ -35,6 +39,8 @@ export function activate(context: vscode.ExtensionContext): void {
     permissionService,
     contextCollector,
     rulesService,
+    projectProfiler,
+    intentAnalyzer,
   );
 
   // Sidebar gets its own dedicated ClaudeService + PanelProvider
@@ -44,6 +50,7 @@ export function activate(context: vscode.ExtensionContext): void {
     conversationService, mcpService, permissionService,
     panelManager,
     contextCollector, rulesService,
+    projectProfiler, intentAnalyzer,
   );
 
   // Create sidebar webview provider
@@ -103,6 +110,7 @@ export function activate(context: vscode.ExtensionContext): void {
     sidebarClaudeService,
     permissionService,
     outputChannel,
+    projectProfiler,
     { dispose: () => panelManager.disposeAll() },
     { dispose: () => sidebarProvider.disposeAll() },
   );

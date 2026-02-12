@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.4.9",
+  "version": "0.5.1",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -121,6 +121,16 @@
           "minimum": 0,
           "maximum": 100,
           "description": "Maximum number of agentic turns per request (0 = unlimited). Helps control token usage."
+        },
+        "claudeCodeChatUI.projectProfile.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-detect project type (language, framework, tools) and inject best-practice prompts into system instructions"
+        },
+        "claudeCodeChatUI.intentAnalysis.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Analyze user message intent and generate MCP/tool usage hints to guide Claude toward the right tools"
         }
       }
     }

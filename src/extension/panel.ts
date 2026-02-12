@@ -15,6 +15,8 @@ import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } fr
 import type { PanelManager } from './panelManager';
 import type { ContextCollector } from './contextCollector';
 import type { RulesService } from './rulesService';
+import type { ProjectProfiler } from './projectProfiler';
+import type { IntentAnalyzer } from './intentAnalyzer';
 import { TaskPipeline } from './taskPipeline';
 
 const log = createModuleLogger('PanelProvider');
@@ -136,6 +138,8 @@ export class PanelProvider {
     private readonly _panelManager?: PanelManager,
     private readonly _contextCollector?: ContextCollector,
     private readonly _rulesService?: RulesService,
+    private readonly _projectProfiler?: ProjectProfiler,
+    private readonly _intentAnalyzer?: IntentAnalyzer,
   ) {
     log.info('PanelProvider initialized');
 
@@ -531,6 +535,27 @@ export class PanelProvider {
       } catch { /* rules failure is non-fatal */ }
     }
 
+    // Feature 3: Project profile prompt injection
+    const profileEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('projectProfile.enabled', true);
+    if (profileEnabled && this._projectProfiler) {
+      try {
+        const profileSection = this._projectProfiler.getSystemPromptSection(cwd);
+        if (profileSection) systemParts.push(profileSection);
+      } catch { /* profile failure is non-fatal */ }
+    }
+
+    // Feature 4: Intent analysis + tool hints
+    const intentEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('intentAnalysis.enabled', true);
+    if (intentEnabled && this._intentAnalyzer) {
+      try {
+        const profile = this._projectProfiler?.detectProfile(cwd) ?? null;
+        const analysis = this._intentAnalyzer.analyze(text, profile);
+        if (analysis.toolHints.length > 0) {
+          systemParts.push(`[Tool Usage Hints — intent: ${analysis.primaryIntent}]\n${analysis.toolHints.join('\n')}`);
+        }
+      } catch { /* intent analysis failure is non-fatal */ }
+    }
+
     return {
       actualText,
       additionalSystemPrompt: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
@@ -598,9 +623,10 @@ export class PanelProvider {
         vscode.window.showInformationMessage('Claude Code: Response complete');
       }
 
-      // Pipeline auto-advance: mark step completed and start next
+      // Pipeline auto-advance: mark step completed with summary and start next
       if (this._taskPipeline?.isRunning) {
-        this._taskPipeline.markStepCompleted();
+        const summary = this._extractStepSummary();
+        this._taskPipeline.markStepCompleted(summary);
         setTimeout(() => this._executePipelineStep(), 1500);
       }
 
@@ -653,6 +679,22 @@ export class PanelProvider {
         },
       });
     });
+  }
+
+  /** Extract a short summary from the last assistant output for pipeline step chaining */
+  private _extractStepSummary(): string | undefined {
+    const conversation = this._messageProcessor.currentConversation;
+    for (let i = conversation.length - 1; i >= 0; i--) {
+      if (conversation[i].messageType === 'output') {
+        const data = conversation[i].data;
+        const text = typeof data === 'string' ? data : (data as { content?: string })?.content;
+        if (text) {
+          const firstLine = text.split('\n').find((l: string) => l.trim().length > 0) ?? '';
+          return firstLine.length > 150 ? firstLine.slice(0, 147) + '...' : firstLine;
+        }
+      }
+    }
+    return undefined;
   }
 
   private _replayConversation(): void {

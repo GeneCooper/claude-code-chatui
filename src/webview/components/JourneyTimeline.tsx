@@ -9,170 +9,319 @@ import { FollowUpSuggestions } from './FollowUpSuggestions'
 import { RuleViolationCard } from './RuleViolationCard'
 
 // ============================================================================
-// Constants
-// ============================================================================
-
-const STATUS_COLORS = {
-  executing: 'rgba(255, 255, 255, 0.4)',
-  completed: 'rgba(255, 255, 255, 0.3)',
-  failed: '#e74c3c',
-} as const
-
-const STATUS_ICONS = {
-  executing: '⟳',
-  completed: '✓',
-  failed: '✗',
-} as const
-
-const STEP_INDICATORS = {
-  error: '●',
-  done: '●',
-  pending: '○',
-} as const
-
-// ============================================================================
 // Types
 // ============================================================================
 
-interface ToolStep {
+interface TimelineEntryBase {
   id: string
-  toolUse?: ChatMessage
-  toolResult?: ChatMessage
+  timestamp: string
 }
 
-interface PlanGroup {
-  id: string
-  kind: 'plan'
-  assistantMessage: ChatMessage
-  thinkingMessage?: ChatMessage
-  steps: ToolStep[]
-  status: 'executing' | 'completed' | 'failed'
-}
-
-interface MessageItem {
-  kind: 'message'
+interface ThinkingEntry extends TimelineEntryBase {
+  kind: 'thinking'
   message: ChatMessage
 }
 
-type TimelineItem = PlanGroup | MessageItem
+interface OutputEntry extends TimelineEntryBase {
+  kind: 'output'
+  message: ChatMessage
+  isStreaming: boolean
+}
+
+interface ToolEntry extends TimelineEntryBase {
+  kind: 'tool'
+  toolUse: ChatMessage
+  toolResult?: ChatMessage
+  toolName: string
+  summary: string
+  isRunning: boolean
+  isError: boolean
+}
+
+interface StandaloneEntry extends TimelineEntryBase {
+  kind: 'standalone'
+  message: ChatMessage
+}
+
+type TimelineEntry = ThinkingEntry | OutputEntry | ToolEntry | StandaloneEntry
 
 // ============================================================================
 // Utils
 // ============================================================================
 
-function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): TimelineItem[] {
-  const timeline: TimelineItem[] = []
-  let currentPlan: PlanGroup | null = null
+function getToolSummary(toolName: string, rawInput?: Record<string, unknown>): string {
+  if (!rawInput) return ''
+  if (rawInput.command) return String(rawInput.command)
+  if (rawInput.file_path) return String(rawInput.file_path)
+  if (rawInput.pattern) return String(rawInput.pattern)
+  if (rawInput.query) return String(rawInput.query)
+  if (rawInput.url) return String(rawInput.url)
+  return ''
+}
 
-  const flushPlan = () => {
-    if (currentPlan) {
-      if (currentPlan.steps.some((s) => s.toolResult && (s.toolResult.data as Record<string, unknown>)?.isError)) {
-        currentPlan.status = 'failed'
-      } else if (currentPlan.steps.every((s) => s.toolResult)) {
-        currentPlan.status = 'completed'
-      } else {
-        currentPlan.status = 'executing'
-      }
-      timeline.push(currentPlan)
-      currentPlan = null
-    }
-  }
+function buildFlatTimeline(messages: ChatMessage[], isProcessing: boolean): TimelineEntry[] {
+  const entries: TimelineEntry[] = []
+  const pendingTools: ToolEntry[] = []
 
   for (const msg of messages) {
     switch (msg.type) {
-      case 'output': {
-        flushPlan()
-        currentPlan = { id: msg.id, kind: 'plan', assistantMessage: msg, steps: [], status: 'executing' }
+      case 'thinking':
+        entries.push({ id: msg.id, kind: 'thinking', timestamp: msg.timestamp, message: msg })
         break
-      }
-      case 'thinking': {
-        if (currentPlan) {
-          currentPlan.thinkingMessage = msg
-        } else {
-          currentPlan = { id: msg.id, kind: 'plan', assistantMessage: msg, steps: [], status: 'executing' }
-        }
+
+      case 'output':
+        entries.push({ id: msg.id, kind: 'output', timestamp: msg.timestamp, message: msg, isStreaming: false })
         break
-      }
+
       case 'toolUse': {
-        if (!currentPlan) {
-          currentPlan = { id: msg.id, kind: 'plan', assistantMessage: msg, steps: [], status: 'executing' }
+        const toolData = msg.data as Record<string, unknown>
+        const toolName = (toolData.toolName as string) || 'Tool'
+        const rawInput = toolData.rawInput as Record<string, unknown> | undefined
+        const summary = getToolSummary(toolName, rawInput)
+        const entry: ToolEntry = {
+          id: msg.id, kind: 'tool', timestamp: msg.timestamp,
+          toolUse: msg, toolResult: undefined,
+          toolName, summary, isRunning: true, isError: false,
         }
-        currentPlan.steps.push({ id: msg.id, toolUse: msg })
+        entries.push(entry)
+        pendingTools.push(entry)
         break
       }
+
       case 'toolResult': {
-        if (currentPlan && currentPlan.steps.length > 0) {
-          const lastStep = currentPlan.steps[currentPlan.steps.length - 1]
-          if (lastStep && !lastStep.toolResult) {
-            lastStep.toolResult = msg
-          } else {
-            currentPlan.steps.push({ id: msg.id, toolResult: msg })
+        const resultData = msg.data as Record<string, unknown>
+        let matched = false
+        for (let i = pendingTools.length - 1; i >= 0; i--) {
+          if (!pendingTools[i].toolResult) {
+            pendingTools[i].toolResult = msg
+            pendingTools[i].isRunning = false
+            pendingTools[i].isError = !!resultData.isError
+            pendingTools.splice(i, 1)
+            matched = true
+            break
           }
-        } else {
-          if (!currentPlan) {
-            currentPlan = { id: msg.id, kind: 'plan', assistantMessage: msg, steps: [], status: 'executing' }
-          }
-          currentPlan.steps.push({ id: msg.id, toolResult: msg })
+        }
+        if (!matched) {
+          entries.push({ id: msg.id, kind: 'standalone', timestamp: msg.timestamp, message: msg })
         }
         break
       }
-      case 'userInput':
-      case 'error':
-      case 'permissionRequest':
-      case 'compactBoundary':
-      case 'compacting':
-      case 'loading': {
-        flushPlan()
-        timeline.push({ kind: 'message', message: msg })
-        break
-      }
+
       case 'sessionInfo':
+      case 'todosUpdate':
         break
+
       default:
+        entries.push({ id: msg.id, kind: 'standalone', timestamp: msg.timestamp, message: msg })
         break
     }
   }
 
-  if (currentPlan) {
-    if (isProcessing) {
-      currentPlan.status = 'executing'
-    } else {
-      // Not processing — use same logic as flushPlan
-      if (currentPlan.steps.some((s) => s.toolResult && (s.toolResult.data as Record<string, unknown>)?.isError)) {
-        currentPlan.status = 'failed'
-      } else {
-        currentPlan.status = 'completed'
+  // Patch streaming state
+  if (isProcessing) {
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i]
+      if (entry.kind === 'output') {
+        entry.isStreaming = true
+        break
       }
+      if (entry.kind === 'standalone' && entry.message.type === 'loading') continue
+      break
     }
-    timeline.push(currentPlan)
   }
 
-  return timeline
+  return entries
 }
 
-function getPlanSummary(plan: PlanGroup): string {
-  if (plan.assistantMessage.type === 'output') return String(plan.assistantMessage.data).substring(0, 100)
-  if (plan.assistantMessage.type === 'thinking') return 'Thinking...'
-  return 'Working...'
+function getIndicatorStatus(entry: TimelineEntry): 'running' | 'completed' | 'error' | 'neutral' {
+  if (entry.kind === 'tool') {
+    if (entry.isRunning) return 'running'
+    if (entry.isError) return 'error'
+    return 'completed'
+  }
+  if (entry.kind === 'output') return entry.isStreaming ? 'running' : 'completed'
+  if (entry.kind === 'thinking') return 'neutral'
+  if (entry.kind === 'standalone') {
+    if (entry.message.type === 'error') return 'error'
+    if (entry.message.type === 'loading') return 'running'
+    if (entry.message.type === 'permissionRequest') return 'running'
+  }
+  return 'neutral'
 }
 
 // ============================================================================
 // Sub-components
 // ============================================================================
 
-function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }) {
+const INDICATOR_COLORS = {
+  running: 'var(--chatui-accent, #ed6e1d)',
+  completed: '#4ade80',
+  error: '#e74c3c',
+  neutral: 'rgba(255, 255, 255, 0.25)',
+} as const
+
+function TimelineIndicator({ status, isLast }: { status: 'running' | 'completed' | 'error' | 'neutral'; isLast: boolean }) {
   return (
-    <span
+    <div
       style={{
-        color: STATUS_COLORS[status],
-        fontSize: '12px',
-        fontWeight: 500,
-        animation: status === 'executing' ? 'spin 1.5s linear infinite' : 'none',
-        display: 'inline-block',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '20px',
+        flexShrink: 0,
+        paddingTop: '8px',
       }}
     >
-      {STATUS_ICONS[status]}
-    </span>
+      <div
+        style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          background: INDICATOR_COLORS[status],
+          flexShrink: 0,
+          boxShadow: status === 'running' ? `0 0 6px ${INDICATOR_COLORS.running}` : 'none',
+          animation: status === 'running' ? 'pulse 2s ease-in-out infinite' : 'none',
+        }}
+      />
+      {!isLast && (
+        <div
+          style={{
+            width: '1px',
+            flex: 1,
+            minHeight: '8px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            marginTop: '4px',
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
+  entry: ToolEntry; isCollapsed: boolean; onToggle: (id: string) => void
+}) {
+  return (
+    <div style={{ animation: 'fadeIn 0.15s ease' }}>
+      <button
+        onClick={() => onToggle(entry.id)}
+        aria-expanded={!isCollapsed}
+        className="w-full text-left cursor-pointer border-none text-inherit"
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '6px 10px',
+          borderRadius: 'var(--radius-sm)',
+          background: 'var(--chatui-surface-1)',
+          border: entry.isRunning
+            ? '1px solid rgba(237, 110, 29, 0.2)'
+            : '1px solid rgba(255, 255, 255, 0.06)',
+          fontSize: '12px',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--chatui-surface-2)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--chatui-surface-1)' }}
+      >
+        <span style={{ fontWeight: 600, fontSize: '12px', opacity: 0.9, flexShrink: 0 }}>
+          {entry.toolName}
+        </span>
+        {entry.summary && (
+          <span
+            className="truncate"
+            style={{
+              opacity: 0.45,
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '11px',
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {entry.summary}
+          </span>
+        )}
+        {entry.isRunning && (
+          <span
+            style={{
+              width: '6px', height: '6px', borderRadius: '50%',
+              background: 'var(--chatui-accent, #ed6e1d)',
+              animation: 'pulse 1.5s ease-in-out infinite',
+              flexShrink: 0,
+            }}
+          />
+        )}
+        <span style={{ opacity: 0.4, fontSize: '9px', flexShrink: 0 }}>
+          {isCollapsed ? '\u25B8' : '\u25BE'}
+        </span>
+      </button>
+
+      {!isCollapsed && (
+        <div style={{ paddingLeft: '4px', marginTop: '4px' }}>
+          <ToolUseBlock data={entry.toolUse.data as Record<string, unknown>} />
+          {entry.toolResult && (
+            <div style={{ marginTop: '4px' }}>
+              <ToolResultBlock data={entry.toolResult.data as Record<string, unknown>} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TimelineThinkingEntry({ entry, isCollapsed, onToggle }: {
+  entry: ThinkingEntry; isCollapsed: boolean; onToggle: (id: string) => void
+}) {
+  const text = String(entry.message.data)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div
+      className="overflow-hidden"
+      style={{
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+        borderRadius: 'var(--radius-md)',
+        animation: 'fadeIn 0.15s ease',
+      }}
+    >
+      <button
+        onClick={() => onToggle(entry.id)}
+        aria-expanded={!isCollapsed}
+        className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
+        style={{
+          padding: '8px 12px',
+          background: 'var(--chatui-surface-1)',
+          fontSize: '12px',
+          opacity: 0.7,
+        }}
+      >
+        <span className={`transition-transform ${!isCollapsed ? 'rotate-90' : ''}`} style={{ fontSize: '10px' }}>&#9654;</span>
+        <span style={{ fontStyle: 'italic' }}>Thinking...</span>
+        <span className="ml-auto text-[10px] opacity-50">
+          {text.length > 100 ? `${Math.ceil(text.length / 4)} words` : ''}
+        </span>
+      </button>
+      {!isCollapsed && (
+        <div className="relative" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <button
+            onClick={handleCopy}
+            className="absolute right-2 top-1 opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px] z-10"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <div
+            className="text-xs whitespace-pre-wrap max-h-60 overflow-y-auto"
+            style={{ padding: '8px 12px', opacity: 0.7, fontStyle: 'italic' }}
+          >
+            {text}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -199,7 +348,6 @@ function LoadingIndicator() {
     const id = setInterval(() => {
       tick++
       setElapsed(tick)
-      // Rotate phrase every 3 seconds
       if (tick % 3 === 0) {
         setFadeClass(false)
         setTimeout(() => {
@@ -217,18 +365,11 @@ function LoadingIndicator() {
   }
 
   return (
-    <div
-      className="flex items-center gap-3 px-3 py-2 text-xs"
-      style={{ opacity: 0.8 }}
-    >
-      {/* Animated sparkle spinner */}
+    <div className="flex items-center gap-3 px-3 py-2 text-xs" style={{ opacity: 0.8 }}>
       <div
         style={{
-          width: '16px',
-          height: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: '16px', height: '16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: 'loadingSpin 2s linear infinite',
           color: 'var(--chatui-accent)',
         }}
@@ -297,100 +438,6 @@ function MessageRenderer({ message, userInputIndex, onEdit, isProcessing }: {
   }
 }
 
-function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void }) {
-  const toolData = step.toolUse?.data as Record<string, unknown> | undefined
-  const toolName = (toolData?.toolName as string) || 'Tool'
-  const hasError = step.toolResult && (step.toolResult.data as Record<string, unknown>)?.isError
-
-  const indicatorColor = hasError ? STATUS_COLORS.failed : step.toolResult ? STATUS_COLORS.completed : STATUS_COLORS.executing
-  const indicator = hasError ? STEP_INDICATORS.error : step.toolResult ? STEP_INDICATORS.done : STEP_INDICATORS.pending
-
-  return (
-    <div style={{ marginBottom: '4px' }}>
-      <button
-        onClick={() => onToggle(step.id)}
-        aria-expanded={!isCollapsed}
-        className="w-full text-left cursor-pointer border-none text-inherit"
-        style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '4px 8px', borderRadius: 'var(--radius-sm)',
-          background: 'transparent', fontSize: '11px', opacity: 0.7,
-          transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
-      >
-        <span style={{ color: indicatorColor, fontSize: '10px' }}>{indicator}</span>
-        <span className="truncate">{toolName}</span>
-        <span style={{ opacity: 0.4, fontSize: '9px' }}>{isCollapsed ? '▸' : '▾'}</span>
-      </button>
-      {!isCollapsed && (
-        <div style={{ paddingLeft: '20px' }}>
-          {step.toolUse && <ToolUseBlock data={step.toolUse.data as Record<string, unknown>} />}
-          {step.toolResult && <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onToggleStep }: {
-  plan: PlanGroup; isCollapsed: boolean; collapsedSteps: Set<string>;
-  onTogglePlan: (id: string) => void; onToggleStep: (id: string) => void;
-}) {
-  const summaryText = getPlanSummary(plan)
-
-  return (
-    <div style={{ marginBottom: '4px' }}>
-      <button
-        onClick={() => onTogglePlan(plan.id)}
-        aria-expanded={!isCollapsed}
-        className="w-full text-left cursor-pointer border-none text-inherit"
-        style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '6px 10px', borderRadius: 'var(--radius-sm)',
-          background: 'transparent',
-          border: '1px solid transparent',
-          transition: 'all 0.2s ease', fontSize: '12px',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-      >
-        <StatusIcon status={plan.status} />
-        <span className="flex-1 truncate" style={{ opacity: 0.8 }}>
-          {isCollapsed ? summaryText : 'Assistant response'}
-        </span>
-        {plan.steps.length > 0 && (
-          <span style={{ opacity: 0.5, fontSize: '11px' }}>
-            {plan.steps.length} step{plan.steps.length !== 1 ? 's' : ''}
-          </span>
-        )}
-        <span style={{ opacity: 0.4, fontSize: '10px' }}>{isCollapsed ? '▸' : '▾'}</span>
-      </button>
-
-      {!isCollapsed && (
-        <div style={{ paddingLeft: '12px', borderLeft: '1px solid rgba(255, 255, 255, 0.06)', marginLeft: '10px', marginTop: '4px' }}>
-          {plan.assistantMessage.type === 'output' && (
-            <AssistantMessage text={String(plan.assistantMessage.data)} timestamp={plan.assistantMessage.timestamp} isStreaming={plan.status === 'executing'} />
-          )}
-          {plan.thinkingMessage && <ThinkingBlock text={String(plan.thinkingMessage.data)} />}
-          {plan.assistantMessage.type === 'thinking' && !plan.thinkingMessage && (
-            <ThinkingBlock text={String(plan.assistantMessage.data)} />
-          )}
-          {plan.steps.map((step) => (
-            <ToolStepItem
-              key={step.id}
-              step={step}
-              isCollapsed={collapsedSteps.has(step.id)}
-              onToggle={onToggleStep}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -403,94 +450,139 @@ interface Props {
 }
 
 export function JourneyTimeline({ messages, isProcessing, onEdit, onRegenerate }: Props) {
-  const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
-  const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
+  const [collapsedEntries, setCollapsedEntries] = useState<Set<string>>(new Set())
 
-  const items = useMemo(() => buildTimelineItems(messages, isProcessing), [messages, isProcessing])
+  const entries = useMemo(() => buildFlatTimeline(messages, isProcessing), [messages, isProcessing])
 
-  // Map message IDs to their userInput index (0-based count of userInput messages)
   const userInputIndexMap = useMemo(() => {
     const map = new Map<string, number>()
     let idx = 0
     for (const msg of messages) {
-      if (msg.type === 'userInput') {
-        map.set(msg.id, idx++)
-      }
+      if (msg.type === 'userInput') map.set(msg.id, idx++)
     }
     return map
   }, [messages])
 
-  // After a batchReplay, auto-collapse all completed plan groups for performance
-  const itemsRef = useRef(items)
-  itemsRef.current = items
+  // Auto-collapse on batchReplayDone
+  const entriesRef = useRef(entries)
+  entriesRef.current = entries
   useEffect(() => {
     const handler = () => {
-      const completedIds = itemsRef.current
-        .filter((it): it is PlanGroup => it.kind === 'plan' && it.status === 'completed')
-        .map((it) => it.id)
-      if (completedIds.length > 0) setCollapsedPlans(new Set(completedIds))
+      const idsToCollapse = entriesRef.current
+        .filter((e) => {
+          if (e.kind === 'tool' && !e.isRunning) return true
+          if (e.kind === 'thinking') return true
+          return false
+        })
+        .map((e) => e.id)
+      if (idsToCollapse.length > 0) setCollapsedEntries(new Set(idsToCollapse))
     }
     window.addEventListener('batchReplayDone', handler)
     return () => window.removeEventListener('batchReplayDone', handler)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const togglePlan = useCallback((id: string) => {
-    setCollapsedPlans((prev) => {
+  const toggleEntry = useCallback((id: string) => {
+    setCollapsedEntries((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
   }, [])
 
-  const toggleStep = useCallback((id: string) => {
-    setCollapsedSteps((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      return next
-    })
-  }, [])
-
-  // Check if regenerate button should show: last item is a completed plan, not processing
-  const lastItem = items[items.length - 1]
-  const showRegenerate = !isProcessing && onRegenerate && lastItem?.kind === 'plan' && lastItem.status !== 'executing'
-
-  // Get last assistant text for follow-up suggestions
+  // Last assistant text for follow-up suggestions
   const lastAssistantText = useMemo(() => {
-    if (isProcessing || !lastItem || lastItem.kind !== 'plan') return ''
-    return lastItem.assistantMessage.type === 'output' ? String(lastItem.assistantMessage.data) : ''
-  }, [isProcessing, lastItem])
+    if (isProcessing) return ''
+    for (let i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].kind === 'output') return String((entries[i] as OutputEntry).message.data)
+    }
+    return ''
+  }, [isProcessing, entries])
+
+  // Show regenerate if last non-loading entry is a completed output or tool
+  const lastNonLoadingEntry = useMemo(() => {
+    for (let i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].kind === 'standalone' && (entries[i] as StandaloneEntry).message.type === 'loading') continue
+      return entries[i]
+    }
+    return undefined
+  }, [entries])
+
+  const showRegenerate = !isProcessing && onRegenerate && lastNonLoadingEntry &&
+    (lastNonLoadingEntry.kind === 'output' || (lastNonLoadingEntry.kind === 'tool' && !(lastNonLoadingEntry as ToolEntry).isRunning))
+
+  function renderEntry(entry: TimelineEntry) {
+    switch (entry.kind) {
+      case 'thinking':
+        return (
+          <TimelineThinkingEntry
+            entry={entry}
+            isCollapsed={collapsedEntries.has(entry.id)}
+            onToggle={toggleEntry}
+          />
+        )
+      case 'output':
+        return (
+          <AssistantMessage
+            text={String(entry.message.data)}
+            timestamp={entry.message.timestamp}
+            isStreaming={entry.isStreaming}
+          />
+        )
+      case 'tool':
+        return (
+          <TimelineToolEntry
+            entry={entry}
+            isCollapsed={collapsedEntries.has(entry.id)}
+            onToggle={toggleEntry}
+          />
+        )
+      case 'standalone':
+        return (
+          <MessageRenderer
+            message={entry.message}
+            userInputIndex={entry.message.type === 'userInput' ? userInputIndexMap.get(entry.message.id) : undefined}
+            onEdit={onEdit}
+            isProcessing={isProcessing}
+          />
+        )
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      {items.map((item) => {
-        if (item.kind === 'message') {
-          const uiIdx = item.message.type === 'userInput' ? userInputIndexMap.get(item.message.id) : undefined
+    <div className="space-y-1">
+      {entries.map((entry, index) => {
+        const isLast = index === entries.length - 1
+
+        // UserInput renders without timeline indicator (right-aligned bubble)
+        if (entry.kind === 'standalone' && entry.message.type === 'userInput') {
           return (
-            <MessageRenderer
-              key={item.message.id}
-              message={item.message}
-              userInputIndex={uiIdx}
-              onEdit={onEdit}
-              isProcessing={isProcessing}
-            />
+            <div key={entry.id} style={{ paddingLeft: '28px', paddingTop: '8px', paddingBottom: '4px' }}>
+              <MessageRenderer
+                message={entry.message}
+                userInputIndex={userInputIndexMap.get(entry.message.id)}
+                onEdit={onEdit}
+                isProcessing={isProcessing}
+              />
+            </div>
           )
         }
+
+        const indicatorStatus = getIndicatorStatus(entry)
+
         return (
-          <PlanGroupCard
-            key={item.id}
-            plan={item}
-            isCollapsed={collapsedPlans.has(item.id)}
-            collapsedSteps={collapsedSteps}
-            onTogglePlan={togglePlan}
-            onToggleStep={toggleStep}
-          />
+          <div key={entry.id} style={{ display: 'flex', gap: '8px', minHeight: '28px' }}>
+            <TimelineIndicator status={indicatorStatus} isLast={isLast} />
+            <div style={{ flex: 1, minWidth: 0, paddingBottom: '4px' }}>
+              {renderEntry(entry)}
+            </div>
+          </div>
         )
       })}
 
       {/* Regenerate button */}
       {showRegenerate && (
-        <div className="flex items-center gap-2" style={{ animation: 'fadeIn 0.2s ease' }}>
+        <div className="flex items-center gap-2" style={{ paddingLeft: '28px', animation: 'fadeIn 0.2s ease' }}>
           <button
             onClick={onRegenerate}
             className="flex items-center gap-1.5 cursor-pointer border-none"
@@ -531,69 +623,6 @@ export function JourneyTimeline({ messages, isProcessing, onEdit, onRegenerate }
       {/* Follow-up suggestions */}
       {!isProcessing && lastAssistantText && (
         <FollowUpSuggestions lastAssistantText={lastAssistantText} />
-      )}
-    </div>
-  )
-}
-
-// ============================================================================
-// Inlined sub-components (single-use, small)
-// ============================================================================
-
-function ThinkingBlock({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  return (
-    <div
-      className="overflow-hidden"
-      style={{
-        border: '1px solid rgba(255, 255, 255, 0.06)',
-        borderRadius: 'var(--radius-md)',
-        animation: 'fadeIn 0.15s ease',
-      }}
-    >
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
-        style={{
-          padding: '8px 12px',
-          background: 'var(--chatui-surface-1)',
-          fontSize: '12px',
-          opacity: 0.7,
-        }}
-      >
-        <span className={`transition-transform ${expanded ? 'rotate-90' : ''}`} style={{ fontSize: '10px' }}>&#9654;</span>
-        <span style={{ fontStyle: 'italic' }}>Thinking...</span>
-        <span className="ml-auto text-[10px] opacity-50">
-          {text.length > 100 ? `${Math.ceil(text.length / 4)} words` : ''}
-        </span>
-      </button>
-      {expanded && (
-        <div className="relative" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          <button
-            onClick={handleCopy}
-            className="absolute right-2 top-1 opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px] z-10"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <div
-            className="text-xs whitespace-pre-wrap max-h-60 overflow-y-auto"
-            style={{
-              padding: '8px 12px',
-              opacity: 0.7,
-              fontStyle: 'italic',
-            }}
-          >
-            {text}
-          </div>
-        </div>
       )}
     </div>
   )

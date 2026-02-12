@@ -16,6 +16,7 @@ export interface PipelineStep {
   contextFiles?: string[];
   status: 'pending' | 'running' | 'completed' | 'failed';
   error?: string;
+  resultSummary?: string;
 }
 
 export interface Pipeline {
@@ -129,8 +130,19 @@ Rules:
 
     this._onEvent({ type: 'stepStarted', stepId: step.id, stepIndex: nextIndex });
 
-    // Build enhanced prompt with context file contents
+    // Build enhanced prompt with previous step results + context files
     let prompt = `[Pipeline Step ${nextIndex + 1}/${this._pipeline.steps.length}: ${step.title}]\n\n`;
+
+    // Inject previous step results for context chaining
+    const completedSteps = this._pipeline.steps.slice(0, nextIndex).filter((s) => s.status === 'completed');
+    if (completedSteps.length > 0) {
+      prompt += '[Previous step results]\n';
+      for (const prev of completedSteps) {
+        prompt += `- Step "${prev.title}": ${prev.resultSummary || 'completed'}\n`;
+      }
+      prompt += '\n';
+    }
+
     prompt += step.prompt;
 
     if (step.contextFiles && step.contextFiles.length > 0) {
@@ -155,11 +167,12 @@ Rules:
   /**
    * Called when a step completes successfully (from onProcessEnd).
    */
-  markStepCompleted(): void {
+  markStepCompleted(resultSummary?: string): void {
     if (!this._pipeline) return;
     const step = this._pipeline.steps[this._pipeline.currentStepIndex];
     if (step) {
       step.status = 'completed';
+      step.resultSummary = resultSummary || `Completed: ${step.title}`;
       this._onEvent({
         type: 'stepCompleted',
         stepId: step.id,
