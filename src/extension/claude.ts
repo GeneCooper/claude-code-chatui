@@ -110,7 +110,6 @@ export class PermissionService implements vscode.Disposable {
 
 interface SendMessageOptions {
   cwd: string;
-  effort?: string;
   yoloMode?: boolean;
   model?: string;
   mcpConfigPath?: string;
@@ -178,11 +177,6 @@ export class ClaudeService implements vscode.Disposable {
     contentBlocks.push({ type: 'text', text: message });
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-
-    // Only pass --effort when explicitly set (don't force 'high' by default)
-    if (options.effort && options.effort !== 'default') {
-      args.push('--effort', options.effort);
-    }
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');

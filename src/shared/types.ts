@@ -216,7 +216,7 @@ export interface TodoItem {
 
 /** Messages from Webview to Extension */
 export type WebviewToExtensionMessage =
-  | { type: 'sendMessage'; text: string; effort?: string; model?: string; images?: string[] }
+  | { type: 'sendMessage'; text: string; thinkingMode?: boolean; model?: string; images?: string[] }
   | { type: 'newSession' }
   | { type: 'createNewPanel' }
   | { type: 'stopRequest' }

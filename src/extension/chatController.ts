@@ -154,10 +154,10 @@ export class ChatController {
     this.handleSendMessage(lastUserText);
   }
 
-  handleSendMessage(text: string, effort?: string, images?: string[]): void {
+  handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void {
     if (this.stateManager.isProcessing) return;
 
-    log.info('Sending message', { effort, hasImages: !!images?.length });
+    log.info('Sending message', { thinkingMode, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -175,13 +175,26 @@ export class ChatController {
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
+    // Build actual message with thinking prefix if enabled
+    let actualMessage = text;
+    if (thinkingMode) {
+      const intensity = this.settingsManager.getCurrentSettings(this.stateManager.selectedModel).thinkingIntensity;
+      const PROMPTS: Record<string, string> = {
+        'think': 'THINK',
+        'think-hard': 'THINK HARD',
+        'think-harder': 'THINK HARDER',
+        'ultrathink': 'ULTRATHINK',
+      };
+      const prompt = PROMPTS[intensity] || 'THINK';
+      actualMessage = `${prompt} THROUGH THIS STEP BY STEP: \n${text}`;
+    }
+
     const yoloMode = this.settingsManager.isYoloModeEnabled();
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
-    const resolvedEffort = effort || this.settingsManager.getCurrentSettings(this.stateManager.selectedModel).thinkingIntensity;
 
-    void this._claudeService.sendMessage(text, {
-      cwd, effort: resolvedEffort, yoloMode,
+    void this._claudeService.sendMessage(actualMessage, {
+      cwd, yoloMode,
       model: this.stateManager.selectedModel !== 'default' ? this.stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });

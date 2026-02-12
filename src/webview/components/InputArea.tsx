@@ -21,6 +21,7 @@ export function InputArea() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
 
+  const [thinkingMode, setThinkingMode] = useState(false)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
@@ -215,7 +216,7 @@ export function InputArea() {
     postMessage({
       type: 'sendMessage',
       text: userText,
-      effort: useSettingsStore.getState().thinkingIntensity,
+      thinkingMode,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
     })
@@ -417,25 +418,27 @@ export function InputArea() {
       {/* Mode toggles */}
       <div className="flex items-center gap-2 pb-2" role="toolbar" aria-label="Chat options" style={{ fontSize: '11px' }}>
         <button
-          onClick={() => useUIStore.getState().setShowIntensityModal(true)}
+          onClick={() => setThinkingMode(!thinkingMode)}
+          onContextMenu={(e) => { e.preventDefault(); useUIStore.getState().setShowIntensityModal(true) }}
               className="flex items-center gap-1 cursor-pointer border-none"
               style={{
                 padding: '2px 10px',
                 borderRadius: '12px',
-                border: '1px solid #3b82f6',
-                background: 'rgba(59, 130, 246, 0.1)',
-                color: '#3b82f6',
+                border: `1px solid ${thinkingMode ? '#3b82f6' : 'var(--vscode-panel-border)'}`,
+                background: thinkingMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                color: thinkingMode ? '#3b82f6' : 'inherit',
+                opacity: thinkingMode ? 1 : 0.7,
                 transition: 'all 0.2s ease',
-                boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
+                boxShadow: thinkingMode ? '0 0 8px rgba(59, 130, 246, 0.2)' : 'none',
               }}
-              title="Think level"
-              aria-label="Think level"
+              title="Think mode (right-click for intensity)"
+              aria-label="Think mode toggle"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4l2 2" />
               </svg>
-              <span>Think · {useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}</span>
+              <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
             </button>
 
         <button

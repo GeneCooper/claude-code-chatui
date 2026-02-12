@@ -19,7 +19,7 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, effort?: string, images?: string[]): void;
+  handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void;
   panelManager?: PanelManager;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;

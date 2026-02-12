@@ -1,5 +1,5 @@
 import type { MessageHandler } from './types';
-import { str, optStr, optStrArr } from './helpers';
+import { str, optStrArr } from './helpers';
 
 export const handleSendMessage: MessageHandler = (msg, ctx) => {
   if (typeof msg.model === 'string') {
@@ -8,7 +8,7 @@ export const handleSendMessage: MessageHandler = (msg, ctx) => {
   }
   ctx.handleSendMessage(
     str(msg.text),
-    optStr(msg.effort),
+    !!msg.thinkingMode,
     optStrArr(msg.images),
   );
 };

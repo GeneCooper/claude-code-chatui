@@ -201,7 +201,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  thinkingIntensity: 'default',
+  thinkingIntensity: 'think',
   yoloMode: true,
   customSnippets: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),

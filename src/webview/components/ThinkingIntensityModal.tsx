@@ -4,10 +4,10 @@ import { postMessage, useFocusTrap } from '../hooks'
 
 
 const LEVELS = [
-  { key: 'default', label: 'Default', desc: 'Let Claude decide - no effort override', icon: '✨' },
-  { key: 'low', label: 'Low', desc: 'Minimal reasoning - fastest response', icon: '💡' },
-  { key: 'medium', label: 'Medium', desc: 'Balanced reasoning and speed', icon: '🧠' },
-  { key: 'high', label: 'High', desc: 'Maximum reasoning depth', icon: '⚡' },
+  { key: 'think', label: 'Think', desc: 'Standard step-by-step reasoning', icon: '💡' },
+  { key: 'think-hard', label: 'Think Hard', desc: 'Deeper analysis and reasoning', icon: '🧠' },
+  { key: 'think-harder', label: 'Think Harder', desc: 'Thorough multi-angle reasoning', icon: '🔥' },
+  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
 ]
 
 export function ThinkingIntensityModal() {

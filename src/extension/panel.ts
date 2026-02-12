@@ -294,8 +294,8 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.chat.newSession(),
       loadConversation: (filename: string) => this.chat.loadConversation(filename),
-      handleSendMessage: (text: string, effort?: string, images?: string[]) =>
-        this.chat.handleSendMessage(text, effort, images),
+      handleSendMessage: (text: string, thinkingMode?: boolean, images?: string[]) =>
+        this.chat.handleSendMessage(text, thinkingMode, images),
       panelManager: this._panelManager,
       editMessage: (userInputIndex: number, newText: string) => this.chat.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.chat.regenerateResponse(),
