@@ -299,6 +299,7 @@ export class PanelProvider {
       panelManager: this._panelManager,
       editMessage: (userInputIndex: number, newText: string) => this.chat.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.chat.regenerateResponse(),
+      restoreCommit: (commitSha: string) => this.chat.restoreCommit(commitSha),
     };
   }
 

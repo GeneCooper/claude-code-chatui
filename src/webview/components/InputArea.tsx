@@ -21,7 +21,7 @@ export function InputArea() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
 
-  const [thinkingMode, setThinkingMode] = useState(false)
+  const [thinkingMode, setThinkingMode] = useState(true)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)

@@ -69,7 +69,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const chatMessages = data.messages
       .filter((m) => {
         // Only include message types that go into the messages array
-        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest']
+        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest', 'backup']
         return validTypes.includes(m.type)
       })
       .map((m) => ({
@@ -278,6 +278,16 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   rateLimitUpdate: (msg) => {
     const data = msg.data as { sessionUtilization: number; sessionResetTs: number; weeklyUtilization: number; weeklyResetTs: number; status: string }
     useChatStore.getState().updateRateLimit(data)
+  },
+
+  backupCreated: (msg) => {
+    const data = msg.data as { id: string; sha: string; message: string; timestamp: string }
+    useChatStore.getState().addMessage({ type: 'backup', data })
+  },
+
+  restoreSuccess: (msg) => {
+    const data = msg.data as { message: string; commitSha: string }
+    useChatStore.getState().addMessage({ type: 'output', data: data.message })
   },
 
 }

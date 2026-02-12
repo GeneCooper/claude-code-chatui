@@ -15,6 +15,7 @@ export const handleSendMessage: MessageHandler = (msg, ctx) => {
 
 export const handleNewSession: MessageHandler = (_msg, ctx) => { void ctx.newSession(); };
 export const handleStopRequest: MessageHandler = (_msg, ctx) => { void ctx.claudeService.stopProcess(); };
+export const handleRestoreCommit: MessageHandler = (msg, ctx) => { void ctx.restoreCommit(str(msg.commitSha)); };
 
 export const handleReady: MessageHandler = (_msg, ctx) => {
   ctx.postMessage({ type: 'ready', data: 'Extension ready' });

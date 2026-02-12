@@ -9,7 +9,7 @@ export { SettingsManager } from '../settings';
 import type { WebviewMessage, MessageHandlerContext, MessageHandler } from './types';
 import { str } from './helpers';
 
-import { handleSendMessage, handleNewSession, handleStopRequest, handleReady, handleSaveInputText, handleCreateNewPanel } from './session';
+import { handleSendMessage, handleNewSession, handleStopRequest, handleRestoreCommit, handleReady, handleSaveInputText, handleCreateNewPanel } from './session';
 import { handleOpenFile, handleOpenExternal, handleOpenDiff, handleRevertFile, handlePickImageFile, handlePickWorkspaceFile, handleResolveDroppedFile, handleGetWorkspaceFiles, handleGetClipboard } from './file';
 import { handleSelectModel, handleOpenModelTerminal, handleGetSettings, handleUpdateSettings } from './settings';
 import { handleGetConversationList, handleLoadConversation, handleDeleteConversation, handleSearchConversations, handleExportConversation } from './conversation';
@@ -21,6 +21,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
   newSession: handleNewSession,
   stopRequest: handleStopRequest,
+  restoreCommit: handleRestoreCommit,
   ready: handleReady,
   permissionResponse: handlePermissionResponse,
   selectModel: handleSelectModel,

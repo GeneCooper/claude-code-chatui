@@ -23,6 +23,7 @@ export interface MessageHandlerContext {
   panelManager?: PanelManager;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
+  restoreCommit(commitSha: string): Promise<void>;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };

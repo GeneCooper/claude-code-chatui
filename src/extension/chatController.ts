@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
-import { ConversationService, MCPService } from './storage';
+import { ConversationService, MCPService, BackupService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
@@ -16,6 +16,7 @@ const log = createModuleLogger('ChatController');
 
 export class ChatController {
   private _saveTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly _backupService: BackupService;
 
   readonly settingsManager = new SettingsManager();
   readonly messageProcessor: ClaudeMessageProcessor;
@@ -32,6 +33,8 @@ export class ChatController {
   ) {
     this.stateManager = new SessionStateManager();
     this.stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
+    this._backupService = new BackupService(_context);
+    void this._backupService.initialize();
 
     const poster: MessagePoster = {
       postMessage: (msg) => this._postMessage(msg),
@@ -175,6 +178,13 @@ export class ChatController {
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
+    // Create backup commit before Claude makes changes
+    void this._backupService.createBackup(text).then((commit) => {
+      if (commit) {
+        this._postMessage({ type: 'backupCreated', data: commit });
+      }
+    }).catch(() => { /* backup failure should not block sending */ });
+
     // Build actual message with thinking prefix if enabled
     let actualMessage = text;
     if (thinkingMode) {
@@ -198,6 +208,17 @@ export class ChatController {
       model: this.stateManager.selectedModel !== 'default' ? this.stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });
+  }
+
+  async restoreCommit(commitSha: string): Promise<void> {
+    const result = await this._backupService.restore(commitSha);
+    if (result.success) {
+      vscode.window.showInformationMessage(result.message);
+      this._postMessage({ type: 'restoreSuccess', data: { message: result.message, commitSha } });
+    } else {
+      vscode.window.showErrorMessage(result.message);
+      this._postMessage({ type: 'error', data: result.message });
+    }
   }
 
   // ==================== Cleanup ====================

@@ -1,10 +1,120 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as cp from 'child_process';
+import { promisify } from 'util';
 import type {
   ConversationData, ConversationMessage, ConversationIndexEntry,
   MCPServerConfig, MCPConfig,
 } from '../shared/types';
+
+const exec = promisify(cp.exec);
+
+// ============================================================================
+// BackupService
+// ============================================================================
+
+export interface BackupCommit {
+  id: string;
+  sha: string;
+  message: string;
+  timestamp: string;
+}
+
+export class BackupService {
+  private _repoPath: string | undefined;
+  private _commits: BackupCommit[] = [];
+
+  constructor(private readonly _context: vscode.ExtensionContext) {}
+
+  get commits(): BackupCommit[] { return this._commits; }
+
+  async initialize(): Promise<void> {
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) return;
+
+      const storagePath = this._context.storageUri?.fsPath;
+      if (!storagePath) return;
+
+      this._repoPath = path.join(storagePath, 'backups', '.git');
+
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.file(this._repoPath));
+      } catch {
+        await vscode.workspace.fs.createDirectory(vscode.Uri.file(this._repoPath));
+        const workspacePath = workspaceFolder.uri.fsPath;
+        await exec(`git --git-dir="${this._repoPath}" --work-tree="${workspacePath}" init`);
+        await exec(`git --git-dir="${this._repoPath}" config user.name "Claude Code Chat"`);
+        await exec(`git --git-dir="${this._repoPath}" config user.email "claude@backup.local"`);
+      }
+    } catch (err) {
+      console.error('Failed to initialize backup repository:', err);
+    }
+  }
+
+  async createBackup(userMessage: string): Promise<BackupCommit | undefined> {
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder || !this._repoPath) return;
+
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const now = new Date();
+      const commitMsg = `Before: ${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}`;
+
+      await exec(`git --git-dir="${this._repoPath}" --work-tree="${workspacePath}" add -A`);
+
+      let isFirstCommit = false;
+      try { await exec(`git --git-dir="${this._repoPath}" rev-parse HEAD`); }
+      catch { isFirstCommit = true; }
+
+      const { stdout: status } = await exec(`git --git-dir="${this._repoPath}" --work-tree="${workspacePath}" status --porcelain`);
+
+      let actualMessage: string;
+      if (isFirstCommit) {
+        actualMessage = `Initial backup: ${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}`;
+      } else if (status.trim()) {
+        actualMessage = commitMsg;
+      } else {
+        actualMessage = `Checkpoint (no changes): ${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}`;
+      }
+
+      await exec(`git --git-dir="${this._repoPath}" --work-tree="${workspacePath}" commit --allow-empty -m "${actualMessage.replace(/"/g, '\\"')}"`);
+      const { stdout: sha } = await exec(`git --git-dir="${this._repoPath}" rev-parse HEAD`);
+
+      const commit: BackupCommit = {
+        id: `commit-${now.toISOString().replace(/[:.]/g, '-')}`,
+        sha: sha.trim(),
+        message: actualMessage,
+        timestamp: now.toISOString(),
+      };
+      this._commits.push(commit);
+      return commit;
+    } catch (err) {
+      console.error('Failed to create backup commit:', err);
+      return undefined;
+    }
+  }
+
+  async restore(commitSha: string): Promise<{ success: boolean; message: string }> {
+    const commit = this._commits.find((c) => c.sha === commitSha);
+    if (!commit) return { success: false, message: 'Commit not found' };
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder || !this._repoPath) {
+      return { success: false, message: 'No workspace folder or backup repository available' };
+    }
+
+    try {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      await exec(`git --git-dir="${this._repoPath}" --work-tree="${workspacePath}" checkout ${commitSha} -- .`);
+      return { success: true, message: `Restored to: ${commit.message}` };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: `Failed to restore: ${msg}` };
+    }
+  }
+}
 
 // ============================================================================
 // MCPService
