@@ -309,6 +309,9 @@ export class PanelProvider {
       return;
     }
 
+    // Save current conversation before switching
+    this._saveConversation(this._sessionId);
+
     // Reset current session
     this._messageProcessor.resetSession();
     this._stateManager.resetSession();
