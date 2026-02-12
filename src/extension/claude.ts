@@ -150,14 +150,14 @@ export class ClaudeService implements vscode.Disposable {
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
-    // Prepend thinking intensity keyword when thinking mode is enabled
-    let actualMessage = message;
-    if (options.thinkingMode && options.thinkingIntensity) {
-      const keyword = options.thinkingIntensity.replace(/-/g, ' ');
-      actualMessage = `${keyword}\n\n${message}`;
-    }
+    const actualMessage = message;
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
+
+    // Effort level (--effort low/medium/high)
+    if (options.thinkingMode && options.thinkingIntensity) {
+      args.push('--effort', options.thinkingIntensity);
+    }
 
     // Permission handling: --dangerously-skip-permissions and --permission-prompt-tool
     // are mutually exclusive. Using both causes the CLI to still route permission

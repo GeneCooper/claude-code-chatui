@@ -4,10 +4,9 @@ import { postMessage, useFocusTrap } from '../hooks'
 
 
 const LEVELS = [
-  { key: 'think', label: 'Think', desc: 'Basic reasoning - fastest response', icon: '💡' },
-  { key: 'think-hard', label: 'Think Hard', desc: 'More detailed reasoning', icon: '🧠' },
-  { key: 'think-harder', label: 'Think Harder', desc: 'Extended reasoning for complex tasks', icon: '🔬' },
-  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
+  { key: 'low', label: 'Low', desc: 'Minimal reasoning - fastest response', icon: '💡' },
+  { key: 'medium', label: 'Medium', desc: 'Balanced reasoning and speed', icon: '🧠' },
+  { key: 'high', label: 'High', desc: 'Maximum reasoning depth', icon: '⚡' },
 ]
 
 interface Props {

@@ -415,18 +415,18 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
-        this._handleSendMessage(text, planMode, thinkingMode, images),
+      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]) =>
+        this._handleSendMessage(text, planMode, thinkingMode, thinkingIntensity, images),
       panelManager: this._panelManager,
       editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.regenerateResponse(),
     };
   }
 
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
+  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]): void {
     if (this._stateManager.isProcessing) return;
 
-    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
+    log.info('Sending message', { planMode, thinkingMode, thinkingIntensity, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -450,11 +450,12 @@ export class PanelProvider {
     const yoloMode = this._settingsManager.isYoloModeEnabled();
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
-    const thinkingIntensity = this._settingsManager.getCurrentSettings(this._stateManager.selectedModel).thinkingIntensity;
+    // Use intensity from UI if provided, otherwise fall back to global settings
+    const effort = thinkingIntensity || this._settingsManager.getCurrentSettings(this._stateManager.selectedModel).thinkingIntensity;
 
     // Send message directly to Claude CLI - no extra context/prompt injection
     void this._claudeService.sendMessage(text, {
-      cwd, planMode, thinkingMode, thinkingIntensity, yoloMode,
+      cwd, planMode, thinkingMode, thinkingIntensity: effort, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });

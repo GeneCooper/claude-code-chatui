@@ -97,13 +97,12 @@
         "claudeCodeChatUI.thinking.intensity": {
           "type": "string",
           "enum": [
-            "think",
-            "think-hard",
-            "think-harder",
-            "ultrathink"
+            "low",
+            "medium",
+            "high"
           ],
-          "default": "think",
-          "description": "Thinking mode intensity level"
+          "default": "high",
+          "description": "Effort level for Claude CLI (--effort flag)"
         },
         "claudeCodeChatUI.permissions.yoloMode": {
           "type": "boolean",

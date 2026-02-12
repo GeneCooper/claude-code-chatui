@@ -28,6 +28,10 @@ export class MCPService {
     'memory': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
     'fetch': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
     'filesystem': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+    'github': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+    'brave-search': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-brave-search'] },
+    'figma': { type: 'stdio', command: 'npx', args: ['-y', 'figma-developer-mcp'] },
+    'postgres': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] },
   };
 
   private _ensureConfigDir(): void {

@@ -51,6 +51,38 @@ const POPULAR_SERVERS = [
     args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
     icon: '📁',
   },
+  {
+    name: 'github',
+    description: 'GitHub repos, PRs & issues',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-github'],
+    icon: '🐙',
+  },
+  {
+    name: 'brave-search',
+    description: 'Web search via Brave',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-brave-search'],
+    icon: '🔍',
+  },
+  {
+    name: 'figma',
+    description: 'Figma design to code',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', 'figma-developer-mcp'],
+    icon: '🎨',
+  },
+  {
+    name: 'postgres',
+    description: 'PostgreSQL database queries',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-postgres'],
+    icon: '🐘',
+  },
 ]
 
 export function MCPPanel() {

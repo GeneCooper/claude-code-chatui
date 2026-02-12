@@ -62,7 +62,7 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
+  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]): void;
   panelManager?: PanelManager;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
@@ -81,6 +81,7 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
     msg.text as string,
     msg.planMode as boolean | undefined,
     msg.thinkingMode as boolean | undefined,
+    msg.thinkingIntensity as string | undefined,
     msg.images as string[] | undefined,
   );
 };

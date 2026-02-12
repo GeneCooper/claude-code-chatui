@@ -68,10 +68,9 @@ export function SettingsPanel() {
             onChange={(e) => updateSetting('thinking.intensity', e.target.value)}
             className="w-full px-2 py-1.5 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
           >
-            <option value="think">Think</option>
-            <option value="think-hard">Think Hard</option>
-            <option value="think-harder">Think Harder</option>
-            <option value="ultrathink">Ultrathink</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
           </select>
           <p className="text-[10px] opacity-50 mt-1">Controls how deeply Claude thinks through problems</p>
         </div>
