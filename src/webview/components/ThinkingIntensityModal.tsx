@@ -4,6 +4,7 @@ import { postMessage, useFocusTrap } from '../hooks'
 
 
 const LEVELS = [
+  { key: 'default', label: 'Default', desc: 'Let Claude decide - no effort override', icon: '✨' },
   { key: 'low', label: 'Low', desc: 'Minimal reasoning - fastest response', icon: '💡' },
   { key: 'medium', label: 'Medium', desc: 'Balanced reasoning and speed', icon: '🧠' },
   { key: 'high', label: 'High', desc: 'Maximum reasoning depth', icon: '⚡' },

@@ -45,7 +45,7 @@ const CONFIG_KEYS = {
 const DEFAULTS = {
   CLAUDE_MODEL: 'claude-sonnet-4-5-20250929',
   CLAUDE_EXECUTABLE: 'claude',
-  THINKING_INTENSITY: 'high',
+  THINKING_INTENSITY: 'default',
   THINKING_SHOW_PROCESS: true,
   YOLO_MODE: true,
   AUTO_APPROVE_PATTERNS: [] as string[],

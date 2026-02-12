@@ -154,12 +154,35 @@ export class ClaudeService implements vscode.Disposable {
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
-    const actualMessage = message;
+    // Build content blocks for the user message
+    const contentBlocks: Array<{ type: string; [key: string]: unknown }> = [];
+
+    // Add image content blocks (base64) before text
+    if (options.images?.length) {
+      for (const dataUrl of options.images) {
+        const match = dataUrl.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
+        if (match) {
+          contentBlocks.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: match[1],
+              data: match[2],
+            },
+          });
+        }
+      }
+    }
+
+    // Add text content block
+    contentBlocks.push({ type: 'text', text: message });
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
 
-    // Think level (--effort low/medium/high)
-    args.push('--effort', options.effort || 'high');
+    // Only pass --effort when explicitly set (don't force 'high' by default)
+    if (options.effort && options.effort !== 'default') {
+      args.push('--effort', options.effort);
+    }
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
@@ -193,18 +216,6 @@ export class ClaudeService implements vscode.Disposable {
     this._process = claudeProcess;
 
     if (claudeProcess.stdin) {
-      const contentBlocks: unknown[] = [{ type: 'text', text: actualMessage }];
-      if (options.images?.length) {
-        for (const dataUrl of options.images) {
-          const match = dataUrl.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
-          if (match) {
-            contentBlocks.push({
-              type: 'image',
-              source: { type: 'base64', media_type: match[1], data: match[2] },
-            });
-          }
-        }
-      }
       const userMsg = {
         type: 'user',
         session_id: this._sessionId || '',
@@ -214,7 +225,8 @@ export class ClaudeService implements vscode.Disposable {
       void this._writeStdin(claudeProcess.stdin, JSON.stringify(userMsg) + '\n');
     }
 
-    let errorOutput = '';
+    // Only keep the last chunk of stderr for error reporting (avoid unbounded memory growth)
+    let lastStderrChunk = '';
 
     if (claudeProcess.stdout) {
       const rl = readline.createInterface({ input: claudeProcess.stdout, crlfDelay: Infinity });
@@ -233,7 +245,7 @@ export class ClaudeService implements vscode.Disposable {
 
     claudeProcess.stderr?.on('data', (data: Buffer) => {
       const chunk = data.toString();
-      errorOutput += chunk;
+      lastStderrChunk = chunk;
       this._parseRateLimitHeaders(chunk);
     });
 
@@ -242,7 +254,7 @@ export class ClaudeService implements vscode.Disposable {
       this._process = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
-      if (code !== 0 && errorOutput.trim()) this._errorEmitter.emit('error', errorOutput.trim());
+      if (code !== 0 && lastStderrChunk.trim()) this._errorEmitter.emit('error', lastStderrChunk.trim());
     });
 
     claudeProcess.on('error', (error) => {
@@ -452,6 +464,11 @@ export class ClaudeService implements vscode.Disposable {
   private _parseRateLimitHeaders(chunk: string): void {
     // Accumulate chunks since headers may span multiple data events
     this._rateLimitBuffer += chunk;
+
+    // Cap buffer size to avoid unbounded memory growth (keep last 8KB)
+    if (this._rateLimitBuffer.length > 8192) {
+      this._rateLimitBuffer = this._rateLimitBuffer.slice(-8192);
+    }
 
     // Look for the rate limit headers in the debug output
     const has5h = this._rateLimitBuffer.includes('anthropic-ratelimit-unified-5h-utilization');
