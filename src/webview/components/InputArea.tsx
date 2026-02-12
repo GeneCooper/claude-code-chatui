@@ -12,7 +12,6 @@ import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 export function InputArea() {
   const [text, setText] = useState('')
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
-  const [planMode, setPlanMode] = useState(false)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
@@ -35,10 +34,9 @@ export function InputArea() {
   const startHeightRef = useRef(0)
 
   useEffect(() => {
-    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; ctrlEnterSend?: boolean }>()
+    const saved = getState<{ draft?: string; model?: string; ctrlEnterSend?: boolean }>()
     if (saved?.draft) setText(saved.draft)
     if (saved?.model) setSelectedModel(saved.model)
-    if (saved?.planMode !== undefined) setPlanMode(saved.planMode)
     if (saved?.ctrlEnterSend !== undefined) setCtrlEnterSend(saved.ctrlEnterSend)
   }, [])
 
@@ -52,8 +50,8 @@ export function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel, planMode, ctrlEnterSend })
-  }, [text, selectedModel, planMode, ctrlEnterSend])
+    setState({ draft: text, model: selectedModel, ctrlEnterSend })
+  }, [text, selectedModel, ctrlEnterSend])
 
   useEffect(() => {
     debouncedSave(text)
@@ -217,7 +215,6 @@ export function InputArea() {
     postMessage({
       type: 'sendMessage',
       text: userText,
-      planMode,
       effort: useSettingsStore.getState().thinkingIntensity,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
@@ -441,46 +438,11 @@ export function InputArea() {
               <span>Think · {useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}</span>
             </button>
 
-            <button
-              onClick={() => {
-                const next = !planMode
-                setPlanMode(next)
-                if (next) {
-                  // Plan mode requires interactive permissions — turn off YOLO
-                  postMessage({ type: 'updateSettings', settings: { yoloMode: false } })
-                  useSettingsStore.getState().updateSettings({ yoloMode: false })
-                }
-              }}
-              className="flex items-center gap-1 cursor-pointer border-none"
-              style={{
-                padding: '2px 10px',
-                borderRadius: '12px',
-                border: `1px solid ${planMode ? '#a855f7' : 'var(--vscode-panel-border)'}`,
-                background: planMode ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                color: planMode ? '#a855f7' : 'inherit',
-                opacity: planMode ? 1 : 0.7,
-                transition: 'all 0.2s ease',
-                boxShadow: planMode ? '0 0 8px rgba(168, 85, 247, 0.2)' : 'none',
-              }}
-              title="Plan mode"
-              aria-label="Plan mode"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-                <rect x="9" y="3" width="6" height="4" rx="2" />
-              </svg>
-              <span>PLAN</span>
-            </button>
-
         <button
           onClick={() => {
             const next = !yoloMode
             postMessage({ type: 'updateSettings', settings: { yoloMode: next } })
             useSettingsStore.getState().updateSettings({ yoloMode: next })
-            if (next) {
-              // YOLO skips all permissions — plan mode is incompatible
-              setPlanMode(false)
-            }
           }}
           className="flex items-center gap-1 cursor-pointer border-none"
           style={{
@@ -824,7 +786,7 @@ export function InputArea() {
         </div>
       </div>
 
-      {/* Bottom status bar: permission mode + active file */}
+      {/* Bottom status bar: active file */}
       <div
         className="flex items-center gap-2"
         style={{

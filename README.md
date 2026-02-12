@@ -20,7 +20,7 @@ Requires VS Code 1.94+. The extension expects `claude` on your PATH.
 - **File Context** — Type `@` to reference any workspace file; drag & drop files from the explorer or paste images
 - **Slash Commands** — Type `/` to access 23+ built-in Claude Code commands
 - **Model Selection** — Switch between Opus, Sonnet, or your configured default
-- **Plan & Thinking Modes** — Plan-first mode and configurable thinking intensity (Think → Ultrathink)
+- **Thinking Modes** — Configurable thinking intensity (Think → Ultrathink)
 - **YOLO Mode** — Skip all permission prompts for uninterrupted workflows (auto-approves any remaining checks)
 - **Checkpoint & Restore** — Git-based automatic backups; one-click restore to any previous state
 - **Inline Diff Viewer** — See file changes inline with expand/collapse; open in VS Code's native diff editor

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TodoItem, MCPServerConfig } from '../shared/types'
+import type { TodoItem, MCPServerConfig, RateLimitData } from '../shared/types'
 
 export type { TodoItem }
 
@@ -37,6 +37,7 @@ interface ChatState {
   tokens: TokenState
   totals: TotalsState
   todos: TodoItem[]
+  rateLimit: RateLimitData | null
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
@@ -48,6 +49,7 @@ interface ChatState {
   updateTotals: (totals: Partial<TotalsState>) => void
   updatePermissionStatus: (id: string, status: string) => void
   updateTodos: (todos: TodoItem[]) => void
+  updateRateLimit: (data: RateLimitData) => void
   restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
 }
 
@@ -64,6 +66,7 @@ export const useChatStore = create<ChatState>((set) => ({
     cacheCreationTokens: 0, cacheReadTokens: 0,
   },
   totals: { totalCost: 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
+  rateLimit: null,
 
   addMessage: (msg) =>
     set((state) => ({
@@ -118,6 +121,7 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
 
   updateTodos: (todos) => set({ todos }),
+  updateRateLimit: (data) => set({ rateLimit: data }),
 
   restoreState: (restored) =>
     set((state) => ({

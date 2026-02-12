@@ -275,6 +275,11 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     window.dispatchEvent(new CustomEvent('activeFileChanged', { detail: data }))
   },
 
+  rateLimitUpdate: (msg) => {
+    const data = msg.data as { sessionUtilization: number; sessionResetTs: number; weeklyUtilization: number; weeklyResetTs: number; status: string }
+    useChatStore.getState().updateRateLimit(data)
+  },
+
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {

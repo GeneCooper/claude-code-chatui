@@ -154,10 +154,10 @@ export class ChatController {
     this.handleSendMessage(lastUserText);
   }
 
-  handleSendMessage(text: string, planMode?: boolean, effort?: string, images?: string[]): void {
+  handleSendMessage(text: string, effort?: string, images?: string[]): void {
     if (this.stateManager.isProcessing) return;
 
-    log.info('Sending message', { planMode, effort, hasImages: !!images?.length });
+    log.info('Sending message', { effort, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -181,7 +181,7 @@ export class ChatController {
     const resolvedEffort = effort || this.settingsManager.getCurrentSettings(this.stateManager.selectedModel).thinkingIntensity;
 
     void this._claudeService.sendMessage(text, {
-      cwd, planMode, effort: resolvedEffort, yoloMode,
+      cwd, effort: resolvedEffort, yoloMode,
       model: this.stateManager.selectedModel !== 'default' ? this.stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });
@@ -230,6 +230,10 @@ export class ChatController {
           }
         }
       }
+    });
+
+    this._claudeService.onRateLimitUpdate((data) => {
+      this._postMessage({ type: 'rateLimitUpdate', data });
     });
 
     this._claudeService.onPermissionRequest((request) => {

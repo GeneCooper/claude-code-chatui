@@ -100,6 +100,15 @@ export interface ResultMessage extends ClaudeCliMessage {
 // Union type for all CLI messages
 export type ClaudeMessage = SystemMessage | AssistantMessage | UserMessage | ResultMessage;
 
+// Rate limit data from API response headers
+export interface RateLimitData {
+  sessionUtilization: number;   // 0-1 (from 5h header)
+  sessionResetTs: number;       // unix timestamp
+  weeklyUtilization: number;    // 0-1 (from 7d header)
+  weeklyResetTs: number;        // unix timestamp
+  status: string;               // 'allowed' | 'throttled' etc
+}
+
 // ============================================================================
 // Permission types
 // ============================================================================
@@ -207,7 +216,7 @@ export interface TodoItem {
 
 /** Messages from Webview to Extension */
 export type WebviewToExtensionMessage =
-  | { type: 'sendMessage'; text: string; planMode?: boolean; effort?: string; model?: string; images?: string[] }
+  | { type: 'sendMessage'; text: string; effort?: string; model?: string; images?: string[] }
   | { type: 'newSession' }
   | { type: 'createNewPanel' }
   | { type: 'stopRequest' }

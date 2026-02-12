@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { EventEmitter } from 'events';
-import type { ClaudeMessage, PermissionRequest } from '../shared/types';
+import type { ClaudeMessage, PermissionRequest, RateLimitData } from '../shared/types';
 
 // ============================================================================
 // PermissionService
@@ -110,7 +110,6 @@ export class PermissionService implements vscode.Disposable {
 
 interface SendMessageOptions {
   cwd: string;
-  planMode?: boolean;
   effort?: string;
   yoloMode?: boolean;
   model?: string;
@@ -141,6 +140,7 @@ export class ClaudeService implements vscode.Disposable {
   private _processEndEmitter = new EventEmitter();
   private _errorEmitter = new EventEmitter();
   private _permissionRequestEmitter = new EventEmitter();
+  private _rateLimitEmitter = new EventEmitter();
 
   constructor(private readonly _context: vscode.ExtensionContext) {}
 
@@ -148,6 +148,7 @@ export class ClaudeService implements vscode.Disposable {
   onProcessEnd(cb: () => void): void { this._processEndEmitter.on('end', cb); }
   onError(cb: (err: string) => void): void { this._errorEmitter.on('error', cb); }
   onPermissionRequest(cb: (req: PermissionRequest) => void): void { this._permissionRequestEmitter.on('request', cb); }
+  onRateLimitUpdate(cb: (data: RateLimitData) => void): void { this._rateLimitEmitter.on('update', cb); }
 
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
@@ -160,14 +161,10 @@ export class ClaudeService implements vscode.Disposable {
     // Think level (--effort low/medium/high)
     args.push('--effort', options.effort || 'high');
 
-    // Permission handling: --dangerously-skip-permissions and --permission-prompt-tool
-    // are mutually exclusive. Using both causes the CLI to still route permission
-    // requests through stdio instead of skipping them.
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
     } else {
       args.push('--permission-prompt-tool', 'stdio');
-      if (options.planMode) args.push('--permission-mode', 'plan');
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
     if (options.model && options.model !== 'default') args.push('--model', options.model);
@@ -235,7 +232,9 @@ export class ClaudeService implements vscode.Disposable {
     }
 
     claudeProcess.stderr?.on('data', (data: Buffer) => {
-      errorOutput += data.toString();
+      const chunk = data.toString();
+      errorOutput += chunk;
+      this._parseRateLimitHeaders(chunk);
     });
 
     claudeProcess.on('close', (code) => {
@@ -448,6 +447,43 @@ export class ClaudeService implements vscode.Disposable {
     return parts.length > 1 ? `${firstWord} *` : firstWord;
   }
 
+  private _rateLimitBuffer = '';
+
+  private _parseRateLimitHeaders(chunk: string): void {
+    // Accumulate chunks since headers may span multiple data events
+    this._rateLimitBuffer += chunk;
+
+    // Look for the rate limit headers in the debug output
+    const has5h = this._rateLimitBuffer.includes('anthropic-ratelimit-unified-5h-utilization');
+    const has7d = this._rateLimitBuffer.includes('anthropic-ratelimit-unified-7d-utilization');
+    if (!has5h || !has7d) return;
+
+    const extract = (key: string): string | null => {
+      // Match both formats: 'key': 'value' (JS object) and key: value (raw headers)
+      const re = new RegExp(`'${key}':\\s*'([^']*)'|${key}:\\s*([^\\s,}]+)`, 'i');
+      const m = this._rateLimitBuffer.match(re);
+      return m ? (m[1] || m[2] || null) : null;
+    };
+
+    const sessionUtil = extract('anthropic-ratelimit-unified-5h-utilization');
+    const sessionReset = extract('anthropic-ratelimit-unified-5h-reset');
+    const weeklyUtil = extract('anthropic-ratelimit-unified-7d-utilization');
+    const weeklyReset = extract('anthropic-ratelimit-unified-7d-reset');
+    const status = extract('anthropic-ratelimit-unified-status');
+
+    if (sessionUtil && weeklyUtil) {
+      this._rateLimitEmitter.emit('update', {
+        sessionUtilization: parseFloat(sessionUtil),
+        sessionResetTs: sessionReset ? parseInt(sessionReset, 10) : 0,
+        weeklyUtilization: parseFloat(weeklyUtil),
+        weeklyResetTs: weeklyReset ? parseInt(weeklyReset, 10) : 0,
+        status: status || 'unknown',
+      } satisfies RateLimitData);
+      // Clear buffer after successful parse to avoid re-emitting stale data
+      this._rateLimitBuffer = '';
+    }
+  }
+
   private _cancelPendingPermissions(): void {
     for (const pending of this._pendingPermissions.values()) {
       clearTimeout(pending.timeout);
@@ -461,5 +497,6 @@ export class ClaudeService implements vscode.Disposable {
     this._processEndEmitter.removeAllListeners();
     this._errorEmitter.removeAllListeners();
     this._permissionRequestEmitter.removeAllListeners();
+    this._rateLimitEmitter.removeAllListeners();
   }
 }
