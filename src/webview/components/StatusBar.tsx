@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { useChatStore } from '../store'
-import { useUIStore } from '../store'
-import { postMessage } from '../hooks'
 import { MODEL_CONTEXT_LIMIT } from '../../shared/constants'
 
 

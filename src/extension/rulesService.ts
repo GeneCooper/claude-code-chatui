@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
-import { MEMORIES_DIR, RULES_DIR } from '../shared/constants';
+import { RULES_DIR } from '../shared/constants';
 
 export interface RuleViolation {
   id: string;
@@ -42,7 +42,7 @@ export class RulesService implements vscode.Disposable {
   private _getRulesDir(): string | null {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) return null;
-    return path.join(workspaceFolder.uri.fsPath, MEMORIES_DIR, RULES_DIR);
+    return path.join(workspaceFolder.uri.fsPath, RULES_DIR);
   }
 
   async getRules(): Promise<ArchitectureRule[]> {
@@ -57,7 +57,7 @@ export class RulesService implements vscode.Disposable {
         const content = fs.readFileSync(filePath, 'utf8');
         rules.push({
           name: file.replace('.md', ''),
-          filePath: `${MEMORIES_DIR}/${RULES_DIR}/${file}`,
+          filePath: `${RULES_DIR}/${file}`,
           content,
         });
       }

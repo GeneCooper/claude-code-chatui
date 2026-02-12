@@ -121,22 +121,6 @@ function RequestTimer({ startTime }: { startTime: number }) {
   )
 }
 
-function HeaderSep() {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: '1px',
-        height: '14px',
-        background: 'var(--vscode-panel-border, rgba(255,255,255,0.2))',
-        opacity: 0.5,
-        margin: '0 8px',
-        verticalAlign: 'middle',
-      }}
-    />
-  )
-}
-
 function HeaderIconButton({
   title,
   active,

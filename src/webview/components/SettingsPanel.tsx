@@ -160,32 +160,6 @@ export function SettingsPanel() {
           )}
         </div>
 
-        {/* Memories */}
-        <div className="border-t border-(--vscode-panel-border) pt-3">
-          <label className="text-xs font-medium block mb-2">Memories</label>
-          <p className="text-[10px] opacity-50 mb-2">Auto-extract key decisions and patterns from conversations for cross-session learning.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => postMessage({ type: 'editMemories' })}
-              className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => postMessage({ type: 'extractMemoriesNow' })}
-              className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-inherit"
-            >
-              Extract Now
-            </button>
-            <button
-              onClick={() => postMessage({ type: 'clearMemories' })}
-              className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-(--vscode-errorForeground)"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-
         {/* Architecture Rules */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
           <label className="text-xs font-medium block mb-2">Architecture Rules</label>

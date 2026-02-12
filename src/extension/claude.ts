@@ -20,12 +20,6 @@ interface Permissions {
   allowedPatterns: PermissionEntry[];
 }
 
-// Pre-compiled regex patterns for rate-limit parsing (avoid recompilation per stderr chunk)
-const RE_5H_UTIL = /anthropic-ratelimit-unified-5h-utilization["']?\s*[":]\s*["']?([0-9.]+)/i;
-const RE_7D_UTIL = /anthropic-ratelimit-unified-7d-utilization["']?\s*[":]\s*["']?([0-9.]+)/i;
-const RE_5H_RESET = /anthropic-ratelimit-unified-5h-reset["']?\s*[":]\s*["']?([0-9]+)/i;
-const RE_7D_RESET = /anthropic-ratelimit-unified-7d-reset["']?\s*[":]\s*["']?([0-9]+)/i;
-
 export class PermissionService implements vscode.Disposable {
   private _permissionsPath: string;
 
@@ -141,61 +135,65 @@ export class ClaudeService implements vscode.Disposable {
   private _abortController: AbortController | undefined;
   private _sessionId: string | undefined;
   private _pendingPermissions = new Map<string, PendingPermission>();
-  private _subscriptionType: 'pro' | 'max' | undefined;
-  private _accountInfoFetched = false;
-
   private _messageEmitter = new EventEmitter();
   private _processEndEmitter = new EventEmitter();
   private _errorEmitter = new EventEmitter();
   private _permissionRequestEmitter = new EventEmitter();
-  private _rateLimitEmitter = new EventEmitter();
-  private _accountInfoEmitter = new EventEmitter();
 
-  constructor(private readonly _context: vscode.ExtensionContext) {
-    this._subscriptionType = _context.globalState.get<'pro' | 'max' | undefined>('claude.subscriptionType');
-  }
-
-  get subscriptionType(): 'pro' | 'max' | undefined { return this._subscriptionType; }
-  onAccountInfo(cb: (type: 'pro' | 'max' | undefined) => void): void { this._accountInfoEmitter.on('info', cb); }
+  constructor(private readonly _context: vscode.ExtensionContext) {}
 
   onMessage(cb: (msg: ClaudeMessage) => void): void { this._messageEmitter.on('message', cb); }
   onProcessEnd(cb: () => void): void { this._processEndEmitter.on('end', cb); }
   onError(cb: (err: string) => void): void { this._errorEmitter.on('error', cb); }
   onPermissionRequest(cb: (req: PermissionRequest) => void): void { this._permissionRequestEmitter.on('request', cb); }
-  onRateLimitUpdate(cb: (data: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number }) => void): void { this._rateLimitEmitter.on('ratelimit', cb); }
 
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
-    let actualMessage = message;
+    const actualMessage = message;
+
+    const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
+    const systemPromptParts: string[] = [];
+
+    // Thinking mode → system prompt (not message prepending, which conflicts with concise instructions)
     if (options.thinkingMode) {
       const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
       const intensity = config.get<ThinkingIntensity>('thinking.intensity', ThinkingIntensity.Think);
       const prompt = THINKING_INTENSITIES[intensity] || THINKING_INTENSITIES.think;
-      actualMessage = `${prompt}\n\n${actualMessage}`;
+      systemPromptParts.push(prompt);
+    } else {
+      // Concise-mode only when thinking is OFF (avoids conflicting instructions)
+      systemPromptParts.push(
+        'Be an efficient agent: act, don\'t explain.',
+        'Execute tool calls immediately without preamble.',
+        'When done, give a one-line summary of what changed.',
+        'Prefer code over prose. Skip pleasantries.',
+      );
     }
 
-    const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-    const systemPromptParts = [
-      'Be an efficient agent: act, don\'t explain.',
-      'Do NOT narrate your plan, restate the question, or describe what you\'re about to do.',
-      'Execute tool calls immediately without preamble.',
-      'When done, give a one-line summary of what changed — nothing more.',
-      'Prefer code over prose. Skip pleasantries.',
-    ];
+    // Plan mode → add planning instructions to system prompt
+    if (options.planMode) {
+      systemPromptParts.push(
+        'IMPORTANT: Before making any code changes, first present a clear step-by-step plan.',
+        'List the files you will modify and what changes you will make.',
+        'Wait for user confirmation before executing modifications.',
+      );
+    }
+
     if (options.additionalSystemPrompt) {
       systemPromptParts.push(options.additionalSystemPrompt);
     }
     args.push('--append-system-prompt', systemPromptParts.join(' '));
 
+    // Permission handling: plan and YOLO are mutually exclusive (enforced by UI)
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
     } else {
       args.push('--permission-prompt-tool', 'stdio');
+      if (options.planMode) args.push('--permission-mode', 'plan');
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
-    if (options.planMode && !options.yoloMode) args.push('--permission-mode', 'plan');
     if (options.model && options.model !== 'default') args.push('--model', options.model);
     if (options.allowedTools?.length) {
       for (const tool of options.allowedTools) args.push('--allowedTools', tool);
@@ -241,17 +239,6 @@ export class ClaudeService implements vscode.Disposable {
         parent_tool_use_id: null,
       };
       claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
-
-      // Send initialize control_request to detect account/subscription type
-      if (!this._accountInfoFetched) {
-        this._accountInfoFetched = true;
-        const initReq = {
-          type: 'control_request',
-          request_id: `init-${Date.now()}`,
-          request: { subtype: 'initialize' },
-        };
-        claudeProcess.stdin.write(JSON.stringify(initReq) + '\n');
-      }
     }
 
     let rawOutput = '';
@@ -267,7 +254,6 @@ export class ClaudeService implements vscode.Disposable {
         try {
           const json = JSON.parse(line.trim());
           if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
-          if (json.type === 'control_response') { this._handleControlResponse(json); continue; }
           if (json.type === 'result') {
             if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) claudeProcess.stdin.end();
           }
@@ -277,23 +263,7 @@ export class ClaudeService implements vscode.Disposable {
     });
 
     claudeProcess.stderr?.on('data', (data: Buffer) => {
-      const chunk = data.toString();
-      errorOutput += chunk;
-      // Parse rate-limit headers from debug output in real-time
-      if (chunk.includes('ratelimit') || chunk.includes('utilization')) {
-        const rl: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number } = {};
-        const m5h = RE_5H_UTIL.exec(chunk);
-        if (m5h) { const v = parseFloat(m5h[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.session5h = Math.min(1, v); }
-        const m7d = RE_7D_UTIL.exec(chunk);
-        if (m7d) { const v = parseFloat(m7d[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.weekly7d = Math.min(1, v); }
-        const mr5h = RE_5H_RESET.exec(chunk);
-        if (mr5h) rl.reset5h = parseInt(mr5h[1], 10);
-        const mr7d = RE_7D_RESET.exec(chunk);
-        if (mr7d) rl.reset7d = parseInt(mr7d[1], 10);
-        if (rl.session5h !== undefined || rl.weekly7d !== undefined) {
-          this._rateLimitEmitter.emit('ratelimit', rl);
-        }
-      }
+      errorOutput += data.toString();
     });
 
     claudeProcess.on('close', (code) => {
@@ -387,19 +357,6 @@ export class ClaudeService implements vscode.Disposable {
       blockedPath: (request as { blocked_path?: string }).blocked_path,
       pattern,
     });
-  }
-
-  private _handleControlResponse(response: Record<string, unknown>): void {
-    try {
-      const data = response.data as Record<string, unknown> | undefined;
-      const innerResponse = (response.response as Record<string, unknown>)?.response as Record<string, unknown> | undefined;
-      const account = (data?.account || innerResponse?.account) as Record<string, unknown> | undefined;
-      if (account?.subscriptionType) {
-        this._subscriptionType = account.subscriptionType as 'pro' | 'max';
-        void this._context.globalState.update('claude.subscriptionType', this._subscriptionType);
-        this._accountInfoEmitter.emit('info', this._subscriptionType);
-      }
-    } catch { /* ignore malformed responses */ }
   }
 
   // Common command patterns: [firstWord, subcommand] → wildcard pattern
@@ -506,6 +463,5 @@ export class ClaudeService implements vscode.Disposable {
     this._processEndEmitter.removeAllListeners();
     this._errorEmitter.removeAllListeners();
     this._permissionRequestEmitter.removeAllListeners();
-    this._rateLimitEmitter.removeAllListeners();
   }
 }

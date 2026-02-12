@@ -12,7 +12,7 @@ import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 export function InputArea() {
   const [text, setText] = useState('')
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
-  const [planMode, setPlanMode] = useState(true)
+  const [planMode, setPlanMode] = useState(false)
   const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
@@ -445,7 +445,15 @@ export function InputArea() {
             </button>
 
             <button
-              onClick={() => setPlanMode(!planMode)}
+              onClick={() => {
+                const next = !planMode
+                setPlanMode(next)
+                if (next) {
+                  // Plan mode requires interactive permissions — turn off YOLO
+                  postMessage({ type: 'updateSettings', settings: { yoloMode: false } })
+                  useSettingsStore.getState().updateSettings({ yoloMode: false })
+                }
+              }}
               className="flex items-center gap-1 cursor-pointer border-none"
               style={{
                 padding: '2px 10px',
@@ -472,6 +480,10 @@ export function InputArea() {
             const next = !yoloMode
             postMessage({ type: 'updateSettings', settings: { yoloMode: next } })
             useSettingsStore.getState().updateSettings({ yoloMode: next })
+            if (next) {
+              // YOLO skips all permissions — plan mode is incompatible
+              setPlanMode(false)
+            }
           }}
           className="flex items-center gap-1 cursor-pointer border-none"
           style={{
