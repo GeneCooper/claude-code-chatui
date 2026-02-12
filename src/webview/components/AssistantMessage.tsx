@@ -104,22 +104,24 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
         {isStreaming && <span className="streaming-cursor" />}
       </div>
 
-      {/* Copy button - appears on hover, inline at bottom-right */}
-      <div className="flex justify-end opacity-0 group-hover:opacity-60 hover:opacity-100!" style={{ transition: 'opacity 0.2s ease' }}>
-        <button
-          onClick={handleCopyMessage}
-          className="cursor-pointer bg-transparent border-none"
-          style={{
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            color: 'var(--vscode-descriptionForeground)',
-          }}
-          title="Copy message"
-        >
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
-      </div>
+      {/* Copy button - floats at top-right on hover */}
+      <button
+        onClick={handleCopyMessage}
+        className="cursor-pointer bg-transparent border-none opacity-0 group-hover:opacity-70 hover:opacity-100!"
+        style={{
+          position: 'absolute',
+          top: '2px',
+          right: '0px',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          fontSize: '11px',
+          color: 'var(--vscode-descriptionForeground)',
+          transition: 'opacity 0.2s ease',
+        }}
+        title="Copy message"
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
     </div>
   )
 }

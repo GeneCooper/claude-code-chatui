@@ -186,8 +186,15 @@ function TimelineIndicator({ status, isLast }: { status: 'running' | 'completed'
           borderRadius: '50%',
           background: INDICATOR_COLORS[status],
           flexShrink: 0,
-          boxShadow: status === 'running' ? `0 0 6px ${INDICATOR_COLORS.running}` : 'none',
-          animation: status === 'running' ? 'pulse 2s ease-in-out infinite' : 'none',
+          boxShadow: status === 'running'
+            ? `0 0 6px ${INDICATOR_COLORS.running}, 0 0 12px rgba(237, 110, 29, 0.3)`
+            : status === 'completed'
+              ? `0 0 4px ${INDICATOR_COLORS.completed}`
+              : status === 'error'
+                ? `0 0 4px ${INDICATOR_COLORS.error}`
+                : 'none',
+          animation: status === 'running' ? 'indicatorPulse 2s ease-in-out infinite' : 'none',
+          transition: 'background 0.3s ease, box-shadow 0.3s ease',
         }}
       />
       {!isLast && (
@@ -236,7 +243,9 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
           background: 'var(--chatui-surface-1)',
           border: entry.isRunning
             ? '1px solid rgba(237, 110, 29, 0.2)'
-            : '1px solid rgba(255, 255, 255, 0.06)',
+            : entry.isError
+              ? '1px solid rgba(231, 76, 60, 0.2)'
+              : '1px solid rgba(255, 255, 255, 0.06)',
           fontSize: '12px',
           transition: 'all 0.15s ease',
           position: 'relative',
@@ -245,8 +254,8 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--chatui-surface-2)' }}
         onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--chatui-surface-1)' }}
       >
-        {/* Animated progress bar at bottom when running */}
-        {entry.isRunning && (
+        {/* Animated progress bar at bottom */}
+        {entry.isRunning ? (
           <span
             className="tool-running-bar"
             style={{
@@ -255,6 +264,17 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
               left: 0,
               width: '100%',
               height: '2px',
+            }}
+          />
+        ) : (entry.toolResult) && (
+          <span
+            className={entry.isError ? 'tool-error-flash' : 'tool-complete-flash'}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              background: entry.isError ? '#e74c3c' : '#4ade80',
             }}
           />
         )}
@@ -546,24 +566,6 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-collapse tool entries when they finish
-  useEffect(() => {
-    const completedIds = entries
-      .filter((e) => e.kind === 'tool' && !e.isRunning)
-      .map((e) => e.id)
-    if (completedIds.length > 0) {
-      setCollapsedEntries((prev) => {
-        const next = new Set(prev)
-        let changed = false
-        for (const id of completedIds) {
-          if (!next.has(id) && !manuallyExpandedRef.current.has(id)) {
-            next.add(id); changed = true
-          }
-        }
-        return changed ? next : prev
-      })
-    }
-  }, [entries])
 
   const toggleEntry = useCallback((id: string) => {
     setCollapsedEntries((prev) => {
