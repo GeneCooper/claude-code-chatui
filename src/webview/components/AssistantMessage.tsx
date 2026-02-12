@@ -156,7 +156,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
   return (
     <div
       className="group relative max-w-[95%]"
-      style={{ padding: '4px 0' }}
+      style={{ padding: '2px 0' }}
     >
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">

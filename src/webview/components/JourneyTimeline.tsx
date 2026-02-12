@@ -254,7 +254,7 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
 
       {!isCollapsed && (
         <div style={{ paddingLeft: '4px', marginTop: '4px' }}>
-          <ToolUseBlock data={entry.toolUse.data as Record<string, unknown>} />
+          <ToolUseBlock data={entry.toolUse.data as Record<string, unknown>} hideHeader />
           {entry.toolResult && (
             <div style={{ marginTop: '4px' }}>
               <ToolResultBlock data={entry.toolResult.data as Record<string, unknown>} />

@@ -5,10 +5,11 @@ const FILE_EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit']
 
 interface Props {
   data: Record<string, unknown>
+  hideHeader?: boolean
 }
 
-export function ToolUseBlock({ data }: Props) {
-  const [showInput, setShowInput] = useState(false)
+export function ToolUseBlock({ data, hideHeader }: Props) {
+  const [showInput, setShowInput] = useState(!!hideHeader)
   const toolName = data.toolName as string
   const rawInput = data.rawInput as Record<string, unknown> | undefined
   const fileContentBefore = data.fileContentBefore as string | undefined
@@ -43,48 +44,50 @@ export function ToolUseBlock({ data }: Props) {
     <div
       className="overflow-hidden text-xs"
       style={{
-        border: '1px solid rgba(255, 255, 255, 0.06)',
-        borderRadius: 'var(--radius-md)',
+        border: hideHeader ? 'none' : '1px solid rgba(255, 255, 255, 0.06)',
+        borderRadius: hideHeader ? 0 : 'var(--radius-md)',
         animation: 'fadeIn 0.15s ease',
       }}
     >
-      {/* Tool header */}
-      <div
-        className="flex items-center gap-2 cursor-pointer"
-        style={{
-          padding: '8px 12px',
-          borderBottom: showInput ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
-        }}
-        onClick={() => setShowInput(!showInput)}
-      >
-        <span style={{ opacity: 0.4, fontSize: '10px' }}>&#9654;</span>
-        <span style={{ fontWeight: 500, fontSize: '13px', opacity: 0.9 }}>{toolName}</span>
-        {summary && (
-          <span className="opacity-40 truncate flex-1 font-mono text-[11px]">{summary}</span>
-        )}
-        {canPreviewDiff && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handlePreviewDiff()
-            }}
-            className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
-          >
-            Preview Diff
-          </button>
-        )}
-        {rawInput?.file_path != null && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              postMessage({ type: 'openFile', filePath: String(rawInput.file_path) })
-            }}
-            className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
-          >
-            Open
-          </button>
-        )}
-      </div>
+      {/* Tool header — hidden when embedded in TimelineToolEntry */}
+      {!hideHeader && (
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          style={{
+            padding: '8px 12px',
+            borderBottom: showInput ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+          }}
+          onClick={() => setShowInput(!showInput)}
+        >
+          <span style={{ opacity: 0.4, fontSize: '10px' }}>&#9654;</span>
+          <span style={{ fontWeight: 500, fontSize: '13px', opacity: 0.9 }}>{toolName}</span>
+          {summary && (
+            <span className="opacity-40 truncate flex-1 font-mono text-[11px]">{summary}</span>
+          )}
+          {canPreviewDiff && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePreviewDiff()
+              }}
+              className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
+            >
+              Preview Diff
+            </button>
+          )}
+          {rawInput?.file_path != null && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                postMessage({ type: 'openFile', filePath: String(rawInput.file_path) })
+              }}
+              className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
+            >
+              Open
+            </button>
+          )}
+        </div>
+      )}
 
       {showInput && rawInput && (
         <div className="px-3 py-2 max-h-40 overflow-y-auto" style={{ paddingLeft: '12px' }}>

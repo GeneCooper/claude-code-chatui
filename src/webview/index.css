@@ -262,6 +262,9 @@ body {
   margin: 0.6em 0;
   line-height: 1.65;
 }
+.markdown-content > :first-child {
+  margin-top: 0;
+}
 .markdown-content ul,
 .markdown-content ol {
   margin: 0.6em 0;
