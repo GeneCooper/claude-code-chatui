@@ -74,36 +74,6 @@ Requires VS Code 1.94+. The extension expects `claude` on your PATH.
 └─────────────────────────────────────┘
 ```
 
-## Source Structure
-
-```
-src/
-├── extension/
-│   ├── extension.ts    — Entry point, command registration
-│   ├── panel.ts        — WebviewPanel & sidebar provider
-│   ├── claude.ts       — Claude CLI process management, permission service
-│   ├── handlers.ts     — Message handlers, settings manager, state manager
-│   └── storage.ts      — Conversation, backup, MCP, usage services
-├── webview/
-│   ├── App.tsx         — Root React component
-│   ├── store.ts        — Zustand stores (chat, settings, UI, MCP)
-│   ├── hooks.ts        — VS Code API bridge, message handlers
-│   └── components/
-│       ├── ChatView.tsx          — Chat container with auto-scroll
-│       ├── JourneyTimeline.tsx   — Message grouping & timeline rendering
-│       ├── InputArea.tsx         — Input textarea, file picker, settings
-│       ├── AssistantMessage.tsx  — Markdown rendering
-│       ├── DiffView.tsx          — Inline diff viewer
-│       ├── ToolUseBlock.tsx      — Tool invocation display
-│       ├── ToolResultBlock.tsx   — Tool result display
-│       ├── PermissionDialog.tsx  — Permission request UI
-│       └── TodoDisplay.tsx       — Task list display
-└── shared/
-    ├── types.ts        — Shared type definitions
-    ├── constants.ts    — Shared constants
-    └── logger.ts       — Logging utility
-```
-
 ## Development
 
 ```bash

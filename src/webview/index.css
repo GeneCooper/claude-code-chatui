@@ -265,6 +265,17 @@ body {
 .markdown-content > :first-child {
   margin-top: 0;
 }
+
+/* Streaming cursor - blinking caret at end of streaming text */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--chatui-accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
 .markdown-content ul,
 .markdown-content ol {
   margin: 0.6em 0;
@@ -273,6 +284,23 @@ body {
 .markdown-content li {
   margin: 0.3em 0;
   line-height: 1.5;
+}
+
+/* ===== Tool Running Progress Bar ===== */
+.tool-running-bar {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--chatui-accent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: toolRunningSlide 1.5s ease-in-out infinite;
+}
+
+@keyframes toolRunningSlide {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* ===== Loading Dots ===== */

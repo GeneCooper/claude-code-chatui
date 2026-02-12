@@ -197,6 +197,21 @@ function TimelineIndicator({ status, isLast }: { status: 'running' | 'completed'
   )
 }
 
+function ToolElapsedTimer() {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  if (elapsed < 2) return null
+  const fmt = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+  return (
+    <span style={{ opacity: 0.4, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)', flexShrink: 0 }}>
+      {fmt}
+    </span>
+  )
+}
+
 function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
   entry: ToolEntry; isCollapsed: boolean; onToggle: (id: string) => void
 }) {
@@ -216,10 +231,40 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
             : '1px solid rgba(255, 255, 255, 0.06)',
           fontSize: '12px',
           transition: 'all 0.15s ease',
+          position: 'relative',
+          overflow: 'hidden',
         }}
         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--chatui-surface-2)' }}
         onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--chatui-surface-1)' }}
       >
+        {/* Animated progress bar at bottom when running */}
+        {entry.isRunning && (
+          <span
+            className="tool-running-bar"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '2px',
+            }}
+          />
+        )}
+        {entry.isRunning && (
+          <span
+            style={{
+              width: '14px', height: '14px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'loadingSpin 1.2s linear infinite',
+              color: 'var(--chatui-accent)',
+              flexShrink: 0,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
+            </svg>
+          </span>
+        )}
         <span style={{ fontWeight: 600, fontSize: '12px', opacity: 0.9, flexShrink: 0 }}>
           {entry.toolName}
         </span>
@@ -237,16 +282,7 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
             {entry.summary}
           </span>
         )}
-        {entry.isRunning && (
-          <span
-            style={{
-              width: '6px', height: '6px', borderRadius: '50%',
-              background: 'var(--chatui-accent, #ed6e1d)',
-              animation: 'pulse 1.5s ease-in-out infinite',
-              flexShrink: 0,
-            }}
-          />
-        )}
+        {entry.isRunning && <ToolElapsedTimer />}
         <span style={{ opacity: 0.4, fontSize: '9px', flexShrink: 0 }}>
           {isCollapsed ? '\u25B8' : '\u25BE'}
         </span>
@@ -449,6 +485,7 @@ interface Props {
 
 export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   const [collapsedEntries, setCollapsedEntries] = useState<Set<string>>(new Set())
+  const manuallyExpandedRef = useRef<Set<string>>(new Set())
 
   const entries = useMemo(() => buildFlatTimeline(messages, isProcessing), [messages, isProcessing])
 
@@ -480,10 +517,35 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Auto-collapse tool entries when they finish (result arrives)
+  useEffect(() => {
+    const completedIds = entries
+      .filter((e) => e.kind === 'tool' && !e.isRunning && e.toolResult)
+      .map((e) => e.id)
+    if (completedIds.length > 0) {
+      setCollapsedEntries((prev) => {
+        const next = new Set(prev)
+        let changed = false
+        for (const id of completedIds) {
+          if (!next.has(id) && !manuallyExpandedRef.current.has(id)) {
+            next.add(id); changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }
+  }, [entries])
+
   const toggleEntry = useCallback((id: string) => {
     setCollapsedEntries((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+        manuallyExpandedRef.current.add(id)
+      } else {
+        next.add(id)
+        manuallyExpandedRef.current.delete(id)
+      }
       return next
     })
   }, [])

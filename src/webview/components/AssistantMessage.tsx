@@ -69,71 +69,11 @@ const markdownComponents = {
 }
 
 /**
- * Hook to progressively reveal text for a streaming effect.
- * Throttles state updates to ~100ms intervals to avoid re-parsing markdown every frame.
+ * Display text directly as it arrives from the CLI.
+ * The natural token arrival pace provides smooth streaming — no artificial animation needed.
  */
-function useStreamingText(fullText: string, isStreaming: boolean) {
-  const [displayText, setDisplayText] = useState(isStreaming ? '' : fullText)
-  const prevTextRef = useRef(fullText)
-  const revealedRef = useRef(isStreaming ? 0 : fullText.length)
-  const rafRef = useRef<number>(0)
-  const lastFlushRef = useRef(0)
-
-  useEffect(() => {
-    if (!isStreaming) {
-      setDisplayText(fullText)
-      revealedRef.current = fullText.length
-      prevTextRef.current = fullText
-      return
-    }
-
-    // If text grew (new content appended), keep revealed portion and stream the rest
-    const prevLen = prevTextRef.current.length
-    if (fullText.length > prevLen && fullText.startsWith(prevTextRef.current)) {
-      // Previous text is a prefix — keep the revealed count
-    } else {
-      // Text changed entirely — reset
-      revealedRef.current = 0
-    }
-    prevTextRef.current = fullText
-
-    if (revealedRef.current >= fullText.length) {
-      setDisplayText(fullText)
-      return
-    }
-
-    // Streaming reveal — advance pointer every frame but only flush to React every ~100ms
-    const CHARS_PER_FRAME = 30
-    const FLUSH_INTERVAL_MS = 100
-
-    const reveal = () => {
-      revealedRef.current = Math.min(revealedRef.current + CHARS_PER_FRAME, fullText.length)
-      // Snap to next word boundary to avoid cutting mid-word
-      if (revealedRef.current < fullText.length) {
-        const nextSpace = fullText.indexOf(' ', revealedRef.current)
-        if (nextSpace !== -1 && nextSpace - revealedRef.current < 20) {
-          revealedRef.current = nextSpace + 1
-        }
-      }
-
-      const now = performance.now()
-      const done = revealedRef.current >= fullText.length
-      // Only trigger React setState (and markdown re-parse) every FLUSH_INTERVAL_MS or when done
-      if (done || now - lastFlushRef.current >= FLUSH_INTERVAL_MS) {
-        lastFlushRef.current = now
-        setDisplayText(fullText.substring(0, revealedRef.current))
-      }
-
-      if (!done) {
-        rafRef.current = requestAnimationFrame(reveal)
-      }
-    }
-
-    rafRef.current = requestAnimationFrame(reveal)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [fullText, isStreaming])
-
-  return displayText
+function useStreamingText(fullText: string, _isStreaming: boolean) {
+  return fullText
 }
 
 export function AssistantMessage({ text, isStreaming = false }: Props) {
@@ -161,6 +101,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">
         {renderedMarkdown}
+        {isStreaming && <span className="streaming-cursor" />}
       </div>
 
       {/* Copy button - appears on hover, inline at bottom-right */}
