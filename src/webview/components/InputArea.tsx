@@ -13,7 +13,6 @@ export function InputArea() {
   const [text, setText] = useState('')
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
   const [planMode, setPlanMode] = useState(false)
-  const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
@@ -36,11 +35,10 @@ export function InputArea() {
   const startHeightRef = useRef(0)
 
   useEffect(() => {
-    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; ctrlEnterSend?: boolean }>()
+    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; ctrlEnterSend?: boolean }>()
     if (saved?.draft) setText(saved.draft)
     if (saved?.model) setSelectedModel(saved.model)
     if (saved?.planMode !== undefined) setPlanMode(saved.planMode)
-    if (saved?.thinkingMode !== undefined) setThinkingMode(saved.thinkingMode)
     if (saved?.ctrlEnterSend !== undefined) setCtrlEnterSend(saved.ctrlEnterSend)
   }, [])
 
@@ -54,8 +52,8 @@ export function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel, planMode, thinkingMode, ctrlEnterSend })
-  }, [text, selectedModel, planMode, thinkingMode, ctrlEnterSend])
+    setState({ draft: text, model: selectedModel, planMode, ctrlEnterSend })
+  }, [text, selectedModel, planMode, ctrlEnterSend])
 
   useEffect(() => {
     debouncedSave(text)
@@ -220,8 +218,7 @@ export function InputArea() {
       type: 'sendMessage',
       text: userText,
       planMode,
-      thinkingMode,
-      thinkingIntensity: thinkingMode ? useSettingsStore.getState().thinkingIntensity : undefined,
+      effort: useSettingsStore.getState().thinkingIntensity,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
     })
@@ -366,7 +363,7 @@ export function InputArea() {
     >
       {/* Pickers & Modals */}
       <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
-      <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
+      <ThinkingIntensityModal />
       <ModelSelectorModal
         show={showModelPicker}
         selectedModel={selectedModel}
@@ -428,21 +425,20 @@ export function InputArea() {
               style={{
                 padding: '2px 10px',
                 borderRadius: '12px',
-                border: `1px solid ${thinkingMode ? '#3b82f6' : 'var(--vscode-panel-border)'}`,
-                background: thinkingMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                color: thinkingMode ? '#3b82f6' : 'inherit',
-                opacity: thinkingMode ? 1 : 0.7,
+                border: '1px solid #3b82f6',
+                background: 'rgba(59, 130, 246, 0.1)',
+                color: '#3b82f6',
                 transition: 'all 0.2s ease',
-                boxShadow: thinkingMode ? '0 0 8px rgba(59, 130, 246, 0.2)' : 'none',
+                boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
               }}
-              title="Thinking mode"
-              aria-label="Thinking mode"
+              title="Effort level"
+              aria-label="Effort level"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4l2 2" />
               </svg>
-              <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
+              <span>Effort · {useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}</span>
             </button>
 
             <button

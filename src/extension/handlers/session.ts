@@ -9,8 +9,7 @@ export const handleSendMessage: MessageHandler = (msg, ctx) => {
   ctx.handleSendMessage(
     str(msg.text),
     optBool(msg.planMode),
-    optBool(msg.thinkingMode),
-    optStr(msg.thinkingIntensity),
+    optStr(msg.effort),
     optStrArr(msg.images),
   );
 };

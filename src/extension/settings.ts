@@ -6,7 +6,6 @@ import * as vscode from 'vscode';
 
 interface WebviewSettings {
   selectedModel: string;
-  thinkingMode: boolean;
   thinkingIntensity: string;
   showThinkingProcess: boolean;
   yoloMode: boolean;
@@ -27,7 +26,6 @@ interface WebviewSettings {
 const CONFIG_KEYS = {
   CLAUDE_MODEL: 'claude.model',
   CLAUDE_EXECUTABLE: 'claude.executable',
-  THINKING_ENABLED: 'thinking.enabled',
   THINKING_INTENSITY: 'thinking.intensity',
   THINKING_SHOW_PROCESS: 'thinking.showProcess',
   PERMISSIONS_YOLO_MODE: 'permissions.yoloMode',
@@ -47,7 +45,6 @@ const CONFIG_KEYS = {
 const DEFAULTS = {
   CLAUDE_MODEL: 'claude-sonnet-4-5-20250929',
   CLAUDE_EXECUTABLE: 'claude',
-  THINKING_ENABLED: true,
   THINKING_INTENSITY: 'high',
   THINKING_SHOW_PROCESS: true,
   YOLO_MODE: true,
@@ -75,7 +72,6 @@ export class SettingsManager {
     const config = this._getConfig();
     return {
       selectedModel,
-      thinkingMode: config.get<boolean>(CONFIG_KEYS.THINKING_ENABLED, DEFAULTS.THINKING_ENABLED),
       thinkingIntensity: config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY),
       showThinkingProcess: config.get<boolean>(CONFIG_KEYS.THINKING_SHOW_PROCESS, DEFAULTS.THINKING_SHOW_PROCESS),
       yoloMode: config.get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE),
@@ -103,9 +99,6 @@ export class SettingsManager {
     if (!settings || typeof settings !== 'object') return;
 
     // Thinking settings
-    if (typeof settings.thinkingMode === 'boolean') {
-      await config.update(CONFIG_KEYS.THINKING_ENABLED, settings.thinkingMode, vscode.ConfigurationTarget.Global);
-    }
     if (typeof settings.thinkingIntensity === 'string') {
       await config.update(CONFIG_KEYS.THINKING_INTENSITY, settings.thinkingIntensity, vscode.ConfigurationTarget.Global);
     }

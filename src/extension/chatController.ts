@@ -21,8 +21,6 @@ export class ChatController {
   readonly messageProcessor: ClaudeMessageProcessor;
   readonly stateManager: SessionStateManager;
 
-  private _sessionId: string | undefined;
-
   constructor(
     private readonly _context: vscode.ExtensionContext,
     private readonly _claudeService: ClaudeService,
@@ -43,7 +41,6 @@ export class ChatController {
     this.messageProcessor = new ClaudeMessageProcessor(poster, this.stateManager, {
       onSessionIdReceived: (sessionId) => {
         this._claudeService.setSessionId(sessionId);
-        this._sessionId = sessionId;
       },
       onProcessingComplete: (result) => { this._debouncedSaveConversation(result.sessionId); },
     });
@@ -51,7 +48,7 @@ export class ChatController {
     this._setupClaudeServiceHandlers();
   }
 
-  get sessionId(): string | undefined { return this._sessionId; }
+  get sessionId(): string | undefined { return this._claudeService.sessionId; }
 
   // ==================== Session Management ====================
 
@@ -66,7 +63,7 @@ export class ChatController {
     }
     this.messageProcessor.resetSession();
     this.stateManager.resetSession();
-    this._sessionId = undefined;
+    this._claudeService.setSessionId(undefined);
     this._postMessage({ type: 'sessionCleared' });
   }
 
@@ -81,7 +78,7 @@ export class ChatController {
     this.messageProcessor.resetSession();
     this.stateManager.resetSession();
 
-    this._sessionId = conversation.sessionId;
+    this._claudeService.setSessionId(conversation.sessionId);
     this.stateManager.restoreFromConversation({
       totalCost: conversation.totalCost,
       totalTokens: conversation.totalTokens,
@@ -102,7 +99,7 @@ export class ChatController {
     this.messageProcessor.resetSession();
     this.stateManager.resetSession();
 
-    this._sessionId = sessionId;
+    this._claudeService.setSessionId(sessionId);
     if (totalCost) this.stateManager.totalCost = totalCost;
 
     for (const msg of messages) {
@@ -124,7 +121,7 @@ export class ChatController {
     } else {
       this.messageProcessor.resetSession();
     }
-    this._sessionId = undefined;
+    this._claudeService.setSessionId(undefined);
     this.stateManager.resetSession();
     this._replayConversation();
     this.handleSendMessage(newText);
@@ -151,24 +148,22 @@ export class ChatController {
     } else {
       this.messageProcessor.resetSession();
     }
-    this._sessionId = undefined;
+    this._claudeService.setSessionId(undefined);
     this.stateManager.resetSession();
     this._replayConversation();
     this.handleSendMessage(lastUserText);
   }
 
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]): void {
+  handleSendMessage(text: string, planMode?: boolean, effort?: string, images?: string[]): void {
     if (this.stateManager.isProcessing) return;
 
-    log.info('Sending message', { planMode, thinkingMode, thinkingIntensity, hasImages: !!images?.length });
+    log.info('Sending message', { planMode, effort, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
 
     this.stateManager.isProcessing = true;
     this.stateManager.draftMessage = '';
-
-    this._claudeService.setSessionId(this._sessionId);
 
     const userInputData = { text, images };
     this.messageProcessor.currentConversation.push({
@@ -183,10 +178,10 @@ export class ChatController {
     const yoloMode = this.settingsManager.isYoloModeEnabled();
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
-    const effort = thinkingIntensity || this.settingsManager.getCurrentSettings(this.stateManager.selectedModel).thinkingIntensity;
+    const resolvedEffort = effort || this.settingsManager.getCurrentSettings(this.stateManager.selectedModel).thinkingIntensity;
 
     void this._claudeService.sendMessage(text, {
-      cwd, planMode, thinkingMode, thinkingIntensity: effort, yoloMode,
+      cwd, planMode, effort: resolvedEffort, yoloMode,
       model: this.stateManager.selectedModel !== 'default' ? this.stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });
@@ -270,7 +265,7 @@ export class ChatController {
         type: 'batchReplay',
         data: {
           messages: replayMessages,
-          sessionId: this._sessionId,
+          sessionId: this._claudeService.sessionId,
           totalCost: this.stateManager.totalCost,
           isProcessing: this.stateManager.isProcessing,
         },
@@ -293,7 +288,7 @@ export class ChatController {
       clearTimeout(this._saveTimer);
       this._saveTimer = undefined;
     }
-    this._saveConversation(this._sessionId);
+    this._saveConversation(this._claudeService.sessionId);
   }
 
   private _saveConversation(sessionId?: string): void {

@@ -111,8 +111,7 @@ export class PermissionService implements vscode.Disposable {
 interface SendMessageOptions {
   cwd: string;
   planMode?: boolean;
-  thinkingMode?: boolean;
-  thinkingIntensity?: string;
+  effort?: string;
   yoloMode?: boolean;
   model?: string;
   mcpConfigPath?: string;
@@ -128,7 +127,10 @@ interface PendingPermission {
   input: Record<string, unknown>;
   suggestions?: unknown[];
   toolUseId: string;
+  timeout: ReturnType<typeof setTimeout>;
 }
+
+const PERMISSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export class ClaudeService implements vscode.Disposable {
   private _process: cp.ChildProcess | undefined;
@@ -155,10 +157,8 @@ export class ClaudeService implements vscode.Disposable {
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
 
-    // Effort level (--effort low/medium/high)
-    if (options.thinkingMode && options.thinkingIntensity) {
-      args.push('--effort', options.thinkingIntensity);
-    }
+    // Effort level (--effort low/medium/high) — always sent, CLI defaults to high
+    args.push('--effort', options.effort || 'high');
 
     // Permission handling: --dangerously-skip-permissions and --permission-prompt-tool
     // are mutually exclusive. Using both causes the CLI to still route permission
@@ -214,7 +214,7 @@ export class ClaudeService implements vscode.Disposable {
         message: { role: 'user', content: contentBlocks },
         parent_tool_use_id: null,
       };
-      claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
+      void this._writeStdin(claudeProcess.stdin, JSON.stringify(userMsg) + '\n');
     }
 
     let errorOutput = '';
@@ -256,23 +256,33 @@ export class ClaudeService implements vscode.Disposable {
   }
 
   async stopProcess(): Promise<void> {
-    if (!this._process) return;
-    try {
-      this._abortController?.abort();
-      if (this._process.stdin && !this._process.stdin.destroyed) this._process.stdin.end();
-      if (process.platform === 'win32' && this._process.pid) {
-        cp.exec(`taskkill /pid ${this._process.pid} /T /F`);
-      } else if (this._process.pid) {
-        process.kill(-this._process.pid, 'SIGTERM');
-      }
-    } catch { /* already dead */ }
+    const proc = this._process;
+    if (!proc) return;
     this._process = undefined;
     this._cancelPendingPermissions();
+
+    try {
+      this._abortController?.abort();
+      if (proc.stdin && !proc.stdin.destroyed) proc.stdin.end();
+      if (process.platform === 'win32' && proc.pid) {
+        // taskkill /F already sends a forceful kill on Windows
+        cp.exec(`taskkill /pid ${proc.pid} /T /F`);
+      } else if (proc.pid) {
+        const pid = proc.pid;
+        process.kill(-pid, 'SIGTERM');
+        // SIGKILL fallback: if process doesn't exit within 3s, force kill
+        const killTimer = setTimeout(() => {
+          try { process.kill(-pid, 'SIGKILL'); } catch { /* already dead */ }
+        }, 3000);
+        proc.once('exit', () => clearTimeout(killTimer));
+      }
+    } catch { /* already dead */ }
   }
 
   sendPermissionResponse(requestId: string, approved: boolean, alwaysAllow?: boolean): void {
     const pending = this._pendingPermissions.get(requestId);
     if (!pending) return;
+    clearTimeout(pending.timeout);
     this._pendingPermissions.delete(requestId);
     if (this._process?.stdin && !this._process.stdin.destroyed) {
       const response = approved
@@ -302,7 +312,14 @@ export class ClaudeService implements vscode.Disposable {
               },
             },
           };
-      this._process.stdin.write(JSON.stringify(response) + '\n');
+      void this._writeStdin(this._process.stdin, JSON.stringify(response) + '\n');
+    }
+  }
+
+  private async _writeStdin(stdin: NodeJS.WritableStream, data: string): Promise<void> {
+    const ok = stdin.write(data);
+    if (!ok) {
+      await new Promise<void>((resolve) => stdin.once('drain', resolve));
     }
   }
 
@@ -316,7 +333,13 @@ export class ClaudeService implements vscode.Disposable {
     const suggestions = (request as { permission_suggestions?: unknown[] }).permission_suggestions;
     const toolUseId = (request as { tool_use_id?: string }).tool_use_id || requestId;
 
-    this._pendingPermissions.set(requestId, { requestId, toolName, input, suggestions, toolUseId });
+    const timeout = setTimeout(() => {
+      if (this._pendingPermissions.has(requestId)) {
+        this.sendPermissionResponse(requestId, false);
+      }
+    }, PERMISSION_TIMEOUT_MS);
+
+    this._pendingPermissions.set(requestId, { requestId, toolName, input, suggestions, toolUseId, timeout });
 
     let pattern: string | undefined;
     if (toolName === 'Bash' && input.command) {
@@ -426,6 +449,9 @@ export class ClaudeService implements vscode.Disposable {
   }
 
   private _cancelPendingPermissions(): void {
+    for (const pending of this._pendingPermissions.values()) {
+      clearTimeout(pending.timeout);
+    }
     this._pendingPermissions.clear();
   }
 
