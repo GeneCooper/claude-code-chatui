@@ -89,10 +89,11 @@ function buildFlatTimeline(messages: ChatMessage[], isProcessing: boolean): Time
 
       case 'toolResult': {
         const resultData = msg.data as Record<string, unknown>
+        const isHidden = !!resultData.hidden
         let matched = false
         for (let i = pendingTools.length - 1; i >= 0; i--) {
           if (!pendingTools[i].toolResult) {
-            pendingTools[i].toolResult = msg
+            pendingTools[i].toolResult = isHidden ? undefined : msg
             pendingTools[i].isRunning = false
             pendingTools[i].isError = !!resultData.isError
             pendingTools.splice(i, 1)
@@ -100,7 +101,7 @@ function buildFlatTimeline(messages: ChatMessage[], isProcessing: boolean): Time
             break
           }
         }
-        if (!matched) {
+        if (!matched && !isHidden) {
           entries.push({ id: msg.id, kind: 'standalone', timestamp: msg.timestamp, message: msg })
         }
         break
@@ -126,6 +127,13 @@ function buildFlatTimeline(messages: ChatMessage[], isProcessing: boolean): Time
       }
       if (entry.kind === 'standalone' && entry.message.type === 'loading') continue
       break
+    }
+  } else {
+    // Safety net: when not processing, no tool should show as running
+    for (const entry of entries) {
+      if (entry.kind === 'tool' && entry.isRunning) {
+        entry.isRunning = false
+      }
     }
   }
 
@@ -400,30 +408,51 @@ function LoadingIndicator() {
   }
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 text-xs" style={{ opacity: 0.8 }}>
-      <div
-        style={{
-          width: '16px', height: '16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: 'loadingSpin 2s linear infinite',
-          color: 'var(--chatui-accent)',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
-        </svg>
+    <div
+      style={{
+        borderRadius: 'var(--radius-lg)',
+        background: 'var(--chatui-surface-1)',
+        border: '1px solid rgba(237, 110, 29, 0.2)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <div className="flex items-center gap-3 px-3 py-2 text-xs" style={{ opacity: 0.8 }}>
+        <div
+          style={{
+            width: '16px', height: '16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'loadingSpin 1.2s linear infinite',
+            color: 'var(--chatui-accent)',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
+          </svg>
+        </div>
+        <span
+          style={{
+            minWidth: '100px',
+            transition: 'opacity 0.2s ease',
+            opacity: fadeClass ? 1 : 0,
+            fontWeight: 500,
+          }}
+        >
+          {LOADING_PHRASES[phraseIndex]}...
+        </span>
+        <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}>{formatTime(elapsed)}</span>
       </div>
+      {/* Animated progress bar at bottom — same style as tool entries */}
       <span
+        className="tool-running-bar"
         style={{
-          minWidth: '100px',
-          transition: 'opacity 0.2s ease',
-          opacity: fadeClass ? 1 : 0,
-          fontWeight: 500,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          height: '2px',
         }}
-      >
-        {LOADING_PHRASES[phraseIndex]}...
-      </span>
-      <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}>{formatTime(elapsed)}</span>
+      />
     </div>
   )
 }
@@ -517,10 +546,10 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-collapse tool entries when they finish (result arrives)
+  // Auto-collapse tool entries when they finish
   useEffect(() => {
     const completedIds = entries
-      .filter((e) => e.kind === 'tool' && !e.isRunning && e.toolResult)
+      .filter((e) => e.kind === 'tool' && !e.isRunning)
       .map((e) => e.id)
     if (completedIds.length > 0) {
       setCollapsedEntries((prev) => {
@@ -588,10 +617,22 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
     }
   }
 
+  // Show bottom loading when processing but nothing is actively streaming or running
+  const showBottomLoading = useMemo(() => {
+    if (!isProcessing) return false
+    // Don't show if there's already a loading standalone entry visible
+    const lastEntry = entries[entries.length - 1]
+    if (!lastEntry) return true
+    if (lastEntry.kind === 'standalone' && lastEntry.message.type === 'loading') return false
+    if (lastEntry.kind === 'output' && lastEntry.isStreaming) return false
+    if (lastEntry.kind === 'tool' && lastEntry.isRunning) return false
+    return true
+  }, [isProcessing, entries])
+
   return (
     <div className="space-y-1">
       {entries.map((entry, index) => {
-        const isLast = index === entries.length - 1
+        const isLast = index === entries.length - 1 && !showBottomLoading
 
         // UserInput renders without timeline indicator (right-aligned bubble)
         if (entry.kind === 'standalone' && entry.message.type === 'userInput') {
@@ -619,6 +660,14 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
         )
       })}
 
+      {showBottomLoading && (
+        <div style={{ display: 'flex', gap: '8px', minHeight: '28px' }}>
+          <TimelineIndicator status="running" isLast />
+          <div style={{ flex: 1, minWidth: 0, paddingBottom: '4px' }}>
+            <LoadingIndicator />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

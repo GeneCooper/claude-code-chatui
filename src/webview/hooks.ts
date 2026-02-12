@@ -169,8 +169,8 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   toolResult: (msg) => {
-    const result = msg.data as { hidden?: boolean }
-    if (!result.hidden) useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
+    // Always add toolResult so timeline can match it to its toolUse and stop the spinner
+    useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
   },
 
   permissionRequest: (msg) => { useChatStore.getState().addMessage({ type: 'permissionRequest', data: msg.data }) },
