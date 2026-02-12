@@ -11,9 +11,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
+        format: 'iife',
         entryFileNames: 'assets/main.js',
-        chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name][extname]',
+        inlineDynamicImports: true,
       },
     },
     cssCodeSplit: false,
