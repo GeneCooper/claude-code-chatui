@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TodoItem, MCPServerConfig } from '../shared/types'
+import type { TodoItem, MCPServerConfig, PipelineStepData, PipelineData } from '../shared/types'
 
 export type { TodoItem }
 
@@ -13,6 +13,9 @@ export interface AutoContextInfo {
   activeFile: string | null
   totalFiles: number
   enabled: boolean
+  gitChangedFiles: string[]
+  messageMentionedFiles: string[]
+  totalContentChars: number
 }
 
 export interface RuleViolation {
@@ -51,6 +54,14 @@ interface TotalsState {
   requestCount: number
 }
 
+export interface PipelineState {
+  id: string
+  goal: string
+  steps: PipelineStepData[]
+  status: PipelineData['status']
+  currentStepIndex: number
+}
+
 interface ChatState {
   messages: ChatMessage[]
   isProcessing: boolean
@@ -60,6 +71,7 @@ interface ChatState {
   todos: TodoItem[]
   autoContextInfo: AutoContextInfo | null
   ruleViolations: RuleViolation[]
+  pipeline: PipelineState | null
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
@@ -74,6 +86,8 @@ interface ChatState {
   setAutoContextInfo: (info: AutoContextInfo | null) => void
   setRuleViolations: (violations: RuleViolation[]) => void
   dismissRuleViolation: (id: string) => void
+  setPipeline: (pipeline: PipelineState | null) => void
+  updatePipelineStep: (stepId: string, update: Partial<PipelineStepData>) => void
   restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
 }
 
@@ -86,6 +100,7 @@ export const useChatStore = create<ChatState>((set) => ({
   todos: [],
   autoContextInfo: null,
   ruleViolations: [],
+  pipeline: null,
   tokens: {
     totalTokensInput: 0, totalTokensOutput: 0,
     currentInputTokens: 0, currentOutputTokens: 0,
@@ -152,6 +167,21 @@ export const useChatStore = create<ChatState>((set) => ({
     set((state) => ({
       ruleViolations: state.ruleViolations.filter((v) => v.id !== id),
     })),
+
+  setPipeline: (pipeline) => set({ pipeline }),
+
+  updatePipelineStep: (stepId, update) =>
+    set((state) => {
+      if (!state.pipeline) return state
+      return {
+        pipeline: {
+          ...state.pipeline,
+          steps: state.pipeline.steps.map((s) =>
+            s.id === stepId ? { ...s, ...update } : s
+          ),
+        },
+      }
+    }),
 
   restoreState: (restored) =>
     set((state) => ({

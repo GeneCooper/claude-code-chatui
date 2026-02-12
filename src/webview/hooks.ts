@@ -282,6 +282,55 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   rulesData: () => {
     // Rules data is handled by settings panel directly
   },
+
+  pipelineEvent: (msg) => {
+    const event = msg.data as { type: string; pipeline?: { id: string; goal: string; steps: Array<{ id: string; title: string; prompt: string; contextFiles?: string[]; status: string; error?: string }>; status: string; currentStepIndex: number }; stepId?: string; stepIndex?: number; error?: string }
+    const store = useChatStore.getState()
+
+    switch (event.type) {
+      case 'pipelineCreated': {
+        if (event.pipeline) {
+          store.setPipeline({
+            id: event.pipeline.id,
+            goal: event.pipeline.goal,
+            steps: event.pipeline.steps.map((s) => ({ ...s, status: s.status as 'pending' | 'running' | 'completed' | 'failed' })),
+            status: event.pipeline.status as 'planning' | 'running' | 'completed' | 'failed' | 'cancelled',
+            currentStepIndex: event.pipeline.currentStepIndex,
+          })
+        }
+        break
+      }
+      case 'stepStarted': {
+        if (event.stepId) {
+          store.updatePipelineStep(event.stepId, { status: 'running' })
+          const pipeline = store.pipeline
+          if (pipeline && event.stepIndex !== undefined) {
+            store.setPipeline({ ...pipeline, currentStepIndex: event.stepIndex })
+          }
+        }
+        break
+      }
+      case 'stepCompleted': {
+        if (event.stepId) store.updatePipelineStep(event.stepId, { status: 'completed' })
+        break
+      }
+      case 'stepFailed': {
+        if (event.stepId) store.updatePipelineStep(event.stepId, { status: 'failed', error: event.error })
+        break
+      }
+      case 'pipelineCompleted':
+      case 'pipelineFailed':
+      case 'pipelineCancelled': {
+        if (event.pipeline) {
+          const pipeline = store.pipeline
+          if (pipeline) {
+            store.setPipeline({ ...pipeline, status: event.pipeline.status as 'completed' | 'failed' | 'cancelled' })
+          }
+        }
+        break
+      }
+    }
+  },
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {

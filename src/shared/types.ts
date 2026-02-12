@@ -239,7 +239,10 @@ export type WebviewToExtensionMessage =
   | { type: 'getRules' }
   | { type: 'createDefaultRules' }
   | { type: 'openRulesFile'; filePath: string }
-  | { type: 'dismissViolation'; violationId: string };
+  | { type: 'dismissViolation'; violationId: string }
+  // Pipeline
+  | { type: 'startPipeline'; goal: string }
+  | { type: 'cancelPipeline' };
 
 /** Messages from Extension to Webview */
 type ExtensionToWebviewMessage =
@@ -286,7 +289,35 @@ type ExtensionToWebviewMessage =
   | { type: 'autoContextInfo'; data: { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean } }
   // Rule violations
   | { type: 'ruleViolations'; data: { violations: Array<{ id: string; ruleName: string; description: string; severity: 'warning' | 'error'; filePath: string; suggestion?: string }> } }
-  | { type: 'rulesData'; data: { rules: Array<{ name: string; filePath: string; content: string }> } };
+  | { type: 'rulesData'; data: { rules: Array<{ name: string; filePath: string; content: string }> } }
+  // Pipeline
+  | { type: 'pipelineEvent'; data: PipelineEventData };
+
+export interface PipelineStepData {
+  id: string;
+  title: string;
+  prompt: string;
+  contextFiles?: string[];
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  error?: string;
+}
+
+export interface PipelineData {
+  id: string;
+  goal: string;
+  steps: PipelineStepData[];
+  status: 'planning' | 'running' | 'completed' | 'failed' | 'cancelled';
+  currentStepIndex: number;
+}
+
+export type PipelineEventData =
+  | { type: 'pipelineCreated'; pipeline: PipelineData }
+  | { type: 'stepStarted'; stepId: string; stepIndex: number }
+  | { type: 'stepCompleted'; stepId: string; stepIndex: number }
+  | { type: 'stepFailed'; stepId: string; stepIndex: number; error: string }
+  | { type: 'pipelineCompleted'; pipeline: PipelineData }
+  | { type: 'pipelineFailed'; pipeline: PipelineData; error: string }
+  | { type: 'pipelineCancelled'; pipeline: PipelineData };
 
 interface SettingsData {
   thinkingIntensity: string;

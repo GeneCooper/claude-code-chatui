@@ -186,6 +186,16 @@ export function InputArea() {
     const hasFiles = attachedFiles.length > 0
     if ((!trimmed && images.length === 0 && !hasFiles) || isProcessing) return
 
+    if (trimmed.startsWith('/pipeline ')) {
+      const goal = trimmed.substring('/pipeline '.length).trim()
+      if (goal) {
+        postMessage({ type: 'startPipeline', goal })
+        setText('')
+        if (textareaRef.current) textareaRef.current.style.height = 'auto'
+        return
+      }
+    }
+
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
       postMessage({ type: 'executeSlashCommand', command: cmd })

@@ -67,6 +67,8 @@ export interface MessageHandlerContext {
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
   rulesService?: import('./rulesService').RulesService;
+  startPipeline?: (goal: string) => Promise<void>;
+  cancelPipeline?: () => void;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -421,6 +423,9 @@ const messageHandlers: Record<string, MessageHandler> = {
   getRules: handleGetRules,
   createDefaultRules: handleCreateDefaultRules,
   openRulesFile: handleOpenRulesFile,
+  // Pipeline
+  startPipeline: (msg: WebviewMessage, ctx: MessageHandlerContext) => { if (ctx.startPipeline) void ctx.startPipeline(msg.goal as string); },
+  cancelPipeline: (_msg: WebviewMessage, ctx: MessageHandlerContext) => { if (ctx.cancelPipeline) ctx.cancelPipeline(); },
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

@@ -15,6 +15,7 @@ import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } fr
 import type { PanelManager } from './panelManager';
 import type { ContextCollector } from './contextCollector';
 import type { RulesService } from './rulesService';
+import { TaskPipeline } from './taskPipeline';
 
 const log = createModuleLogger('PanelProvider');
 
@@ -123,6 +124,7 @@ export class PanelProvider {
   private _messageProcessor: ClaudeMessageProcessor;
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
+  private _taskPipeline: TaskPipeline | null = null;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -439,6 +441,8 @@ export class PanelProvider {
       editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.regenerateResponse(),
       rulesService: this._rulesService,
+      startPipeline: (goal: string) => this._startPipeline(goal),
+      cancelPipeline: () => this._cancelPipeline(),
     };
   }
 
@@ -503,6 +507,10 @@ export class PanelProvider {
           maxFiles,
           includeImports,
           includeRecentFiles,
+          userMessage: text,
+          includeFileContents: true,
+          includeGitChanges: true,
+          maxContentLines: 80,
         });
 
         if (contextBlock) {
@@ -529,6 +537,49 @@ export class PanelProvider {
     };
   }
 
+  // ==================== Pipeline ====================
+
+  private async _startPipeline(goal: string): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
+
+    this._taskPipeline = new TaskPipeline((event) => {
+      this._postMessage({ type: 'pipelineEvent', data: event });
+    });
+
+    try {
+      await this._taskPipeline.plan(goal, cwd);
+      this._executePipelineStep();
+    } catch (err) {
+      log.error('Pipeline planning failed', { error: String(err) });
+      this._postMessage({ type: 'error', data: `Pipeline planning failed: ${String(err)}` });
+      this._taskPipeline = null;
+    }
+  }
+
+  private _executePipelineStep(): void {
+    if (!this._taskPipeline?.isRunning) return;
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
+
+    const prompt = this._taskPipeline.prepareNextStep(cwd);
+    if (prompt) {
+      this._handleSendMessage(prompt);
+    } else {
+      // Pipeline finished
+      this._taskPipeline = null;
+    }
+  }
+
+  private _cancelPipeline(): void {
+    if (this._taskPipeline) {
+      this._taskPipeline.cancel();
+      this._taskPipeline = null;
+      void this._claudeService.stopProcess();
+    }
+  }
+
   private _setupClaudeServiceHandlers(): void {
     this._claudeService.onMessage((message: ClaudeMessage) => {
       void this._messageProcessor.processMessage(message);
@@ -547,6 +598,12 @@ export class PanelProvider {
         vscode.window.showInformationMessage('Claude Code: Response complete');
       }
 
+      // Pipeline auto-advance: mark step completed and start next
+      if (this._taskPipeline?.isRunning) {
+        this._taskPipeline.markStepCompleted();
+        setTimeout(() => this._executePipelineStep(), 1500);
+      }
+
     });
 
     this._claudeService.onError((error) => {
@@ -554,6 +611,12 @@ export class PanelProvider {
       this._stateManager.isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+
+      // Pipeline: mark step failed
+      if (this._taskPipeline?.isRunning) {
+        this._taskPipeline.markStepFailed(error);
+        this._taskPipeline = null;
+      }
 
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });
