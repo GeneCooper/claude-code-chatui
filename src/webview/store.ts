@@ -4,7 +4,7 @@ import type { TodoItem, MCPServerConfig } from '../shared/types'
 export type { TodoItem }
 
 // ============================================================================
-// Intelligent feature types (auto-context, next-edit, rules)
+// Intelligent feature types (auto-context, rules)
 // ============================================================================
 
 export interface AutoContextInfo {
@@ -13,14 +13,6 @@ export interface AutoContextInfo {
   activeFile: string | null
   totalFiles: number
   enabled: boolean
-}
-
-export interface NextEditSuggestion {
-  id: string
-  filePath: string
-  reason: string
-  changedSymbols: string[]
-  severity: 'info' | 'warning'
 }
 
 export interface RuleViolation {
@@ -38,7 +30,7 @@ export interface RuleViolation {
 
 export interface ChatMessage {
   id: string
-  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint' | 'todosUpdate'
+  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'todosUpdate'
   data: unknown
   timestamp: string
 }
@@ -59,12 +51,6 @@ interface TotalsState {
   requestCount: number
 }
 
-export interface BranchMetadata {
-  parentSessionId?: string
-  parentConversationTitle?: string
-  forkIndex?: number
-}
-
 interface ChatState {
   messages: ChatMessage[]
   isProcessing: boolean
@@ -72,9 +58,7 @@ interface ChatState {
   tokens: TokenState
   totals: TotalsState
   todos: TodoItem[]
-  branchMetadata: BranchMetadata | null
   autoContextInfo: AutoContextInfo | null
-  nextEditSuggestions: NextEditSuggestion[]
   ruleViolations: RuleViolation[]
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
@@ -87,13 +71,10 @@ interface ChatState {
   updateTotals: (totals: Partial<TotalsState>) => void
   updatePermissionStatus: (id: string, status: string) => void
   updateTodos: (todos: TodoItem[]) => void
-  setBranchMetadata: (metadata: BranchMetadata | null) => void
   setAutoContextInfo: (info: AutoContextInfo | null) => void
-  setNextEditSuggestions: (suggestions: NextEditSuggestion[]) => void
-  dismissNextEditSuggestion: (id: string) => void
   setRuleViolations: (violations: RuleViolation[]) => void
   dismissRuleViolation: (id: string) => void
-  restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number; branchMetadata?: BranchMetadata }) => void
+  restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
 }
 
 let messageCounter = 0
@@ -103,9 +84,7 @@ export const useChatStore = create<ChatState>((set) => ({
   isProcessing: false,
   sessionId: null,
   todos: [],
-  branchMetadata: null,
   autoContextInfo: null,
-  nextEditSuggestions: [],
   ruleViolations: [],
   tokens: {
     totalTokensInput: 0, totalTokensOutput: 0,

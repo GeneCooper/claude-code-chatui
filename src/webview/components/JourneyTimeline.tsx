@@ -1,12 +1,11 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage } from '../store'
+import { postMessage } from '../hooks'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
-import { ThinkingBlock } from './ThinkingBlock'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
-import { RestorePoint } from './RestorePoint'
 import { FollowUpSuggestions } from './FollowUpSuggestions'
 import { NextEditCard } from './NextEditCard'
 import { RuleViolationCard } from './RuleViolationCard'
@@ -550,6 +549,89 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEd
       {/* Follow-up suggestions */}
       {!isProcessing && lastAssistantText && (
         <FollowUpSuggestions lastAssistantText={lastAssistantText} />
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Inlined sub-components (single-use, small)
+// ============================================================================
+
+function RestorePoint({ data }: { data: { sha: string; message: string; timestamp: string } }) {
+  const formatTime = (ts: string) => {
+    const d = new Date(ts)
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 text-xs border border-(--vscode-panel-border) rounded-lg bg-(--vscode-sideBar-background)">
+      <span className="opacity-40">{formatTime(data.timestamp)}</span>
+      <span className="opacity-60 truncate flex-1">{data.message}</span>
+      <button
+        onClick={() => postMessage({ type: 'restoreBackup', commitSha: data.sha })}
+        className="px-2 py-0.5 text-[10px] rounded bg-(--vscode-button-secondaryBackground) text-(--vscode-button-secondaryForeground) hover:bg-(--vscode-button-secondaryHoverBackground) cursor-pointer border-none whitespace-nowrap"
+      >
+        Restore
+      </button>
+    </div>
+  )
+}
+
+function ThinkingBlock({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div
+      className="overflow-hidden"
+      style={{
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+        borderRadius: 'var(--radius-md)',
+        animation: 'fadeIn 0.15s ease',
+      }}
+    >
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
+        style={{
+          padding: '8px 12px',
+          background: 'var(--chatui-surface-1)',
+          fontSize: '12px',
+          opacity: 0.7,
+        }}
+      >
+        <span className={`transition-transform ${expanded ? 'rotate-90' : ''}`} style={{ fontSize: '10px' }}>&#9654;</span>
+        <span style={{ fontStyle: 'italic' }}>Thinking...</span>
+        <span className="ml-auto text-[10px] opacity-50">
+          {text.length > 100 ? `${Math.ceil(text.length / 4)} words` : ''}
+        </span>
+      </button>
+      {expanded && (
+        <div className="relative" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <button
+            onClick={handleCopy}
+            className="absolute right-2 top-1 opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px] z-10"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <div
+            className="text-xs whitespace-pre-wrap max-h-60 overflow-y-auto"
+            style={{
+              padding: '8px 12px',
+              opacity: 0.7,
+              fontStyle: 'italic',
+            }}
+          >
+            {text}
+          </div>
+        </div>
       )}
     </div>
   )

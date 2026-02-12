@@ -172,17 +172,6 @@ export interface MCPConfig {
 }
 
 // ============================================================================
-// Backup types
-// ============================================================================
-
-export interface BackupCommit {
-  id: string;
-  sha: string;
-  message: string;
-  timestamp: string;
-}
-
-// ============================================================================
 // File picker types
 // ============================================================================
 
@@ -221,8 +210,6 @@ export type WebviewToExtensionMessage =
   | { type: 'sendMessage'; text: string; planMode?: boolean; thinkingMode?: boolean; model?: string; images?: string[] }
   | { type: 'newSession' }
   | { type: 'createNewPanel' }
-  | { type: 'rewindToMessage'; userInputIndex: number }
-  | { type: 'forkFromMessage'; userInputIndex: number }
   | { type: 'stopRequest' }
   | { type: 'ready' }
   | { type: 'permissionResponse'; id: string; approved: boolean; alwaysAllow?: boolean }
@@ -242,17 +229,12 @@ export type WebviewToExtensionMessage =
   | { type: 'loadMCPServers' }
   | { type: 'saveMCPServer'; name: string; config: MCPServerConfig }
   | { type: 'deleteMCPServer'; name: string }
-  | { type: 'createBackup'; message: string }
-  | { type: 'restoreBackup'; commitSha: string }
   | { type: 'pickImageFile' }
   | { type: 'pickWorkspaceFile' }
   | { type: 'getClipboardText' }
   | { type: 'resolveDroppedFile'; uri: string }
   | { type: 'editMessage'; userInputIndex: number; newText: string }
   | { type: 'regenerateResponse' }
-  // Next Edit
-  | { type: 'dismissSuggestion'; suggestionId: string }
-  | { type: 'applySuggestion'; suggestionId: string; filePath: string }
   // Rules
   | { type: 'getRules' }
   | { type: 'createDefaultRules' }
@@ -288,7 +270,6 @@ type ExtensionToWebviewMessage =
   | { type: 'mcpServerSaved'; data: { name: string } }
   | { type: 'mcpServerDeleted'; data: { name: string } }
   | { type: 'mcpServerError'; data: { error: string } }
-  | { type: 'restorePoint'; data: BackupCommit }
   | { type: 'slashCommands'; data: SlashCommand[] }
   | { type: 'showLoginRequired'; data: { message: string } }
   | { type: 'todosUpdate'; data: { todos: TodoItem[] } }
@@ -303,8 +284,6 @@ type ExtensionToWebviewMessage =
   | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } }
   // Auto-context
   | { type: 'autoContextInfo'; data: { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean } }
-  // Next Edit predictions
-  | { type: 'nextEditSuggestions'; data: { suggestions: Array<{ id: string; filePath: string; reason: string; changedSymbols: string[]; severity: 'info' | 'warning' }> } }
   // Rule violations
   | { type: 'ruleViolations'; data: { violations: Array<{ id: string; ruleName: string; description: string; severity: 'warning' | 'error'; filePath: string; suggestion?: string }> } }
   | { type: 'rulesData'; data: { rules: Array<{ name: string; filePath: string; content: string }> } };

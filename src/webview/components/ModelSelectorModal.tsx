@@ -1,5 +1,4 @@
-import { postMessage } from '../hooks'
-import { useFocusTrap } from '../hooks/useFocusTrap'
+import { postMessage, useFocusTrap } from '../hooks'
 
 const MODELS = [
   { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },

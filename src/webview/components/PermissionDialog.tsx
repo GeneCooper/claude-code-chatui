@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { postMessage } from '../hooks'
-import { useFocusTrap } from '../hooks/useFocusTrap'
+import { postMessage, useFocusTrap } from '../hooks'
 import { useChatStore } from '../store'
 import { markOptimisticPermission } from '../mutations'
 

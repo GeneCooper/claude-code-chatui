@@ -1,7 +1,6 @@
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
-import { postMessage } from '../hooks'
-import { useFocusTrap } from '../hooks/useFocusTrap'
+import { postMessage, useFocusTrap } from '../hooks'
 
 
 const LEVELS = [

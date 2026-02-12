@@ -1,6 +1,5 @@
 import { useUIStore } from '../store'
-import { postMessage } from '../hooks'
-import { useFocusTrap } from '../hooks/useFocusTrap'
+import { postMessage, useFocusTrap } from '../hooks'
 
 export function LoginModal() {
   const show = useUIStore((s) => s.showLoginModal)
