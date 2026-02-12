@@ -1,0 +1,30 @@
+import type * as vscode from 'vscode';
+import type { ClaudeService } from '../claude';
+import type { PermissionService } from '../claude';
+import type { ConversationService, MCPService } from '../storage';
+import type { SessionStateManager } from '../sessionState';
+import type { ClaudeMessageProcessor } from '../messageProcessor';
+import type { SettingsManager } from '../settings';
+import type { PanelManager } from '../panelManager';
+
+export interface MessageHandlerContext {
+  claudeService: ClaudeService;
+  conversationService: ConversationService;
+  mcpService: MCPService;
+  permissionService: PermissionService;
+  stateManager: SessionStateManager;
+  settingsManager: SettingsManager;
+  messageProcessor: ClaudeMessageProcessor;
+  extensionContext: vscode.ExtensionContext;
+  postMessage(msg: Record<string, unknown>): void;
+  newSession(): Promise<void>;
+  loadConversation(filename: string): Promise<void>;
+  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]): void;
+  panelManager?: PanelManager;
+  editMessage(userInputIndex: number, newText: string): void;
+  regenerateResponse(): void;
+}
+
+export type WebviewMessage = { type: string; [key: string]: unknown };
+
+export type MessageHandler = (msg: WebviewMessage, ctx: MessageHandlerContext) => void | Promise<void>;

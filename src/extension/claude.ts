@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../shared/types';
 
@@ -216,26 +217,22 @@ export class ClaudeService implements vscode.Disposable {
       claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
     }
 
-    let rawOutput = '';
     let errorOutput = '';
 
-    claudeProcess.stdout?.on('data', (data: Buffer) => {
-      rawOutput += data.toString();
-      const lines = rawOutput.split('\n');
-      rawOutput = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
+    if (claudeProcess.stdout) {
+      const rl = readline.createInterface({ input: claudeProcess.stdout, crlfDelay: Infinity });
+      rl.on('line', (line) => {
+        if (!line.trim()) return;
         try {
           const json = JSON.parse(line.trim());
-          if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
+          if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); return; }
           if (json.type === 'result') {
             if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) claudeProcess.stdin.end();
           }
           this._messageEmitter.emit('message', json as ClaudeMessage);
         } catch { /* non-JSON */ }
-      }
-    });
+      });
+    }
 
     claudeProcess.stderr?.on('data', (data: Buffer) => {
       errorOutput += data.toString();

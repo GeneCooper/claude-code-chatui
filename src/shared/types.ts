@@ -2,12 +2,12 @@
 // Claude CLI Message Types (from stdout stream-json)
 // ============================================================================
 
-interface ClaudeCliMessage {
+export interface ClaudeCliMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
 }
 
 // System messages
-interface SystemInitMessage extends ClaudeCliMessage {
+export interface SystemInitMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'init';
   session_id: string;
@@ -15,13 +15,13 @@ interface SystemInitMessage extends ClaudeCliMessage {
   mcp_servers?: unknown[];
 }
 
-interface SystemStatusMessage extends ClaudeCliMessage {
+export interface SystemStatusMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'status';
   status: 'compacting' | null;
 }
 
-interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
+export interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'compact_boundary';
   compact_metadata?: {
@@ -30,20 +30,20 @@ interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
   };
 }
 
-type SystemMessage = SystemInitMessage | SystemStatusMessage | SystemCompactBoundaryMessage;
+export type SystemMessage = SystemInitMessage | SystemStatusMessage | SystemCompactBoundaryMessage;
 
 // Content blocks
-interface TextContent {
+export interface TextContent {
   type: 'text';
   text: string;
 }
 
-interface ThinkingContent {
+export interface ThinkingContent {
   type: 'thinking';
   thinking: string;
 }
 
-interface ToolUseContent {
+export interface ToolUseContent {
   type: 'tool_use';
   id?: string;
   tool_use_id?: string;
@@ -51,17 +51,17 @@ interface ToolUseContent {
   input?: Record<string, unknown>;
 }
 
-interface ToolResultContent {
+export interface ToolResultContent {
   type: 'tool_result';
   tool_use_id?: string;
   content?: string | unknown;
   is_error?: boolean;
 }
 
-type ContentBlock = TextContent | ThinkingContent | ToolUseContent | ToolResultContent;
+export type ContentBlock = TextContent | ThinkingContent | ToolUseContent | ToolResultContent;
 
 // Token usage
-interface TokenUsage {
+export interface TokenUsage {
   input_tokens: number;
   output_tokens: number;
   cache_read_input_tokens?: number;
@@ -69,7 +69,7 @@ interface TokenUsage {
 }
 
 // Assistant message
-interface AssistantMessage extends ClaudeCliMessage {
+export interface AssistantMessage extends ClaudeCliMessage {
   type: 'assistant';
   message?: {
     content: ContentBlock[];
@@ -78,7 +78,7 @@ interface AssistantMessage extends ClaudeCliMessage {
 }
 
 // User message (tool results)
-interface UserMessage extends ClaudeCliMessage {
+export interface UserMessage extends ClaudeCliMessage {
   type: 'user';
   message?: {
     content: (TextContent | ToolResultContent)[];
@@ -86,7 +86,7 @@ interface UserMessage extends ClaudeCliMessage {
 }
 
 // Result message
-interface ResultMessage extends ClaudeCliMessage {
+export interface ResultMessage extends ClaudeCliMessage {
   type: 'result';
   subtype: 'success' | 'error';
   session_id?: string;

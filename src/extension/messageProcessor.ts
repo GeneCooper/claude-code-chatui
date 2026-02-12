@@ -3,7 +3,11 @@
 // ============================================================================
 
 import * as vscode from 'vscode';
-import type { ClaudeMessage, ConversationMessage, ToolUseData } from '../shared/types';
+import type {
+  ClaudeMessage, ConversationMessage, ToolUseData,
+  SystemMessage, AssistantMessage, UserMessage, ResultMessage,
+  TextContent, ThinkingContent, ToolUseContent, ToolResultContent,
+} from '../shared/types';
 import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { SessionStateManager } from './sessionState';
 
@@ -16,6 +20,10 @@ export interface ProcessorCallbacks {
   onSessionIdReceived(sessionId: string): void;
   onProcessingComplete(result: { sessionId?: string; totalCostUsd?: number }): void;
   onToolResult?(data: { toolName: string; filePath: string; isError: boolean; fileContentBefore?: string; fileContentAfter?: string; rawInput?: Record<string, unknown> }): void;
+}
+
+function isToolUseData(data: unknown): data is ToolUseData {
+  return typeof data === 'object' && data !== null && 'toolName' in data && 'rawInput' in data;
 }
 
 export class ClaudeMessageProcessor {
@@ -37,51 +45,52 @@ export class ClaudeMessageProcessor {
     }
   }
 
-  async processMessage(jsonData: ClaudeMessage): Promise<void> {
-    switch (jsonData.type) {
-      case 'system': this._handleSystemMessage(jsonData); break;
-      case 'assistant': await this._handleAssistantMessage(jsonData); break;
-      case 'user': await this._handleUserMessage(jsonData); break;
-      case 'result': this._handleResultMessage(jsonData); break;
+  async processMessage(msg: ClaudeMessage): Promise<void> {
+    switch (msg.type) {
+      case 'system': this._handleSystemMessage(msg); break;
+      case 'assistant': await this._handleAssistantMessage(msg); break;
+      case 'user': await this._handleUserMessage(msg); break;
+      case 'result': this._handleResultMessage(msg); break;
     }
   }
 
-  private _handleSystemMessage(msg: ClaudeMessage): void {
-    const sys = msg as { subtype: string; session_id?: string; status?: string | null; compact_metadata?: { trigger?: string; pre_tokens?: number } };
-
-    if (sys.subtype === 'init' && sys.session_id) {
-      this._callbacks.onSessionIdReceived(sys.session_id);
-      this._sendAndSave({
-        type: 'sessionInfo',
-        data: {
-          sessionId: sys.session_id,
-          tools: (msg as unknown as Record<string, unknown>).tools || [],
-          mcpServers: (msg as unknown as Record<string, unknown>).mcp_servers || [],
-        },
-      });
-    } else if (sys.subtype === 'status') {
-      this._sendAndSave({
-        type: 'compacting',
-        data: { isCompacting: sys.status === 'compacting' },
-      });
-    } else if (sys.subtype === 'compact_boundary') {
-      this._stateManager.resetTokenCounts();
-      this._sendAndSave({
-        type: 'compactBoundary',
-        data: {
-          trigger: sys.compact_metadata?.trigger,
-          preTokens: sys.compact_metadata?.pre_tokens,
-        },
-      });
+  private _handleSystemMessage(msg: SystemMessage): void {
+    switch (msg.subtype) {
+      case 'init':
+        this._callbacks.onSessionIdReceived(msg.session_id);
+        this._sendAndSave({
+          type: 'sessionInfo',
+          data: {
+            sessionId: msg.session_id,
+            tools: msg.tools || [],
+            mcpServers: msg.mcp_servers || [],
+          },
+        });
+        break;
+      case 'status':
+        this._sendAndSave({
+          type: 'compacting',
+          data: { isCompacting: msg.status === 'compacting' },
+        });
+        break;
+      case 'compact_boundary':
+        this._stateManager.resetTokenCounts();
+        this._sendAndSave({
+          type: 'compactBoundary',
+          data: {
+            trigger: msg.compact_metadata?.trigger,
+            preTokens: msg.compact_metadata?.pre_tokens,
+          },
+        });
+        break;
     }
   }
 
-  private async _handleAssistantMessage(msg: ClaudeMessage): Promise<void> {
-    const assistant = msg as { message?: { content: Array<Record<string, unknown>>; usage?: Record<string, number> } };
-    if (!assistant.message?.content) return;
+  private async _handleAssistantMessage(msg: AssistantMessage): Promise<void> {
+    if (!msg.message?.content) return;
 
-    if (assistant.message.usage) {
-      const u = assistant.message.usage;
+    if (msg.message.usage) {
+      const u = msg.message.usage;
       this._stateManager.addTokenUsage({
         inputTokens: u.input_tokens || 0,
         outputTokens: u.output_tokens || 0,
@@ -102,26 +111,34 @@ export class ClaudeMessageProcessor {
       });
     }
 
-    for (const content of assistant.message.content) {
-      if (content.type === 'text' && (content.text as string)?.trim()) {
-        this._sendAndSave({ type: 'output', data: (content.text as string).trim() });
-      } else if (content.type === 'thinking' && (content.thinking as string)?.trim()) {
-        this._sendAndSave({ type: 'thinking', data: (content.thinking as string).trim() });
-      } else if (content.type === 'tool_use') {
-        await this._handleToolUse(content as Record<string, unknown>);
+    for (const content of msg.message.content) {
+      switch (content.type) {
+        case 'text':
+          if (content.text?.trim()) {
+            this._sendAndSave({ type: 'output', data: content.text.trim() });
+          }
+          break;
+        case 'thinking':
+          if (content.thinking?.trim()) {
+            this._sendAndSave({ type: 'thinking', data: content.thinking.trim() });
+          }
+          break;
+        case 'tool_use':
+          await this._handleToolUse(content);
+          break;
       }
     }
   }
 
-  private async _handleToolUse(content: Record<string, unknown>): Promise<void> {
-    const toolName = content.name as string;
-    const input = (content.input || {}) as Record<string, unknown>;
+  private async _handleToolUse(content: ToolUseContent): Promise<void> {
+    const toolName = content.name;
+    const input = content.input || {};
     const toolInfo = `🔧 Executing: ${toolName}`;
 
     let toolInput = '';
     let fileContentBefore: string | undefined;
 
-    if (toolName === 'TodoWrite' && input.todos) {
+    if (toolName === 'TodoWrite' && Array.isArray(input.todos)) {
       toolInput = '\nTodo List Update:';
       for (const todo of input.todos as Array<{ content: string; status: string; priority?: string }>) {
         const icon = todo.status === 'completed' ? '✅' : todo.status === 'in_progress' ? '🔄' : '⏳';
@@ -130,9 +147,9 @@ export class ClaudeMessageProcessor {
       this._poster.postMessage({ type: 'todosUpdate', data: { todos: input.todos } });
     }
 
-    if (FILE_EDIT_TOOLS.includes(toolName) && input.file_path) {
+    if (FILE_EDIT_TOOLS.includes(toolName) && typeof input.file_path === 'string') {
       try {
-        const uri = vscode.Uri.file(input.file_path as string);
+        const uri = vscode.Uri.file(input.file_path);
         const data = await vscode.workspace.fs.readFile(uri);
         fileContentBefore = Buffer.from(data).toString('utf8');
       } catch {
@@ -144,14 +161,14 @@ export class ClaudeMessageProcessor {
     let startLines: number[] | undefined;
 
     if (fileContentBefore !== undefined) {
-      if (toolName === 'Edit' && input.old_string) {
-        const pos = fileContentBefore.indexOf(input.old_string as string);
+      if (toolName === 'Edit' && typeof input.old_string === 'string') {
+        const pos = fileContentBefore.indexOf(input.old_string);
         if (pos !== -1) {
           startLine = (fileContentBefore.substring(0, pos).match(/\n/g) || []).length + 1;
         } else {
           startLine = 1;
         }
-      } else if (toolName === 'MultiEdit' && input.edits) {
+      } else if (toolName === 'MultiEdit' && Array.isArray(input.edits)) {
         startLines = (input.edits as Array<{ old_string?: string }>).map((edit) => {
           if (edit.old_string && fileContentBefore) {
             const pos = fileContentBefore.indexOf(edit.old_string);
@@ -172,28 +189,27 @@ export class ClaudeMessageProcessor {
     this._sendAndSave({ type: 'toolUse', data: toolUseData });
   }
 
-  private async _handleUserMessage(msg: ClaudeMessage): Promise<void> {
-    const user = msg as { message?: { content: Array<Record<string, unknown>> } };
-    if (!user.message?.content) return;
+  private async _handleUserMessage(msg: UserMessage): Promise<void> {
+    if (!msg.message?.content) return;
 
-    for (const content of user.message.content) {
+    for (const content of msg.message.content) {
       if (content.type !== 'tool_result') continue;
 
-      let resultContent = content.content || 'Tool executed successfully';
+      let resultContent: string | unknown = content.content || 'Tool executed successfully';
       if (typeof resultContent === 'object' && resultContent !== null) {
         resultContent = JSON.stringify(resultContent, null, 2);
       }
 
       const isError = !!content.is_error;
       const lastToolUse = this._currentConversation[this._currentConversation.length - 1];
-      const toolData = lastToolUse?.data as ToolUseData | undefined;
+      const toolData = isToolUseData(lastToolUse?.data) ? lastToolUse.data : undefined;
       const toolName = toolData?.toolName;
       const rawInput = toolData?.rawInput;
 
       let fileContentAfter: string | undefined;
-      if (FILE_EDIT_TOOLS.includes(toolName || '') && rawInput?.file_path && !isError) {
+      if (FILE_EDIT_TOOLS.includes(toolName || '') && typeof rawInput?.file_path === 'string' && !isError) {
         try {
-          const uri = vscode.Uri.file(rawInput.file_path as string);
+          const uri = vscode.Uri.file(rawInput.file_path);
           const data = await vscode.workspace.fs.readFile(uri);
           fileContentAfter = Buffer.from(data).toString('utf8');
         } catch { /* File read failed */ }
@@ -215,10 +231,10 @@ export class ClaudeMessageProcessor {
       });
 
       // Trigger onToolResult for post-edit analysis (next-edit predictions, rules checking)
-      if (this._callbacks.onToolResult && FILE_EDIT_TOOLS.includes(toolName || '') && !isError && rawInput?.file_path) {
+      if (this._callbacks.onToolResult && FILE_EDIT_TOOLS.includes(toolName || '') && !isError && typeof rawInput?.file_path === 'string') {
         this._callbacks.onToolResult({
           toolName: toolName || '',
-          filePath: rawInput.file_path as string,
+          filePath: rawInput.file_path,
           isError,
           fileContentBefore: toolData?.fileContentBefore,
           fileContentAfter,
@@ -228,29 +244,24 @@ export class ClaudeMessageProcessor {
     }
   }
 
-  private _handleResultMessage(msg: ClaudeMessage): void {
-    const result = msg as {
-      subtype: string; session_id?: string; total_cost_usd?: number;
-      duration_ms?: number; num_turns?: number; is_error?: boolean; result?: string;
-    };
+  private _handleResultMessage(msg: ResultMessage): void {
+    if (msg.subtype !== 'success') return;
 
-    if (result.subtype !== 'success') return;
-
-    if (result.is_error && result.result?.includes('Invalid API key')) {
+    if (msg.is_error && msg.result?.includes('Invalid API key')) {
       this._poster.postMessage({ type: 'showInstallModal' });
       return;
     }
 
-    if (result.session_id) {
-      this._callbacks.onSessionIdReceived(result.session_id);
+    if (msg.session_id) {
+      this._callbacks.onSessionIdReceived(msg.session_id);
       this._sendAndSave({
         type: 'sessionInfo',
-        data: { sessionId: result.session_id, tools: [], mcpServers: [] },
+        data: { sessionId: msg.session_id, tools: [], mcpServers: [] },
       });
     }
 
     this._stateManager.incrementRequestCount();
-    if (result.total_cost_usd) this._stateManager.addCost(result.total_cost_usd);
+    if (msg.total_cost_usd) this._stateManager.addCost(msg.total_cost_usd);
 
     this._poster.postMessage({
       type: 'updateTotals',
@@ -259,15 +270,15 @@ export class ClaudeMessageProcessor {
         totalTokensInput: this._stateManager.totalTokensInput,
         totalTokensOutput: this._stateManager.totalTokensOutput,
         requestCount: this._stateManager.requestCount,
-        currentCost: result.total_cost_usd,
-        currentDuration: result.duration_ms,
-        currentTurns: result.num_turns,
+        currentCost: msg.total_cost_usd,
+        currentDuration: msg.duration_ms,
+        currentTurns: msg.num_turns,
       },
     });
 
     this._callbacks.onProcessingComplete({
-      sessionId: result.session_id,
-      totalCostUsd: result.total_cost_usd,
+      sessionId: msg.session_id,
+      totalCostUsd: msg.total_cost_usd,
     });
   }
 

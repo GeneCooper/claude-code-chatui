@@ -3,18 +3,12 @@ import { ClaudeService } from './claude';
 import { ConversationService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
-  ClaudeMessageProcessor,
-  SessionStateManager,
-  SettingsManager,
   handleWebviewMessage,
-  type MessagePoster,
   type WebviewMessage,
 } from './handlers';
-import { createModuleLogger } from '../shared/logger';
-import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
+import { ChatController } from './chatController';
+import type { WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
-
-const log = createModuleLogger('PanelProvider');
 
 // ============================================================================
 // HTML Generator
@@ -115,12 +109,7 @@ export class PanelProvider {
   private _disposables: vscode.Disposable[] = [];
   private _messageHandlerDisposable: vscode.Disposable | undefined;
 
-  private readonly _settingsManager = new SettingsManager();
-
-  // Single session state (no tabs)
-  private _messageProcessor: ClaudeMessageProcessor;
-  private _stateManager: SessionStateManager;
-  private _sessionId: string | undefined;
+  readonly chat: ChatController;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -131,25 +120,25 @@ export class PanelProvider {
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
   ) {
-    log.info('PanelProvider initialized');
+    this.chat = new ChatController(
+      this._context,
+      this._claudeService,
+      this._conversationService,
+      this._mcpService,
+      this._permissionService,
+      (msg) => this._postMessage(msg),
+      this._panelManager,
+    );
 
-    this._stateManager = new SessionStateManager();
-    this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
-
-    const poster: MessagePoster = {
-      postMessage: (msg) => this._postMessage(msg),
-      sendAndSaveMessage: (msg) => this._postMessage(msg),
-    };
-
-    this._messageProcessor = new ClaudeMessageProcessor(poster, this._stateManager, {
-      onSessionIdReceived: (sessionId) => {
-        this._claudeService.setSessionId(sessionId);
-        this._sessionId = sessionId;
-      },
-      onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
+    // Desktop notification when panel is not visible
+    this._claudeService.onProcessEnd(() => {
+      const notifEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI')
+        .get<boolean>('notifications.enabled', true);
+      const isVisible = this._panel?.visible ?? this._webviewView?.visible ?? false;
+      if (notifEnabled && !isVisible) {
+        vscode.window.showInformationMessage('Claude Code: Response complete');
+      }
     });
-
-    this._setupClaudeServiceHandlers();
 
     // Track editor text selection and send to webview
     this._disposables.push(
@@ -193,8 +182,8 @@ export class PanelProvider {
 
   // ==================== Public API ====================
 
-  get messageProcessor(): ClaudeMessageProcessor { return this._messageProcessor; }
-  get stateManager(): SessionStateManager { return this._stateManager; }
+  get messageProcessor() { return this.chat.messageProcessor; }
+  get stateManager() { return this.chat.stateManager; }
 
   show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two, preserveFocus = false): void {
     const actualColumn = column instanceof vscode.Uri ? vscode.ViewColumn.Two : column;
@@ -215,7 +204,6 @@ export class PanelProvider {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);
 
-    // Lock the editor group so the chat panel stays pinned
     void vscode.commands.executeCommand('workbench.action.lockEditorGroup');
   }
 
@@ -235,7 +223,6 @@ export class PanelProvider {
     }
   }
 
-  /** Bind to an externally-created webview (used by PanelManager) */
   bindToWebview(webview: vscode.Webview): void {
     this._webview = webview;
     this._setupWebviewMessageHandler(webview);
@@ -258,125 +245,17 @@ export class PanelProvider {
     // No-op: with retainContextWhenHidden the webview stays alive
   }
 
-  async newSession(): Promise<void> {
-    if (this._panelManager) {
-      // Create a new panel instead of resetting current
-      this._panelManager.createNewPanel();
-      return;
-    }
-    // Sidebar fallback: reset current session
-    this._saveConversation(this._sessionId);
-    if (this._stateManager.isProcessing) {
-      await this._claudeService.stopProcess();
-    }
-    this._messageProcessor.resetSession();
-    this._stateManager.resetSession();
-    this._sessionId = undefined;
-    this._postMessage({ type: 'sessionCleared' });
+  async newSession(): Promise<void> { return this.chat.newSession(); }
+  async loadConversation(filename: string): Promise<void> { return this.chat.loadConversation(filename); }
+  loadConversationData(messages: ConversationMessage[], sessionId?: string, totalCost?: number): void {
+    this.chat.loadConversationData(messages, sessionId, totalCost);
   }
-
-  async loadConversation(filename: string): Promise<void> {
-    const conversation = this._conversationService.loadConversation(filename);
-    if (!conversation) {
-      this._postMessage({ type: 'error', data: 'Failed to load conversation' });
-      return;
-    }
-
-    // Save current conversation before switching
-    this._saveConversation(this._sessionId);
-
-    // Reset current session
-    this._messageProcessor.resetSession();
-    this._stateManager.resetSession();
-
-    this._sessionId = conversation.sessionId;
-    this._stateManager.restoreFromConversation({
-      totalCost: conversation.totalCost,
-      totalTokens: conversation.totalTokens,
-    });
-
-    for (const msg of conversation.messages) {
-      this._messageProcessor.currentConversation.push(msg);
-    }
-
-    this._replayConversation();
-  }
-
-  /** Load conversation data directly (used by PanelManager) */
-  loadConversationData(
-    messages: ConversationMessage[],
-    sessionId?: string,
-    totalCost?: number,
-  ): void {
-    this._messageProcessor.resetSession();
-    this._stateManager.resetSession();
-
-    this._sessionId = sessionId;
-    if (totalCost) this._stateManager.totalCost = totalCost;
-
-    for (const msg of messages) {
-      this._messageProcessor.currentConversation.push({ ...msg });
-    }
-
-    // Replay will happen when webview sends 'ready'
-  }
-
-  editMessage(userInputIndex: number, newText: string): void {
-    if (this._stateManager.isProcessing) return;
-
-    const conversation = this._messageProcessor.currentConversation;
-    const pos = this._findUserInputPosition(conversation, userInputIndex);
-    if (pos === -1) return;
-
-    // Truncate to before this user input
-    if (pos > 0) {
-      this._messageProcessor.truncateConversation(pos - 1);
-    } else {
-      this._messageProcessor.resetSession();
-    }
-    this._sessionId = undefined;
-    this._stateManager.resetSession();
-    this._replayConversation();
-    // Send edited message
-    this._handleSendMessage(newText);
-  }
-
-  regenerateResponse(): void {
-    if (this._stateManager.isProcessing) return;
-
-    const conversation = this._messageProcessor.currentConversation;
-    // Find the last userInput
-    let lastUserPos = -1;
-    let lastUserText = '';
-    for (let i = conversation.length - 1; i >= 0; i--) {
-      if (conversation[i].messageType === 'userInput') {
-        lastUserPos = i;
-        const data = conversation[i].data as { text: string } | string;
-        lastUserText = typeof data === 'string' ? data : data.text;
-        break;
-      }
-    }
-    if (lastUserPos === -1 || !lastUserText) return;
-
-    // Truncate to before the last user input
-    if (lastUserPos > 0) {
-      this._messageProcessor.truncateConversation(lastUserPos - 1);
-    } else {
-      this._messageProcessor.resetSession();
-    }
-    this._sessionId = undefined;
-    this._stateManager.resetSession();
-    this._replayConversation();
-    // Re-send the same message
-    this._handleSendMessage(lastUserText);
-  }
+  editMessage(userInputIndex: number, newText: string): void { this.chat.editMessage(userInputIndex, newText); }
+  regenerateResponse(): void { this.chat.regenerateResponse(); }
 
   dispose(): void {
-    // Stop Claude process if running
-    if (this._stateManager.isProcessing) {
-      void this._claudeService.stopProcess();
-    }
-    this._saveConversation(this._sessionId);
+    this.chat.stopIfProcessing();
+    this.chat.flushSave();
     this._panel = undefined;
     this._messageHandlerDisposable?.dispose();
     this._messageHandlerDisposable = undefined;
@@ -408,164 +287,19 @@ export class PanelProvider {
       conversationService: this._conversationService,
       mcpService: this._mcpService,
       permissionService: this._permissionService,
-      stateManager: this._stateManager,
-      settingsManager: this._settingsManager,
-      messageProcessor: this._messageProcessor,
+      stateManager: this.chat.stateManager,
+      settingsManager: this.chat.settingsManager,
+      messageProcessor: this.chat.messageProcessor,
       extensionContext: this._context,
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
-      newSession: () => this.newSession(),
-      loadConversation: (filename: string) => this.loadConversation(filename),
+      newSession: () => this.chat.newSession(),
+      loadConversation: (filename: string) => this.chat.loadConversation(filename),
       handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]) =>
-        this._handleSendMessage(text, planMode, thinkingMode, thinkingIntensity, images),
+        this.chat.handleSendMessage(text, planMode, thinkingMode, thinkingIntensity, images),
       panelManager: this._panelManager,
-      editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
-      regenerateResponse: () => this.regenerateResponse(),
+      editMessage: (userInputIndex: number, newText: string) => this.chat.editMessage(userInputIndex, newText),
+      regenerateResponse: () => this.chat.regenerateResponse(),
     };
-  }
-
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, thinkingIntensity?: string, images?: string[]): void {
-    if (this._stateManager.isProcessing) return;
-
-    log.info('Sending message', { planMode, thinkingMode, thinkingIntensity, hasImages: !!images?.length });
-
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
-
-    this._stateManager.isProcessing = true;
-    this._stateManager.draftMessage = '';
-
-    this._claudeService.setSessionId(this._sessionId);
-
-    // Save userInput to conversation
-    const userInputData = { text, images };
-    this._messageProcessor.currentConversation.push({
-      timestamp: new Date().toISOString(),
-      messageType: 'userInput',
-      data: userInputData,
-    });
-    this._postMessage({ type: 'userInput', data: userInputData });
-    this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
-    this._postMessage({ type: 'loading', data: 'Claude is working...' });
-
-    const yoloMode = this._settingsManager.isYoloModeEnabled();
-    const mcpServers = this._mcpService.loadServers();
-    const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
-    // Use intensity from UI if provided, otherwise fall back to global settings
-    const effort = thinkingIntensity || this._settingsManager.getCurrentSettings(this._stateManager.selectedModel).thinkingIntensity;
-
-    // Send message directly to Claude CLI - no extra context/prompt injection
-    void this._claudeService.sendMessage(text, {
-      cwd, planMode, thinkingMode, thinkingIntensity: effort, yoloMode,
-      model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath, images,
-    });
-  }
-
-  private _setupClaudeServiceHandlers(): void {
-    this._claudeService.onMessage((message: ClaudeMessage) => {
-      void this._messageProcessor.processMessage(message);
-    });
-
-    this._claudeService.onProcessEnd(() => {
-      this._stateManager.isProcessing = false;
-      this._postMessage({ type: 'clearLoading' });
-      this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
-
-      // Desktop notification when panel is not visible
-      const notifEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI')
-        .get<boolean>('notifications.enabled', true);
-      const isVisible = this._panel?.visible ?? this._webviewView?.visible ?? false;
-      if (notifEnabled && !isVisible) {
-        vscode.window.showInformationMessage('Claude Code: Response complete');
-      }
-    });
-
-    this._claudeService.onError((error) => {
-      log.error('Claude service error', { message: error });
-      this._stateManager.isProcessing = false;
-      this._postMessage({ type: 'clearLoading' });
-      this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
-
-      if (error.includes('ENOENT') || error.includes('command not found')) {
-        this._postMessage({ type: 'showInstallModal' });
-      } else if (error.includes('authentication') || error.includes('login') || error.includes('API key') || error.includes('unauthorized') || error.includes('401')) {
-        this._postMessage({ type: 'showLoginRequired', data: { message: error } });
-      } else {
-        this._postMessage({ type: 'error', data: error });
-        if (error.includes('permission') || error.includes('denied')) {
-          if (!this._settingsManager.isYoloModeEnabled()) {
-            this._postMessage({ type: 'error', data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.' });
-          }
-        }
-      }
-    });
-
-    this._claudeService.onPermissionRequest((request) => {
-      // Interactive tools that require actual user input must never be auto-approved
-      const isInteractiveTool = request.toolName === 'AskUserQuestion';
-
-      if (this._settingsManager.isYoloModeEnabled() && !isInteractiveTool) {
-        log.info('YOLO mode: auto-approving permission', { tool: request.toolName });
-        this._claudeService.sendPermissionResponse(request.requestId, true);
-        return;
-      }
-
-      this._postMessage({
-        type: 'permissionRequest',
-        data: {
-          id: request.requestId,
-          tool: request.toolName,
-          input: request.input,
-          pattern: request.pattern,
-          suggestions: request.suggestions,
-          decisionReason: request.decisionReason,
-          blockedPath: request.blockedPath,
-          status: 'pending',
-        },
-      });
-    });
-  }
-
-  private _replayConversation(): void {
-    const conversation = this._messageProcessor.currentConversation;
-    if (conversation.length > 0) {
-      const replayMessages = conversation.map((msg) => ({ type: msg.messageType, data: msg.data }));
-      this._postMessage({
-        type: 'batchReplay',
-        data: {
-          messages: replayMessages,
-          sessionId: this._sessionId,
-          totalCost: this._stateManager.totalCost,
-          isProcessing: this._stateManager.isProcessing,
-        },
-      });
-    } else {
-      this._postMessage({ type: 'sessionCleared' });
-    }
-  }
-
-  private _saveConversation(sessionId?: string): void {
-    if (!sessionId) return;
-    const conversation = this._messageProcessor.currentConversation;
-    if (conversation.length === 0) return;
-
-    void this._conversationService.saveConversation(
-      sessionId, conversation,
-      this._stateManager.totalCost,
-      this._stateManager.totalTokensInput,
-      this._stateManager.totalTokensOutput,
-    );
-  }
-
-  private _findUserInputPosition(conversation: ConversationMessage[], userInputIndex: number): number {
-    let count = -1;
-    for (let i = 0; i < conversation.length; i++) {
-      if (conversation[i].messageType === 'userInput') {
-        count++;
-        if (count === userInputIndex) return i;
-      }
-    }
-    return -1;
   }
 
   private _postMessage(message: Record<string, unknown>): void {
@@ -598,7 +332,6 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this._extensionUri],
     };
 
-    // Prevent webview destruction when sidebar is hidden
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this._panelProvider.closeMainPanel();
