@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore, type AutoContextInfo } from '../store'
+import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
@@ -22,7 +22,7 @@ export function InputArea() {
   const dragCountRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
-  const autoContextInfo = useChatStore((s) => s.autoContextInfo)
+
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
@@ -185,16 +185,6 @@ export function InputArea() {
     const trimmed = text.trim()
     const hasFiles = attachedFiles.length > 0
     if ((!trimmed && images.length === 0 && !hasFiles) || isProcessing) return
-
-    if (trimmed.startsWith('/pipeline ')) {
-      const goal = trimmed.substring('/pipeline '.length).trim()
-      if (goal) {
-        postMessage({ type: 'startPipeline', goal })
-        setText('')
-        if (textareaRef.current) textareaRef.current.style.height = 'auto'
-        return
-      }
-    }
 
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
@@ -855,21 +845,6 @@ export function InputArea() {
                 <path d="M13.85 4.44l-3.28-3.3A.5.5 0 0 0 10.21 1H3.5A1.5 1.5 0 0 0 2 2.5v11A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V4.8a.5.5 0 0 0-.15-.36zM10 2l3 3h-2.5a.5.5 0 0 1-.5-.5V2z" />
               </svg>
               <span className="truncate" style={{ maxWidth: '200px' }}>{activeFile.filePath}</span>
-            </span>
-          </>
-        )}
-        {autoContextInfo && autoContextInfo.enabled && autoContextInfo.totalFiles > 0 && (
-          <>
-            <span style={{ opacity: 0.4 }}>·</span>
-            <span
-              className="flex items-center gap-1"
-              style={{ color: '#4ec9b0' }}
-              title={`Auto-context: ${autoContextInfo.importedFiles.length} imports, ${autoContextInfo.recentFiles.length} recent`}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-              </svg>
-              <span>{autoContextInfo.totalFiles} context files</span>
             </span>
           </>
         )}

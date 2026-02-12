@@ -48,7 +48,7 @@ export function HistoryView() {
   const setActiveView = useUIStore((s) => s.setActiveView)
   const [searchQuery, setSearchQuery] = useState('')
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     postMessage({ type: 'getConversationList' })

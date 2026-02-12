@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../shared/types';
-import { THINKING_INTENSITIES, ThinkingIntensity } from '../shared/constants';
 
 // ============================================================================
 // PermissionService
@@ -119,7 +118,6 @@ interface SendMessageOptions {
   allowedTools?: string[];
   disallowedTools?: string[];
   continueConversation?: boolean;
-  additionalSystemPrompt?: string;
 }
 
 interface PendingPermission {
@@ -154,37 +152,6 @@ export class ClaudeService implements vscode.Disposable {
     const actualMessage = message;
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-    const systemPromptParts: string[] = [];
-
-    // Thinking mode → system prompt (not message prepending, which conflicts with concise instructions)
-    if (options.thinkingMode) {
-      const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-      const intensity = config.get<ThinkingIntensity>('thinking.intensity', ThinkingIntensity.Think);
-      const prompt = THINKING_INTENSITIES[intensity] || THINKING_INTENSITIES.think;
-      systemPromptParts.push(prompt);
-    } else {
-      // Concise-mode only when thinking is OFF (avoids conflicting instructions)
-      systemPromptParts.push(
-        'Be an efficient agent: act, don\'t explain.',
-        'Execute tool calls immediately without preamble.',
-        'When done, give a one-line summary of what changed.',
-        'Prefer code over prose. Skip pleasantries.',
-      );
-    }
-
-    // Plan mode → add planning instructions to system prompt
-    if (options.planMode) {
-      systemPromptParts.push(
-        'IMPORTANT: Before making any code changes, first present a clear step-by-step plan.',
-        'List the files you will modify and what changes you will make.',
-        'Wait for user confirmation before executing modifications.',
-      );
-    }
-
-    if (options.additionalSystemPrompt) {
-      systemPromptParts.push(options.additionalSystemPrompt);
-    }
-    args.push('--append-system-prompt', systemPromptParts.join(' '));
 
     // Permission handling: --dangerously-skip-permissions and --permission-prompt-tool
     // are mutually exclusive. Using both causes the CLI to still route permission

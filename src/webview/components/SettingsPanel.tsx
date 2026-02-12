@@ -160,26 +160,6 @@ export function SettingsPanel() {
           )}
         </div>
 
-        {/* Architecture Rules */}
-        <div className="border-t border-(--vscode-panel-border) pt-3">
-          <label className="text-xs font-medium block mb-2">Architecture Rules</label>
-          <p className="text-[10px] opacity-50 mb-2">Define coding standards and architecture rules. Edits are checked against these rules.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => postMessage({ type: 'createDefaultRules' })}
-              className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
-            >
-              Create Defaults
-            </button>
-            <button
-              onClick={() => postMessage({ type: 'getRules' })}
-              className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-inherit"
-            >
-              Manage
-            </button>
-          </div>
-        </div>
-
         {/* Navigation shortcuts */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
           <label className="text-xs font-medium block mb-2">Quick Links</label>

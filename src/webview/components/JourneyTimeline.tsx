@@ -5,7 +5,7 @@ import { AssistantMessage } from './AssistantMessage'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
-import { RuleViolationCard } from './RuleViolationCard'
+
 
 // ============================================================================
 // Types
@@ -557,8 +557,6 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
         )
       })}
 
-      {/* Rule violations */}
-      {!isProcessing && <RuleViolationCard />}
     </div>
   )
 }

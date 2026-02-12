@@ -36,6 +36,3 @@ export const MODEL_CONTEXT_LIMIT = 200_000;
 export const FILE_SEARCH_EXCLUDES =
     "**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/.next/**,**/.nuxt/**,**/target/**,**/bin/**,**/obj/**";
 
-/** Rules directory */
-export const RULES_DIR = '.claude-chatui/rules';
-export const AUTO_CONTEXT_MAX_FILES = 10;

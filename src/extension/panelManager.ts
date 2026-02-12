@@ -4,10 +4,6 @@ import type { PermissionService } from './claude';
 import type { ConversationService, MCPService } from './storage';
 import { PanelProvider, getWebviewHtml } from './panel';
 import type { ConversationMessage } from '../shared/types';
-import type { ContextCollector } from './contextCollector';
-import type { RulesService } from './rulesService';
-import type { ProjectProfiler } from './projectProfiler';
-import type { IntentAnalyzer } from './intentAnalyzer';
 
 export class PanelManager {
   private _panels = new Map<string, { provider: PanelProvider; claudeService: ClaudeService; panel: vscode.WebviewPanel }>();
@@ -20,10 +16,6 @@ export class PanelManager {
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
     private readonly _permissionService: PermissionService,
-    private readonly _contextCollector?: ContextCollector,
-    private readonly _rulesService?: RulesService,
-    private readonly _projectProfiler?: ProjectProfiler,
-    private readonly _intentAnalyzer?: IntentAnalyzer,
   ) {}
 
   createNewPanel(
@@ -47,10 +39,6 @@ export class PanelManager {
       this._mcpService,
       this._permissionService,
       this,
-      this._contextCollector,
-      this._rulesService,
-      this._projectProfiler,
-      this._intentAnalyzer,
     );
 
     const panel = vscode.window.createWebviewPanel(

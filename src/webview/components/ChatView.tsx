@@ -3,7 +3,6 @@ import { useChatStore } from '../store'
 import { useAutoScroll, postMessage } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
-import { PipelineProgress } from './PipelineProgress'
 
 interface ChatViewProps {
   onHintClick?: (text: string) => void
@@ -30,8 +29,6 @@ export function ChatView({ onHintClick }: ChatViewProps) {
       aria-label="Chat messages"
       className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 min-h-0"
     >
-      <PipelineProgress />
-
       {messages.length === 0 && (
         <WelcomeScreen onHintClick={onHintClick || (() => {})} />
       )}

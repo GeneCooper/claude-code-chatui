@@ -13,11 +13,6 @@ import {
 import { createModuleLogger } from '../shared/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
-import type { ContextCollector } from './contextCollector';
-import type { RulesService } from './rulesService';
-import type { ProjectProfiler } from './projectProfiler';
-import type { IntentAnalyzer } from './intentAnalyzer';
-import { TaskPipeline } from './taskPipeline';
 
 const log = createModuleLogger('PanelProvider');
 
@@ -126,7 +121,6 @@ export class PanelProvider {
   private _messageProcessor: ClaudeMessageProcessor;
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
-  private _taskPipeline: TaskPipeline | null = null;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -136,10 +130,6 @@ export class PanelProvider {
     private readonly _mcpService: MCPService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
-    private readonly _contextCollector?: ContextCollector,
-    private readonly _rulesService?: RulesService,
-    private readonly _projectProfiler?: ProjectProfiler,
-    private readonly _intentAnalyzer?: IntentAnalyzer,
   ) {
     log.info('PanelProvider initialized');
 
@@ -157,23 +147,6 @@ export class PanelProvider {
         this._sessionId = sessionId;
       },
       onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
-      onToolResult: (data) => {
-        if (!data.filePath || !data.fileContentBefore || !data.fileContentAfter) return;
-        const relativePath = vscode.workspace.asRelativePath(data.filePath, false);
-
-        // Architecture rules checking
-        if (this._rulesService) {
-          void this._rulesService.checkEdit({
-            filePath: relativePath,
-            fileContentBefore: data.fileContentBefore,
-            fileContentAfter: data.fileContentAfter,
-          }).then((violations) => {
-            if (violations.length > 0) {
-              this._postMessage({ type: 'ruleViolations', data: { violations } });
-            }
-          });
-        }
-      },
     });
 
     this._setupClaudeServiceHandlers();
@@ -447,9 +420,6 @@ export class PanelProvider {
       panelManager: this._panelManager,
       editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.regenerateResponse(),
-      rulesService: this._rulesService,
-      startPipeline: (goal: string) => this._startPipeline(goal),
-      cancelPipeline: () => this._cancelPipeline(),
     };
   }
 
@@ -481,131 +451,12 @@ export class PanelProvider {
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
-    // Async: build context, rules → then send
-    void this._buildEnhancedMessage(text, cwd).then(({ actualText, additionalSystemPrompt }) => {
-      void this._claudeService.sendMessage(actualText, {
-        cwd, planMode, thinkingMode, yoloMode,
-        model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-        mcpConfigPath, images, additionalSystemPrompt,
-      });
+    // Send message directly to Claude CLI - no extra context/prompt injection
+    void this._claudeService.sendMessage(text, {
+      cwd, planMode, thinkingMode, yoloMode,
+      model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
+      mcpConfigPath, images,
     });
-  }
-
-  private async _buildEnhancedMessage(text: string, cwd: string): Promise<{ actualText: string; additionalSystemPrompt?: string }> {
-    let actualText = text;
-
-    // Feature 1: Auto-context injection
-    const autoContextEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoContext.enabled', true);
-    if (autoContextEnabled && this._contextCollector) {
-      try {
-        const maxFiles = vscode.workspace.getConfiguration('claudeCodeChatUI').get<number>('autoContext.maxFiles', 10);
-        const includeImports = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoContext.includeImports', true);
-        const includeRecentFiles = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoContext.includeRecentFiles', true);
-
-        const activeEditor = vscode.window.activeTextEditor;
-        const activeFile = activeEditor && activeEditor.document.uri.scheme === 'file'
-          ? vscode.workspace.asRelativePath(activeEditor.document.uri, false)
-          : null;
-
-        const { contextBlock, info } = await this._contextCollector.buildContextBlock({
-          activeFile,
-          editorSelection: null,
-          workspaceRoot: cwd,
-          maxFiles,
-          includeImports,
-          includeRecentFiles,
-          userMessage: text,
-          includeFileContents: true,
-          includeGitChanges: true,
-          maxContentLines: 80,
-        });
-
-        if (contextBlock) {
-          actualText = `${contextBlock}\n\n${text}`;
-        }
-
-        this._postMessage({ type: 'autoContextInfo', data: info });
-      } catch { /* auto-context failure is non-fatal */ }
-    }
-
-    // Build additional system prompt from rules
-    const systemParts: string[] = [];
-
-    if (this._rulesService) {
-      try {
-        const rulesContent = await this._rulesService.getSystemPromptContent();
-        if (rulesContent) systemParts.push(rulesContent);
-      } catch { /* rules failure is non-fatal */ }
-    }
-
-    // Feature 3: Project profile prompt injection
-    const profileEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('projectProfile.enabled', true);
-    if (profileEnabled && this._projectProfiler) {
-      try {
-        const profileSection = this._projectProfiler.getSystemPromptSection(cwd);
-        if (profileSection) systemParts.push(profileSection);
-      } catch { /* profile failure is non-fatal */ }
-    }
-
-    // Feature 4: Intent analysis + tool hints
-    const intentEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('intentAnalysis.enabled', true);
-    if (intentEnabled && this._intentAnalyzer) {
-      try {
-        const profile = this._projectProfiler?.detectProfile(cwd) ?? null;
-        const analysis = this._intentAnalyzer.analyze(text, profile);
-        if (analysis.toolHints.length > 0) {
-          systemParts.push(`[Tool Usage Hints — intent: ${analysis.primaryIntent}]\n${analysis.toolHints.join('\n')}`);
-        }
-      } catch { /* intent analysis failure is non-fatal */ }
-    }
-
-    return {
-      actualText,
-      additionalSystemPrompt: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
-    };
-  }
-
-  // ==================== Pipeline ====================
-
-  private async _startPipeline(goal: string): Promise<void> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
-
-    this._taskPipeline = new TaskPipeline((event) => {
-      this._postMessage({ type: 'pipelineEvent', data: event });
-    });
-
-    try {
-      await this._taskPipeline.plan(goal, cwd);
-      this._executePipelineStep();
-    } catch (err) {
-      log.error('Pipeline planning failed', { error: String(err) });
-      this._postMessage({ type: 'error', data: `Pipeline planning failed: ${String(err)}` });
-      this._taskPipeline = null;
-    }
-  }
-
-  private _executePipelineStep(): void {
-    if (!this._taskPipeline?.isRunning) return;
-
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
-
-    const prompt = this._taskPipeline.prepareNextStep(cwd);
-    if (prompt) {
-      this._handleSendMessage(prompt);
-    } else {
-      // Pipeline finished
-      this._taskPipeline = null;
-    }
-  }
-
-  private _cancelPipeline(): void {
-    if (this._taskPipeline) {
-      this._taskPipeline.cancel();
-      this._taskPipeline = null;
-      void this._claudeService.stopProcess();
-    }
   }
 
   private _setupClaudeServiceHandlers(): void {
@@ -625,14 +476,6 @@ export class PanelProvider {
       if (notifEnabled && !isVisible) {
         vscode.window.showInformationMessage('Claude Code: Response complete');
       }
-
-      // Pipeline auto-advance: mark step completed with summary and start next
-      if (this._taskPipeline?.isRunning) {
-        const summary = this._extractStepSummary();
-        this._taskPipeline.markStepCompleted(summary);
-        setTimeout(() => this._executePipelineStep(), 1500);
-      }
-
     });
 
     this._claudeService.onError((error) => {
@@ -640,12 +483,6 @@ export class PanelProvider {
       this._stateManager.isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
-
-      // Pipeline: mark step failed
-      if (this._taskPipeline?.isRunning) {
-        this._taskPipeline.markStepFailed(error);
-        this._taskPipeline = null;
-      }
 
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });
@@ -682,22 +519,6 @@ export class PanelProvider {
         },
       });
     });
-  }
-
-  /** Extract a short summary from the last assistant output for pipeline step chaining */
-  private _extractStepSummary(): string | undefined {
-    const conversation = this._messageProcessor.currentConversation;
-    for (let i = conversation.length - 1; i >= 0; i--) {
-      if (conversation[i].messageType === 'output') {
-        const data = conversation[i].data;
-        const text = typeof data === 'string' ? data : (data as { content?: string })?.content;
-        if (text) {
-          const firstLine = text.split('\n').find((l: string) => l.trim().length > 0) ?? '';
-          return firstLine.length > 150 ? firstLine.slice(0, 147) + '...' : firstLine;
-        }
-      }
-    }
-    return undefined;
   }
 
   private _replayConversation(): void {

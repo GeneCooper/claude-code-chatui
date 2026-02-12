@@ -66,9 +66,6 @@ export interface MessageHandlerContext {
   panelManager?: PanelManager;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
-  rulesService?: import('./rulesService').RulesService;
-  startPipeline?: (goal: string) => Promise<void>;
-  cancelPipeline?: () => void;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -365,24 +362,6 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
 
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
-// === Rules Handlers ===
-const handleGetRules: MessageHandler = async (_msg, ctx) => {
-  if (!ctx.rulesService) return;
-  const rules = await ctx.rulesService.getRules();
-  ctx.postMessage({ type: 'rulesData', data: { rules } });
-};
-
-const handleCreateDefaultRules: MessageHandler = async (_msg, ctx) => {
-  if (!ctx.rulesService) return;
-  await ctx.rulesService.createDefaultRules();
-  const rules = await ctx.rulesService.getRules();
-  ctx.postMessage({ type: 'rulesData', data: { rules } });
-};
-
-const handleOpenRulesFile: MessageHandler = async (msg, ctx) => {
-  if (ctx.rulesService) await ctx.rulesService.openRulesFile(msg.filePath as string);
-};
-
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
   newSession: handleNewSession,
@@ -419,13 +398,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   createNewPanel: handleCreateNewPanel,
   editMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.editMessage(msg.userInputIndex as number, msg.newText as string),
   regenerateResponse: (_msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.regenerateResponse(),
-  // Rules
-  getRules: handleGetRules,
-  createDefaultRules: handleCreateDefaultRules,
-  openRulesFile: handleOpenRulesFile,
-  // Pipeline
-  startPipeline: (msg: WebviewMessage, ctx: MessageHandlerContext) => { if (ctx.startPipeline) void ctx.startPipeline(msg.goal as string); },
-  cancelPipeline: (_msg: WebviewMessage, ctx: MessageHandlerContext) => { if (ctx.cancelPipeline) ctx.cancelPipeline(); },
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {
