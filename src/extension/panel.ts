@@ -48,6 +48,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
     content="default-src 'none';
       style-src ${webview.cspSource} 'unsafe-inline';
       script-src 'nonce-${nonce}';
+      connect-src ${webview.cspSource};
       img-src ${webview.cspSource} https: data:;
       font-src ${webview.cspSource};">
   <link href="${styleUri}" rel="stylesheet">
@@ -96,7 +97,12 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
       <div>Loading...</div>
     </div>
   </div>
-  <script nonce="${nonce}">window.__ICON_URI__="${iconUri}";</script>
+  <script nonce="${nonce}">
+    window.__ICON_URI__="${iconUri}";
+    window.onerror=function(msg,src,line,col,err){
+      document.getElementById('root').innerHTML='<div style="padding:20px;color:red;font-size:13px;"><b>Load Error:</b><br>'+msg+'<br>Source: '+src+'<br>Line: '+line+'</div>';
+    };
+  </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
