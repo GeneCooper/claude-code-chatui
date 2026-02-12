@@ -157,7 +157,7 @@ export class ClaudeService implements vscode.Disposable {
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
 
-    // Effort level (--effort low/medium/high) — always sent, CLI defaults to high
+    // Think level (--effort low/medium/high)
     args.push('--effort', options.effort || 'high');
 
     // Permission handling: --dangerously-skip-permissions and --permission-prompt-tool

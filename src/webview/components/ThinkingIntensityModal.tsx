@@ -69,7 +69,7 @@ export function ThinkingIntensityModal() {
             alignItems: 'center',
           }}
         >
-          <span id="intensity-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>Effort Level</span>
+          <span id="intensity-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>Think Level</span>
           <button
             onClick={() => setShow(false)}
             style={{

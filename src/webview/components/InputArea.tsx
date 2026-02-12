@@ -431,14 +431,14 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
                 boxShadow: '0 0 8px rgba(59, 130, 246, 0.2)',
               }}
-              title="Effort level"
-              aria-label="Effort level"
+              title="Think level"
+              aria-label="Think level"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4l2 2" />
               </svg>
-              <span>Effort · {useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}</span>
+              <span>Think · {useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}</span>
             </button>
 
             <button
