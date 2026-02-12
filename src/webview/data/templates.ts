@@ -1,42 +1,40 @@
-import { t } from '../i18n'
-
 export interface Template {
   icon: string
-  labelKey: string
-  promptKey: string
+  label: string
+  prompt: string
   category: 'quickstart' | 'quality' | 'learning' | 'architecture'
 }
 
 export const TEMPLATE_CATEGORIES = [
-  { id: 'quickstart' as const, labelKey: 'welcome.quickStart' },
-  { id: 'quality' as const, labelKey: 'welcome.codeQuality' },
-  { id: 'learning' as const, labelKey: 'welcome.learning' },
-  { id: 'architecture' as const, labelKey: 'welcome.architecture' },
+  { id: 'quickstart' as const, label: 'Quick Start' },
+  { id: 'quality' as const, label: 'Code Quality' },
+  { id: 'learning' as const, label: 'Learning' },
+  { id: 'architecture' as const, label: 'Architecture' },
 ]
 
 export const TEMPLATES: Template[] = [
   // Quick Start
-  { icon: '🐛', labelKey: 'template.fixBug', promptKey: 'template.fixBugPrompt', category: 'quickstart' },
-  { icon: '🚀', labelKey: 'template.addFeature', promptKey: 'template.addFeaturePrompt', category: 'quickstart' },
-  { icon: '🧪', labelKey: 'template.writeTests', promptKey: 'template.writeTestsPrompt', category: 'quickstart' },
-  { icon: '✨', labelKey: 'template.refactor', promptKey: 'template.refactorPrompt', category: 'quickstart' },
+  { icon: '🐛', label: 'Fix a bug', prompt: 'Help me fix a bug in', category: 'quickstart' },
+  { icon: '🚀', label: 'Add feature', prompt: 'Help me implement', category: 'quickstart' },
+  { icon: '🧪', label: 'Write tests', prompt: 'Write comprehensive tests for', category: 'quickstart' },
+  { icon: '✨', label: 'Refactor', prompt: 'Refactor this code for better readability:', category: 'quickstart' },
   // Code Quality
-  { icon: '🔍', labelKey: 'template.codeReview', promptKey: 'template.codeReviewPrompt', category: 'quality' },
-  { icon: '🔐', labelKey: 'template.securityAudit', promptKey: 'template.securityAuditPrompt', category: 'quality' },
-  { icon: '⚡', labelKey: 'template.performance', promptKey: 'template.performancePrompt', category: 'quality' },
-  { icon: '📝', labelKey: 'template.addTypes', promptKey: 'template.addTypesPrompt', category: 'quality' },
+  { icon: '🔍', label: 'Code review', prompt: 'Review this code for issues and improvements:', category: 'quality' },
+  { icon: '🔐', label: 'Security audit', prompt: 'Perform a security audit on this code, check for OWASP top 10 vulnerabilities:', category: 'quality' },
+  { icon: '⚡', label: 'Performance', prompt: 'Analyze and optimize the performance of:', category: 'quality' },
+  { icon: '📝', label: 'Add types', prompt: 'Add TypeScript types and interfaces to:', category: 'quality' },
   // Learning
-  { icon: '📖', labelKey: 'template.explainCode', promptKey: 'template.explainCodePrompt', category: 'learning' },
-  { icon: '🗺️', labelKey: 'template.codebaseTour', promptKey: 'template.codebaseTourPrompt', category: 'learning' },
-  { icon: '❓', labelKey: 'template.howDoesXWork', promptKey: 'template.howDoesXWorkPrompt', category: 'learning' },
-  { icon: '📊', labelKey: 'template.compareApproaches', promptKey: 'template.compareApproachesPrompt', category: 'learning' },
+  { icon: '📖', label: 'Explain code', prompt: 'Explain how this code works step by step:', category: 'learning' },
+  { icon: '🗺️', label: 'Codebase tour', prompt: 'Give me an overview of this project structure and architecture', category: 'learning' },
+  { icon: '❓', label: 'How does X work', prompt: 'How does this feature work:', category: 'learning' },
+  { icon: '📊', label: 'Compare approaches', prompt: 'Compare the pros and cons of these approaches:', category: 'learning' },
   // Architecture
-  { icon: '🏗️', labelKey: 'template.designSystem', promptKey: 'template.designSystemPrompt', category: 'architecture' },
-  { icon: '📐', labelKey: 'template.apiDesign', promptKey: 'template.apiDesignPrompt', category: 'architecture' },
-  { icon: '🗄️', labelKey: 'template.databaseSchema', promptKey: 'template.databaseSchemaPrompt', category: 'architecture' },
-  { icon: '🔄', labelKey: 'template.migrationPlan', promptKey: 'template.migrationPlanPrompt', category: 'architecture' },
+  { icon: '🏗️', label: 'Design system', prompt: 'Design the architecture for', category: 'architecture' },
+  { icon: '📐', label: 'API design', prompt: 'Design a REST API for', category: 'architecture' },
+  { icon: '🗄️', label: 'Database schema', prompt: 'Design a database schema for', category: 'architecture' },
+  { icon: '🔄', label: 'Migration plan', prompt: 'Create a migration plan to', category: 'architecture' },
 ]
 
-export function getTemplateLabel(tpl: Template): string { return t(tpl.labelKey) }
-export function getTemplatePrompt(tpl: Template): string { return t(tpl.promptKey) }
-export function getCategoryLabel(cat: typeof TEMPLATE_CATEGORIES[number]): string { return t(cat.labelKey) }
+export function getTemplateLabel(tpl: Template): string { return tpl.label }
+export function getTemplatePrompt(tpl: Template): string { return tpl.prompt }
+export function getCategoryLabel(cat: typeof TEMPLATE_CATEGORIES[number]): string { return cat.label }

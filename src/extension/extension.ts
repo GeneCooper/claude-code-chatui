@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import { ClaudeService, PermissionService } from './claude';
-import { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import { ConversationService, BackupService, MCPService } from './storage';
 import { DiffContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider } from './panel';
 import { PanelManager } from './panelManager';
 import { ContextCollector } from './contextCollector';
-import { MemoriesService } from './memoriesService';
 import { NextEditAnalyzer } from './nextEditAnalyzer';
 import { RulesService } from './rulesService';
 
@@ -18,11 +17,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const backupService = new BackupService(context);
   const permissionService = new PermissionService(context);
   const outputChannel = vscode.window.createOutputChannel('Claude Code ChatUI');
-  const usageService = new UsageService(outputChannel);
 
   // Initialize new intelligent services
   const contextCollector = new ContextCollector();
-  const memoriesService = new MemoriesService(context);
   const nextEditAnalyzer = new NextEditAnalyzer(contextCollector);
   const rulesService = new RulesService(context);
 
@@ -42,10 +39,8 @@ export function activate(context: vscode.ExtensionContext): void {
     conversationService,
     mcpService,
     backupService,
-    usageService,
     permissionService,
     contextCollector,
-    memoriesService,
     nextEditAnalyzer,
     rulesService,
   );
@@ -54,9 +49,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const sidebarClaudeService = new ClaudeService(context);
   const sidebarProvider = new PanelProvider(
     context.extensionUri, context, sidebarClaudeService,
-    conversationService, mcpService, backupService, usageService, permissionService,
+    conversationService, mcpService, backupService, permissionService,
     panelManager,
-    contextCollector, memoriesService, nextEditAnalyzer, rulesService,
+    contextCollector, nextEditAnalyzer, rulesService,
   );
 
   // Create sidebar webview provider
@@ -115,7 +110,6 @@ export function activate(context: vscode.ExtensionContext): void {
     statusBarItem,
     sidebarClaudeService,
     permissionService,
-    usageService,
     outputChannel,
     { dispose: () => panelManager.disposeAll() },
     { dispose: () => sidebarProvider.disposeAll() },

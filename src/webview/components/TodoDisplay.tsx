@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useChatStore, type TodoItem } from '../store'
-import { t } from '../i18n'
+
 
 export function TodoDisplay() {
   const todos = useChatStore((s) => s.todos)
@@ -30,7 +30,7 @@ export function TodoDisplay() {
       >
         <span style={{ opacity: 0.5, fontSize: '10px' }}>{collapsed ? '▶' : '▼'}</span>
         <span style={{ fontWeight: 600, opacity: 0.7 }}>
-          {t('todo.tasks', { completed: String(completed), total: String(total) })}
+          {`Tasks (${completed}/${total})`}
         </span>
         {/* Active task hint when collapsed */}
         {collapsed && activeTask && (

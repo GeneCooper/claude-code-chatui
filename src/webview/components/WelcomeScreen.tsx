@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { LogoIcon } from './Header'
 import { TEMPLATES, TEMPLATE_CATEGORIES, getTemplateLabel, getTemplatePrompt, getCategoryLabel } from '../data/templates'
-import { t } from '../i18n'
+
 
 const TIPS = [
-  { keyI18n: 'welcome.tip.slash', descI18n: 'welcome.tip.slashDesc' },
-  { keyI18n: 'welcome.tip.drop', descI18n: 'welcome.tip.dropDesc' },
-  { keyI18n: 'welcome.tip.yolo', descI18n: 'welcome.tip.yoloDesc' },
-  { keyI18n: 'welcome.tip.newline', descI18n: 'welcome.tip.newlineDesc' },
+  { key: '/', desc: 'Slash commands' },
+  { key: 'Drop', desc: 'Attach files' },
+  { key: 'YOLO', desc: 'Skip permissions' },
+  { key: 'Shift+Enter', desc: 'New line' },
 ]
 
 interface Props {
@@ -43,11 +43,11 @@ export function WelcomeScreen({ onHintClick }: Props) {
         className="m-0"
         style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '6px' }}
       >
-        {t('app.title')}
+        Claude Code ChatUI
       </h2>
 
       <p className="m-0" style={{ fontSize: '12px', opacity: 0.7, marginBottom: '16px' }}>
-        {t('app.subtitle')}
+        AI-powered coding assistant
       </p>
 
       {/* Category tabs */}
@@ -86,7 +86,7 @@ export function WelcomeScreen({ onHintClick }: Props) {
       >
         {filtered.map((hint) => (
           <button
-            key={hint.labelKey}
+            key={hint.label}
             onClick={() => onHintClick(getTemplatePrompt(hint))}
             className="flex items-center gap-2 text-left cursor-pointer text-inherit"
             style={{
@@ -121,7 +121,7 @@ export function WelcomeScreen({ onHintClick }: Props) {
           style={{ opacity: 0.5, fontSize: '10px' }}
         >
           {TIPS.map((tip, i) => (
-            <span key={tip.keyI18n} className="flex items-center gap-0.5">
+            <span key={tip.key} className="flex items-center gap-0.5">
               {i > 0 && <span style={{ margin: '0 1px', opacity: 0.3 }}>&middot;</span>}
               <kbd
                 style={{
@@ -135,9 +135,9 @@ export function WelcomeScreen({ onHintClick }: Props) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {t(tip.keyI18n)}
+                {tip.key}
               </kbd>
-              <span style={{ whiteSpace: 'nowrap' }}>{t(tip.descI18n)}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{tip.desc}</span>
             </span>
           ))}
         </div>

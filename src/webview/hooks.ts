@@ -7,7 +7,6 @@ import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
-import type { UsageData } from '../shared/types'
 
 // ============================================================================
 // VS Code API Bridge
@@ -232,14 +231,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   restorePoint: (msg) => { useChatStore.getState().addMessage({ type: 'restorePoint', data: msg.data }) },
 
-  usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
-  usageError: () => {},
-
-  accountInfo: (msg) => {
-    const info = msg.data as { subscriptionType: 'pro' | 'max' | undefined }
-    useUIStore.getState().setAccountType(info.subscriptionType)
-  },
-
   platformInfo: (msg) => {
     useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
   },
@@ -284,12 +275,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   autoContextInfo: (msg) => {
     useChatStore.getState().setAutoContextInfo(
       msg.data as { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean },
-    )
-  },
-
-  memoriesInfo: (msg) => {
-    useUIStore.getState().setMemoriesInfo(
-      msg.data as { count: number; lastUpdated: string | null; filePath: string },
     )
   },
 

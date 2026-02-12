@@ -10,7 +10,6 @@ import { RestorePoint } from './RestorePoint'
 import { FollowUpSuggestions } from './FollowUpSuggestions'
 import { NextEditCard } from './NextEditCard'
 import { RuleViolationCard } from './RuleViolationCard'
-import { t } from '../i18n'
 
 // ============================================================================
 // Constants
@@ -182,16 +181,16 @@ function StatusIcon({ status }: { status: 'executing' | 'completed' | 'failed' }
 }
 
 const LOADING_PHRASES = [
-  t('thinking.analyzing'),
-  t('thinking.thinking'),
-  t('thinking.reasoning'),
-  t('thinking.puzzling'),
-  t('thinking.pondering'),
-  t('thinking.processing'),
-  t('thinking.working'),
-  t('thinking.considering'),
-  t('thinking.exploring'),
-  t('thinking.evaluating'),
+  'Analyzing',
+  'Thinking',
+  'Reasoning',
+  'Puzzling',
+  'Pondering',
+  'Processing',
+  'Working',
+  'Considering',
+  'Exploring',
+  'Evaluating',
 ]
 
 function LoadingIndicator() {
@@ -291,12 +290,12 @@ function MessageRenderer({ message, userInputIndex, onFork, onRewind, onEdit, is
       return <LoadingIndicator />
     case 'compacting':
       return (message.data as { isCompacting: boolean }).isCompacting ? (
-        <div className="text-center text-xs opacity-50 py-1">{t('compact.compacting')}</div>
+        <div className="text-center text-xs opacity-50 py-1">Compacting conversation...</div>
       ) : null
     case 'compactBoundary':
       return (
         <div className="text-center text-xs opacity-40 py-1 border-t border-dashed border-(--vscode-panel-border)">
-          {t('compact.compacted')}
+          Conversation compacted
         </div>
       )
     case 'permissionRequest':
@@ -529,13 +528,13 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEd
               e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
               e.currentTarget.style.color = 'inherit'
             }}
-            title={t('message.regenerateResponse')}
+            title="Regenerate response"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
-            {t('message.regenerate')}
+            Regenerate
           </button>
         </div>
       )}

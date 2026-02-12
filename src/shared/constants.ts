@@ -36,9 +36,6 @@ export const MODEL_CONTEXT_LIMIT = 200_000;
 export const FILE_SEARCH_EXCLUDES =
     "**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/.next/**,**/.nuxt/**,**/target/**,**/bin/**,**/obj/**";
 
-/** Memories & Rules directories */
-export const MEMORIES_DIR = '.claude-chatui';
-export const MEMORIES_FILE = 'memories.md';
-export const RULES_DIR = 'rules';
-export const MAX_MEMORY_FILE_SIZE = 50_000;
+/** Rules directory */
+export const RULES_DIR = '.claude-chatui/rules';
 export const AUTO_CONTEXT_MAX_FILES = 10;

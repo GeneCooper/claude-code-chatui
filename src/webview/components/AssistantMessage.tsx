@@ -9,7 +9,6 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
 import { MermaidBlock } from './MermaidBlock'
-import { t } from '../i18n'
 
 // Regex to detect file paths in text (Unix and Windows paths)
 const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-]+(?::\d+)?)/g
@@ -171,9 +170,9 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
           transition: 'opacity 0.2s ease',
           color: 'var(--vscode-descriptionForeground)',
         }}
-        title={t('message.copyMessage')}
+        title="Copy message"
       >
-        {copied ? t('message.copied') : t('message.copy')}
+        {copied ? 'Copied!' : 'Copy'}
       </button>
 
       {/* Message content */}
@@ -315,7 +314,7 @@ function CopyButton({ text }: { text: string }) {
         e.currentTarget.style.opacity = copied ? '1' : '0.7'
       }}
     >
-      {copied ? t('message.copied') : t('message.copy')}
+      {copied ? 'Copied!' : 'Copy'}
     </button>
   )
 }

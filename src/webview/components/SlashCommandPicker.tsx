@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
-import { t } from '../i18n'
 
 interface SlashCommand {
   command: string
@@ -261,7 +260,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
             flexShrink: 0,
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: '14px' }}>{t('slash.commands')}</span>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Commands</span>
           <button
             onClick={() => setShow(false)}
             style={{
@@ -320,7 +319,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder={t('slash.search')}
+              placeholder="Search commands..."
               autoFocus
               style={{
                 flex: 1,
@@ -339,14 +338,14 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vscode-descriptionForeground)', fontStyle: 'italic' }}>
-              {t('slash.noMatch')}
+              No matching commands
             </div>
           ) : (
             <>
               {customs.length > 0 && (
                 <div style={{ marginBottom: '32px' }}>
                   <h3 style={{ margin: '16px 20px 12px 20px', fontSize: '14px', fontWeight: 600 }}>
-                    {t('slash.customCommands')}
+                    Custom Commands
                   </h3>
                   <div style={{ display: 'grid', gap: '4px', padding: '0 16px' }}>
                     {customs.map(renderItem)}
@@ -357,7 +356,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
               {snippets.length > 0 && (
                 <div style={{ marginBottom: '32px' }}>
                   <h3 style={{ margin: '16px 20px 12px 20px', fontSize: '14px', fontWeight: 600 }}>
-                    {t('slash.promptSnippets')}
+                    Prompt Snippets
                   </h3>
                   <div
                     style={{
@@ -369,7 +368,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
                     }}
                   >
                     <p style={{ margin: 0, fontSize: '11px', color: 'var(--vscode-descriptionForeground)', textAlign: 'center', opacity: 0.9 }}>
-                      {t('slash.snippetsDesc')}
+                      Prompt snippets insert pre-defined prompts into your message
                     </p>
                   </div>
                   <div style={{ display: 'grid', gap: '4px', padding: '0 16px' }}>
@@ -381,7 +380,7 @@ export function SlashCommandPicker({ filter, onSelect }: Props) {
               {natives.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
                   <h3 style={{ margin: '16px 20px 12px 20px', fontSize: '14px', fontWeight: 600 }}>
-                    {t('slash.builtIn')}
+                    Built-in Commands
                   </h3>
                   <div style={{ display: 'grid', gap: '4px', padding: '0 16px' }}>
                     {natives.map(renderItem)}

@@ -2,13 +2,13 @@ import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { postMessage } from '../hooks'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import { t } from '../i18n'
+
 
 const LEVELS = [
-  { key: 'think', label: 'Think', descKey: 'intensity.basic' as const, icon: '💡' },
-  { key: 'think-hard', label: 'Think Hard', descKey: 'intensity.detailed' as const, icon: '🧠' },
-  { key: 'think-harder', label: 'Think Harder', descKey: 'intensity.extended' as const, icon: '🔬' },
-  { key: 'ultrathink', label: 'Ultrathink', descKey: 'intensity.maximum' as const, icon: '⚡' },
+  { key: 'think', label: 'Think', desc: 'Basic reasoning - fastest response', icon: '💡' },
+  { key: 'think-hard', label: 'Think Hard', desc: 'More detailed reasoning', icon: '🧠' },
+  { key: 'think-harder', label: 'Think Harder', desc: 'Extended reasoning for complex tasks', icon: '🔬' },
+  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
 ]
 
 interface Props {
@@ -82,7 +82,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
             alignItems: 'center',
           }}
         >
-          <span id="intensity-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>{t('intensity.title')}</span>
+          <span id="intensity-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>Thinking Mode</span>
           <div className="flex items-center gap-3">
             {/* On/Off toggle */}
             <div
@@ -166,12 +166,12 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
                     {level.label}
                     {isSelected && (
                       <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--chatui-accent)' }}>
-                        {t('intensity.current')}
+                        Current
                       </span>
                     )}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', opacity: 0.7 }}>
-                    {t(level.descKey)}
+                    {level.desc}
                   </div>
                 </div>
               </button>

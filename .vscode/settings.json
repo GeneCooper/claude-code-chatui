@@ -6,9 +6,5 @@
     "claudeCodeChat.permissions.yoloMode": true,
     "terminal.integrated.automationProfile.windows": {
         "path": "cmd.exe"
-    },
-    "i18n-ally.localesPaths": [
-        "src/webview/i18n",
-        "src/webview/i18n/locales"
-    ]
+    }
 }

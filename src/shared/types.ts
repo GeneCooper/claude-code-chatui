@@ -203,15 +203,6 @@ export interface SlashCommand {
 }
 
 // ============================================================================
-// Usage types
-// ============================================================================
-
-export interface UsageData {
-  currentSession: { usageCost: number; costLimit: number; resetsIn: string };
-  weekly: { costLikely: number; costLimit: number; resetsAt: string };
-}
-
-// ============================================================================
 // Todo types
 // ============================================================================
 
@@ -253,19 +244,12 @@ export type WebviewToExtensionMessage =
   | { type: 'deleteMCPServer'; name: string }
   | { type: 'createBackup'; message: string }
   | { type: 'restoreBackup'; commitSha: string }
-  | { type: 'refreshUsage' }
-  | { type: 'openCCUsageTerminal' }
   | { type: 'pickImageFile' }
   | { type: 'pickWorkspaceFile' }
   | { type: 'getClipboardText' }
   | { type: 'resolveDroppedFile'; uri: string }
   | { type: 'editMessage'; userInputIndex: number; newText: string }
   | { type: 'regenerateResponse' }
-  // Memories
-  | { type: 'getMemories' }
-  | { type: 'editMemories' }
-  | { type: 'clearMemories' }
-  | { type: 'extractMemoriesNow' }
   // Next Edit
   | { type: 'dismissSuggestion'; suggestionId: string }
   | { type: 'applySuggestion'; suggestionId: string; filePath: string }
@@ -307,11 +291,8 @@ type ExtensionToWebviewMessage =
   | { type: 'restorePoint'; data: BackupCommit }
   | { type: 'slashCommands'; data: SlashCommand[] }
   | { type: 'showLoginRequired'; data: { message: string } }
-  | { type: 'usageUpdate'; data: UsageData }
-  | { type: 'usageError'; data: string }
   | { type: 'todosUpdate'; data: { todos: TodoItem[] } }
   | { type: 'installComplete'; data: { success: boolean; error?: string } }
-  | { type: 'accountInfo'; data: { subscriptionType: 'pro' | 'max' | undefined } }
   | { type: 'platformInfo'; data: { platform: string; isWindows: boolean } }
   | { type: 'imageFilePicked'; data: { name: string; dataUrl: string } }
   | { type: 'clipboardContent'; data: { text: string } }
@@ -322,8 +303,6 @@ type ExtensionToWebviewMessage =
   | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } }
   // Auto-context
   | { type: 'autoContextInfo'; data: { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean } }
-  // Memories
-  | { type: 'memoriesInfo'; data: { count: number; lastUpdated: string | null; filePath: string } }
   // Next Edit predictions
   | { type: 'nextEditSuggestions'; data: { suggestions: Array<{ id: string; filePath: string; reason: string; changedSymbols: string[]; severity: 'info' | 'warning' }> } }
   // Rule violations

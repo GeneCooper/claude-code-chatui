@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useId } from 'react'
-import { t } from '../i18n'
 
 export function MermaidBlock({ code }: { code: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -36,7 +35,7 @@ export function MermaidBlock({ code }: { code: string }) {
           background: 'var(--vscode-textCodeBlock-background)',
         }}
       >
-        <div style={{ fontSize: '11px', color: '#e74c3c', marginBottom: '8px' }}>{t('mermaid.error')}</div>
+        <div style={{ fontSize: '11px', color: '#e74c3c', marginBottom: '8px' }}>Mermaid rendering error</div>
         <pre style={{ fontSize: '11px', opacity: 0.7, whiteSpace: 'pre-wrap', margin: 0 }}>{code}</pre>
       </div>
     )
@@ -49,7 +48,7 @@ export function MermaidBlock({ code }: { code: string }) {
         style={{ opacity: 0.5, fontSize: '12px', padding: '12px' }}
       >
         <div style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--chatui-accent)', borderRadius: '50%' }} />
-        {t('mermaid.rendering')}
+        Rendering diagram...
       </div>
     )
   }

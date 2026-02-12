@@ -1,7 +1,6 @@
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import { t } from '../i18n'
 
 export function LoginModal() {
   const show = useUIStore((s) => s.showLoginModal)
@@ -71,10 +70,10 @@ export function LoginModal() {
           </div>
 
           <h3 id="login-modal-title" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
-            {t('login.title')}
+            Authentication Required
           </h3>
           <p style={{ margin: '0 0 16px', fontSize: '12px', opacity: 0.6, lineHeight: 1.5 }}>
-            {t('login.message')}
+            Please log in to Claude Code to continue
           </p>
 
           {/* Error detail */}
@@ -118,11 +117,11 @@ export function LoginModal() {
             onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9' }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
           >
-            {t('login.openTerminal')}
+            Open Login in Terminal
           </button>
 
           <p style={{ margin: 0, fontSize: '11px', opacity: 0.5 }}>
-            {t('login.orRun')} <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>claude auth login</code> {t('login.manually')}
+            Or run <code style={{ background: 'rgba(128,128,128,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>claude auth login</code> manually
           </p>
         </div>
       </div>

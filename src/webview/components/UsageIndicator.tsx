@@ -1,6 +1,5 @@
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
-import { t } from '../i18n'
 
 export function UsageIndicator() {
   const usageData = useUIStore((s) => s.usageData)
@@ -8,7 +7,7 @@ export function UsageIndicator() {
 
   if (!usageData) return null
 
-  const usageLabel = accountType === 'max' ? t('usage.maxPlan') : accountType === 'pro' ? t('usage.proPlan') : t('usage.apiUsage')
+  const usageLabel = accountType === 'max' ? 'Max Plan Usage' : accountType === 'pro' ? 'Pro Plan Usage' : 'API Usage'
 
   const sessionPercent = Math.round((usageData.currentSession.usageCost / usageData.currentSession.costLimit) * 100)
   const weeklyPercent = Math.round((usageData.weekly.costLikely / usageData.weekly.costLimit) * 100)
@@ -81,18 +80,18 @@ export function UsageIndicator() {
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--chatui-accent)' }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--vscode-descriptionForeground)' }}
           >
-            {t('usage.refresh')}
+            Refresh
           </button>
         </div>
 
         <UsageBar
-          label={t('usage.session')}
+          label="Session (5h)"
           percent={sessionPercent}
           resetTime={usageData.currentSession.resetsIn}
         />
 
         <UsageBar
-          label={t('usage.weekly')}
+          label="Weekly (7d)"
           percent={weeklyPercent}
           resetTime={usageData.weekly.resetsAt}
         />

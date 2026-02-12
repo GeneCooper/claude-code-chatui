@@ -2,7 +2,6 @@ import { postMessage } from '../hooks'
 import { useChatStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { useUIStore } from '../store'
-import { t } from '../i18n'
 
 // Pre-compiled regex patterns for suggestion heuristics
 const RE_CODE = /```/
@@ -20,25 +19,25 @@ function generateSuggestions(text: string): string[] {
   const isLong = text.length > 2000
 
   if (hasCode && !hasTest) {
-    suggestions.push(t('suggestion.writeTests'))
+    suggestions.push('Write tests for this code')
   }
   if (hasCode) {
-    suggestions.push(t('suggestion.explainStep'))
+    suggestions.push('Explain this code step by step')
   }
   if (hasError) {
-    suggestions.push(t('suggestion.edgeCases'))
+    suggestions.push('What are possible edge cases?')
   }
   if (hasTodo) {
-    suggestions.push(t('suggestion.addressTodos'))
+    suggestions.push('Help me address the TODOs')
   }
   if (isLong) {
-    suggestions.push(t('suggestion.summarize'))
+    suggestions.push('Summarize the key points')
   }
 
   // Generic fallbacks
   if (suggestions.length < 2) {
-    suggestions.push(t('suggestion.explainMore'))
-    suggestions.push(t('suggestion.alternatives'))
+    suggestions.push('Can you explain more?')
+    suggestions.push('What are the alternatives?')
   }
 
   return suggestions.slice(0, 3)

@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import type { UsageData, TodoItem, MCPServerConfig } from '../shared/types'
+import type { TodoItem, MCPServerConfig } from '../shared/types'
 
 export type { TodoItem }
 
 // ============================================================================
-// Intelligent feature types (auto-context, memories, next-edit, rules)
+// Intelligent feature types (auto-context, next-edit, rules)
 // ============================================================================
 
 export interface AutoContextInfo {
@@ -13,12 +13,6 @@ export interface AutoContextInfo {
   activeFile: string | null
   totalFiles: number
   enabled: boolean
-}
-
-export interface MemoriesInfo {
-  count: number
-  lastUpdated: string | null
-  filePath: string
 }
 
 export interface NextEditSuggestion {
@@ -309,11 +303,8 @@ interface UIState {
   loginErrorMessage: string
   draftText: string
   requestStartTime: number | null
-  usageData: UsageData | null
-  accountType: 'pro' | 'max' | undefined
   platformInfo: { platform: string; isWindows: boolean } | null
   notifications: Notification[]
-  memoriesInfo: MemoriesInfo | null
 
   setActiveView: (view: ActiveView) => void
   setShowSlashPicker: (show: boolean) => void
@@ -325,10 +316,7 @@ interface UIState {
   setLoginErrorMessage: (msg: string) => void
   setDraftText: (text: string) => void
   setRequestStartTime: (time: number | null) => void
-  setUsageData: (data: UsageData | null) => void
-  setAccountType: (type: 'pro' | 'max' | undefined) => void
   setPlatformInfo: (info: { platform: string; isWindows: boolean } | null) => void
-  setMemoriesInfo: (info: MemoriesInfo | null) => void
   showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
   dismissNotification: (id: string) => void
 }
@@ -346,11 +334,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   loginErrorMessage: '',
   draftText: '',
   requestStartTime: null,
-  usageData: null,
-  accountType: undefined,
   platformInfo: null,
   notifications: [],
-  memoriesInfo: null,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowSlashPicker: (show) => set({ showSlashPicker: show }),
@@ -362,10 +347,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setLoginErrorMessage: (msg) => set({ loginErrorMessage: msg }),
   setDraftText: (text) => set({ draftText: text }),
   setRequestStartTime: (time) => set({ requestStartTime: time }),
-  setUsageData: (data) => set({ usageData: data }),
-  setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
-  setMemoriesInfo: (info) => set({ memoriesInfo: info }),
 
   showNotification: (type, title, message, timeout = 5000) => {
     const id = `notif-${++notifCounter}`

@@ -9,7 +9,7 @@ import type { PanelManager } from './panelManager';
 import { FILE_EDIT_TOOLS, FILE_SEARCH_EXCLUDES, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import type { ConversationService, BackupService, MCPService } from './storage';
 
 // ============================================================================
 // DiffContentProvider
@@ -661,7 +661,6 @@ export interface MessageHandlerContext {
   conversationService: ConversationService;
   mcpService: MCPService;
   backupService: BackupService;
-  usageService: UsageService;
   permissionService: PermissionService;
   stateManager: SessionStateManager;
   settingsManager: SettingsManager;
@@ -676,8 +675,6 @@ export interface MessageHandlerContext {
   forkFromMessage(userInputIndex: number): void;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
-  // New services
-  memoriesService?: import('./memoriesService').MemoriesService;
   rulesService?: import('./rulesService').RulesService;
 }
 
@@ -876,8 +873,6 @@ const handleRestoreBackup: MessageHandler = async (msg, ctx) => {
   }
 };
 
-const handleRefreshUsage: MessageHandler = (_msg, ctx) => { void ctx.usageService.fetchUsageData(); };
-
 const handleDeleteConversation: MessageHandler = async (msg, ctx) => {
   const success = await ctx.conversationService.deleteConversation(msg.filename as string);
   if (success) {
@@ -925,15 +920,6 @@ const handleRevertFile: MessageHandler = async (msg, ctx) => {
   } catch {
     ctx.postMessage({ type: 'error', data: 'Failed to revert file' });
   }
-};
-
-const handleOpenCCUsageTerminal: MessageHandler = (_msg, ctx) => {
-  const subscriptionType = ctx.claudeService.subscriptionType;
-  const isPlan = subscriptionType === 'pro' || subscriptionType === 'max';
-  const command = isPlan ? 'npx -y ccusage blocks --live' : 'npx -y ccusage blocks --recent --order desc';
-  const terminal = vscode.window.createTerminal({ name: 'ccusage' });
-  terminal.sendText(command);
-  terminal.show();
 };
 
 const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
@@ -1000,29 +986,6 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
 
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
-// === Memories Handlers ===
-const handleGetMemories: MessageHandler = async (_msg, ctx) => {
-  if (!ctx.memoriesService) return;
-  const info = await ctx.memoriesService.getMemoriesInfo();
-  ctx.postMessage({ type: 'memoriesInfo', data: info });
-};
-
-const handleEditMemories: MessageHandler = async (_msg, ctx) => {
-  if (ctx.memoriesService) await ctx.memoriesService.editMemories();
-};
-
-const handleClearMemories: MessageHandler = async (_msg, ctx) => {
-  if (ctx.memoriesService) await ctx.memoriesService.clearMemories();
-  ctx.postMessage({ type: 'memoriesInfo', data: { count: 0, lastUpdated: null, filePath: '.claude-chatui/memories.md' } });
-};
-
-const handleExtractMemoriesNow: MessageHandler = async (_msg, ctx) => {
-  if (!ctx.memoriesService) return;
-  await ctx.memoriesService.extractMemories(ctx.messageProcessor.currentConversation);
-  const info = await ctx.memoriesService.getMemoriesInfo();
-  ctx.postMessage({ type: 'memoriesInfo', data: info });
-};
-
 // === Rules Handlers ===
 const handleGetRules: MessageHandler = async (_msg, ctx) => {
   if (!ctx.rulesService) return;
@@ -1065,7 +1028,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   deleteMCPServer: handleDeleteMCPServer,
   createBackup: handleCreateBackup,
   restoreBackup: handleRestoreBackup,
-  refreshUsage: handleRefreshUsage,
   deleteConversation: handleDeleteConversation,
   searchConversations: handleSearchConversations,
   exportConversation: handleExportConversation,
@@ -1073,7 +1035,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   addPermission: handleAddPermission,
   removePermission: handleRemovePermission,
   revertFile: handleRevertFile,
-  openCCUsageTerminal: handleOpenCCUsageTerminal,
   pickImageFile: handlePickImageFile,
   pickWorkspaceFile: handlePickWorkspaceFile,
   getClipboardText: handleGetClipboard,
@@ -1083,11 +1044,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
   editMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.editMessage(msg.userInputIndex as number, msg.newText as string),
   regenerateResponse: (_msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.regenerateResponse(),
-  // Memories
-  getMemories: handleGetMemories,
-  editMemories: handleEditMemories,
-  clearMemories: handleClearMemories,
-  extractMemoriesNow: handleExtractMemoriesNow,
   // Rules
   getRules: handleGetRules,
   createDefaultRules: handleCreateDefaultRules,

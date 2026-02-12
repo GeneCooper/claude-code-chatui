@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { t } from '../i18n'
+
 
 interface Props {
   text: string
@@ -35,7 +35,7 @@ export function ThinkingBlock({ text }: Props) {
         }}
       >
         <span className={`transition-transform ${expanded ? 'rotate-90' : ''}`} style={{ fontSize: '10px' }}>&#9654;</span>
-        <span style={{ fontStyle: 'italic' }}>{t('thinking.label')}</span>
+        <span style={{ fontStyle: 'italic' }}>Thinking...</span>
         <span className="ml-auto text-[10px] opacity-50">
           {text.length > 100 ? `${Math.ceil(text.length / 4)} words` : ''}
         </span>
@@ -46,7 +46,7 @@ export function ThinkingBlock({ text }: Props) {
             onClick={handleCopy}
             className="absolute right-2 top-1 opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px] z-10"
           >
-            {copied ? t('message.copied') : t('message.copy')}
+            {copied ? 'Copied!' : 'Copy'}
           </button>
           <div
             className="text-xs whitespace-pre-wrap max-h-60 overflow-y-auto"

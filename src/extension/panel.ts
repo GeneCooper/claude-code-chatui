@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
-import { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import { ConversationService, BackupService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
@@ -14,7 +14,6 @@ import { createModuleLogger } from '../shared/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
 import type { ContextCollector } from './contextCollector';
-import type { MemoriesService } from './memoriesService';
 import type { NextEditAnalyzer } from './nextEditAnalyzer';
 import type { RulesService } from './rulesService';
 
@@ -134,11 +133,9 @@ export class PanelProvider {
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
     private readonly _backupService: BackupService,
-    private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
     private readonly _contextCollector?: ContextCollector,
-    private readonly _memoriesService?: MemoriesService,
     private readonly _nextEditAnalyzer?: NextEditAnalyzer,
     private readonly _rulesService?: RulesService,
   ) {
@@ -193,12 +190,6 @@ export class PanelProvider {
     });
 
     this._setupClaudeServiceHandlers();
-
-    this._usageService.onUsageUpdate((data) => { this._postMessage({ type: 'usageUpdate', data }); });
-    this._usageService.onError((err) => { this._postMessage({ type: 'usageError', data: err }); });
-
-    // Real-time rate-limit updates from the main Claude process stderr
-    this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
 
     // Track editor text selection and send to webview
     this._disposables.push(
@@ -490,7 +481,6 @@ export class PanelProvider {
       conversationService: this._conversationService,
       mcpService: this._mcpService,
       backupService: this._backupService,
-      usageService: this._usageService,
       permissionService: this._permissionService,
       stateManager: this._stateManager,
       settingsManager: this._settingsManager,
@@ -506,7 +496,6 @@ export class PanelProvider {
       forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
       editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.regenerateResponse(),
-      memoriesService: this._memoriesService,
       rulesService: this._rulesService,
     };
   }
@@ -543,7 +532,7 @@ export class PanelProvider {
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
-    // Async: build context, memories, rules → then send
+    // Async: build context, rules → then send
     void this._buildEnhancedMessage(text, cwd).then(({ actualText, additionalSystemPrompt }) => {
       void this._claudeService.sendMessage(actualText, {
         cwd, planMode, thinkingMode, yoloMode,
@@ -586,15 +575,8 @@ export class PanelProvider {
       } catch { /* auto-context failure is non-fatal */ }
     }
 
-    // Feature 2 + 4: Build additional system prompt from memories + rules
+    // Build additional system prompt from rules
     const systemParts: string[] = [];
-
-    if (this._memoriesService) {
-      try {
-        const memoriesContent = await this._memoriesService.getSystemPromptContent();
-        if (memoriesContent) systemParts.push(memoriesContent);
-      } catch { /* memories failure is non-fatal */ }
-    }
 
     if (this._rulesService) {
       try {
@@ -618,7 +600,6 @@ export class PanelProvider {
       this._stateManager.isProcessing = false;
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
-      this._usageService.onClaudeSessionEnd();
 
       // Desktop notification when panel is not visible
       const notifEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI')
@@ -628,15 +609,6 @@ export class PanelProvider {
         vscode.window.showInformationMessage('Claude Code: Response complete');
       }
 
-      // Feature 2: Auto-extract memories from conversation
-      if (this._memoriesService) {
-        const conversation = this._messageProcessor.currentConversation;
-        void this._memoriesService.extractMemories(conversation).then(() => {
-          void this._memoriesService!.getMemoriesInfo().then((info) => {
-            this._postMessage({ type: 'memoriesInfo', data: info });
-          });
-        });
-      }
     });
 
     this._claudeService.onError((error) => {
@@ -657,10 +629,6 @@ export class PanelProvider {
           }
         }
       }
-    });
-
-    this._claudeService.onAccountInfo((subscriptionType) => {
-      this._postMessage({ type: 'accountInfo', data: { subscriptionType } });
     });
 
     this._claudeService.onPermissionRequest((request) => {

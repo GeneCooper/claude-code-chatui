@@ -3,15 +3,15 @@ import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
 import { MODEL_CONTEXT_LIMIT } from '../../shared/constants'
-import { t } from '../i18n'
+
 
 const STATUS_PHRASES = [
-  () => t('chat.claudeWorking'),
-  () => t('chat.analyzing'),
-  () => t('chat.thinkingThrough'),
-  () => t('chat.processing'),
-  () => t('chat.reasoning'),
-  () => t('chat.workingOnIt'),
+  () => 'Claude is working',
+  () => 'Analyzing your request',
+  () => 'Thinking through this',
+  () => 'Processing',
+  () => 'Reasoning',
+  () => 'Working on it',
 ]
 
 function useProcessingText(isProcessing: boolean) {
@@ -37,7 +37,7 @@ function useProcessingText(isProcessing: boolean) {
     }
   }, [isProcessing])
 
-  if (!isProcessing) return t('status.askAnything')
+  if (!isProcessing) return 'Ask anything or type / for commands'
   return STATUS_PHRASES[index]() + '.'.repeat(dotCount)
 }
 
@@ -45,7 +45,6 @@ export function StatusBar() {
   const tokens = useChatStore((s) => s.tokens)
   const totals = useChatStore((s) => s.totals)
   const isProcessing = useChatStore((s) => s.isProcessing)
-  const memoriesInfo = useUIStore((s) => s.memoriesInfo)
   const [showDetails, setShowDetails] = useState(false)
   const statusText = useProcessingText(isProcessing)
 
@@ -136,23 +135,6 @@ export function StatusBar() {
           <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
         )}
 
-        {memoriesInfo && memoriesInfo.count > 0 && (
-          <span
-            className="flex items-center gap-1 cursor-pointer"
-            style={{ opacity: 0.6, transition: 'opacity 0.15s ease' }}
-            onClick={() => postMessage({ type: 'editMemories' })}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
-            title={t('status.memories')}
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a10 10 0 0110 10 10 10 0 01-10 10A10 10 0 012 12 10 10 0 0112 2z" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-            <span style={{ color: '#a78bfa' }}>{memoriesInfo.count}</span>
-          </span>
-        )}
-
       </div>
 
       {/* Details panel */}
@@ -165,30 +147,30 @@ export function StatusBar() {
             borderTop: '1px solid var(--vscode-panel-border)',
           }}
         >
-          <span>{t('status.requests')}</span>
+          <span>Requests:</span>
           <span className="text-right">{totals.requestCount}</span>
-          <span>{t('status.totalCost')}</span>
+          <span>Total Cost:</span>
           <span className="text-right" style={{ fontWeight: 600 }}>{formatCost(totals.totalCost)}</span>
 
           {/* Token breakdown */}
           <span style={{ marginTop: '4px', gridColumn: '1 / -1', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '4px', fontWeight: 600 }}>
-            {t('status.tokens')}
+            Tokens
           </span>
-          <span>{t('status.input')}</span>
+          <span>Input:</span>
           <span className="text-right">{formatTokens(tokens.totalTokensInput)}</span>
-          <span>{t('status.output')}</span>
+          <span>Output:</span>
           <span className="text-right">{formatTokens(tokens.totalTokensOutput)}</span>
 
           {/* Current request tokens */}
           {tokens.currentInputTokens > 0 && (
             <>
-              <span style={{ opacity: 0.7 }}>{t('status.lastInput')}</span>
+              <span style={{ opacity: 0.7 }}>Last Input:</span>
               <span className="text-right" style={{ opacity: 0.7 }}>{formatTokens(tokens.currentInputTokens)}</span>
             </>
           )}
           {tokens.currentOutputTokens > 0 && (
             <>
-              <span style={{ opacity: 0.7 }}>{t('status.lastOutput')}</span>
+              <span style={{ opacity: 0.7 }}>Last Output:</span>
               <span className="text-right" style={{ opacity: 0.7 }}>{formatTokens(tokens.currentOutputTokens)}</span>
             </>
           )}
@@ -197,25 +179,25 @@ export function StatusBar() {
           {(tokens.cacheReadTokens > 0 || tokens.cacheCreationTokens > 0) && (
             <>
               <span style={{ marginTop: '4px', gridColumn: '1 / -1', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '4px', fontWeight: 600 }}>
-                {t('status.cache')}
+                Cache
               </span>
             </>
           )}
           {tokens.cacheReadTokens > 0 && (
             <>
-              <span style={{ color: '#4ec9b0' }}>{t('status.cacheRead')}</span>
+              <span style={{ color: '#4ec9b0' }}>Cache Read:</span>
               <span className="text-right" style={{ color: '#4ec9b0' }}>{formatTokens(tokens.cacheReadTokens)}</span>
             </>
           )}
           {tokens.cacheCreationTokens > 0 && (
             <>
-              <span style={{ color: '#cca700' }}>{t('status.cacheCreate')}</span>
+              <span style={{ color: '#cca700' }}>Cache Create:</span>
               <span className="text-right" style={{ color: '#cca700' }}>{formatTokens(tokens.cacheCreationTokens)}</span>
             </>
           )}
           {cacheSavingsPercent > 0 && (
             <>
-              <span style={{ color: '#4ec9b0' }}>{t('status.cacheSavings')}</span>
+              <span style={{ color: '#4ec9b0' }}>Cache Savings:</span>
               <span className="text-right" style={{ color: '#4ec9b0' }}>{cacheSavingsPercent}%</span>
             </>
           )}

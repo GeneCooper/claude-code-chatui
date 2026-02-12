@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { t } from '../i18n'
 
 interface Props {
   text: string
@@ -79,7 +78,7 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
                 <button
                   onClick={(e) => { e.stopPropagation(); setEditText(text); setIsEditing(true) }}
                   className="checkpoint-action-btn"
-                  title={t('message.editMessage')}
+                  title="Edit message"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -91,7 +90,7 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
                 <button
                   onClick={(e) => { e.stopPropagation(); onFork() }}
                   className="checkpoint-action-btn"
-                  title={t('message.forkFromHere')}
+                  title="Fork from here"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="6" y1="3" x2="6" y2="15" />
@@ -105,7 +104,7 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
                 <button
                   onClick={(e) => { e.stopPropagation(); onRewind() }}
                   className="checkpoint-action-btn"
-                  title={t('message.rewindToHere')}
+                  title="Rewind to here"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="1 4 1 10 7 10" />
@@ -116,7 +115,7 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
               <button
                 onClick={(e) => { e.stopPropagation(); handleCopy() }}
                 className="checkpoint-action-btn"
-                title={t('message.copyMessage')}
+                title="Copy message"
               >
                 {copied ? (
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -183,7 +182,7 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
                     background: 'rgba(255,255,255,0.08)', color: 'inherit', opacity: 0.7,
                   }}
                 >
-                  {t('message.cancel')}
+                  Cancel
                 </button>
                 <button
                   onClick={handleEditSave}
@@ -193,7 +192,7 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
                     background: 'var(--chatui-accent)', color: '#fff',
                   }}
                 >
-                  {t('message.saveAndSend')}
+                  Save &amp; Send
                 </button>
               </div>
             </div>

@@ -1,12 +1,11 @@
 import { postMessage } from '../hooks'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import { t } from '../i18n'
 
 const MODELS = [
-  { value: 'claude-opus-4-6', label: 'Opus', descKey: 'model.mostCapable' as const, color: '#a78bfa', icon: '★' },
-  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', descKey: 'model.fastBalanced' as const, color: '#60a5fa', icon: '◆' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', descKey: 'model.lightweight' as const, color: '#4ade80', icon: '●' },
-  { value: 'default', label: 'Default', descKey: 'model.userConfigured' as const, color: '#9ca3af', icon: '○' },
+  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
+  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '◆' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '●' },
+  { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '○' },
 ]
 
 interface Props {
@@ -72,7 +71,7 @@ export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: P
             alignItems: 'center',
           }}
         >
-          <span id="model-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>{t('model.selectModel')}</span>
+          <span id="model-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>Select Model</span>
           <button
             onClick={onClose}
             style={{
@@ -130,7 +129,7 @@ export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: P
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 600 }}>{model.label}</div>
-                  <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>{t(model.descKey)}</div>
+                  <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>{model.desc}</div>
                 </div>
                 {model.value === selectedModel && (
                   <span style={{ color: model.color, fontSize: '14px' }}>✓</span>
@@ -161,7 +160,7 @@ export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: P
               <polyline points="4 17 10 11 4 5" />
               <line x1="12" y1="19" x2="20" y2="19" />
             </svg>
-            <span>{t('model.configureTerminal')}</span>
+            <span>Configure in Terminal</span>
           </div>
         </div>
       </div>

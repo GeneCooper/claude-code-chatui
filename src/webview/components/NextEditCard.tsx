@@ -1,6 +1,5 @@
 import { postMessage } from '../hooks'
 import { useChatStore } from '../store'
-import { t } from '../i18n'
 
 export function NextEditCard() {
   const suggestions = useChatStore((s) => s.nextEditSuggestions)
@@ -75,9 +74,9 @@ export function NextEditCard() {
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(128, 128, 128, 0.2)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(128, 128, 128, 0.1)' }}
-                title={t('tool.open')}
+                title="Open"
               >
-                {t('tool.open')}
+                Open
               </button>
               <button
                 onClick={() => {

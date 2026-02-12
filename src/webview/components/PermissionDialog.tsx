@@ -3,7 +3,6 @@ import { postMessage } from '../hooks'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useChatStore } from '../store'
 import { markOptimisticPermission } from '../mutations'
-import { t } from '../i18n'
 
 interface Props {
   data: Record<string, unknown>
@@ -84,7 +83,7 @@ export function PermissionDialog({ data }: Props) {
       {/* Header */}
       <div className="flex items-center gap-2 mb-3" style={{ fontWeight: 600 }}>
         <span style={{ fontSize: '16px' }}>{'⚠️'}</span>
-        <span id="permission-dialog-title" className="text-sm">{t('permission.title', { tool })}</span>
+        <span id="permission-dialog-title" className="text-sm">{`Permission Required: ${tool}`}</span>
 
         {/* More menu */}
         <div className="relative ml-auto">
@@ -136,7 +135,7 @@ export function PermissionDialog({ data }: Props) {
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
-                {t('permission.enableYolo')}
+                Enable YOLO Mode
               </button>
               <button
                 onClick={() => { handleRespond(true, true); setShowMore(false) }}
@@ -150,7 +149,7 @@ export function PermissionDialog({ data }: Props) {
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
-                {t('permission.allowAlways')}
+                Allow this tool always
               </button>
             </div>
           )}
@@ -181,7 +180,7 @@ export function PermissionDialog({ data }: Props) {
           onClick={() => setShowRawInput(!showRawInput)}
           className="text-[10px] opacity-40 hover:opacity-70 cursor-pointer bg-transparent border-none text-inherit mt-1"
         >
-          {showRawInput ? t('permission.hideDetails') : t('permission.showDetails')}
+          {showRawInput ? 'Hide details' : 'Show details'}
         </button>
       )}
       {showRawInput && input && (
@@ -212,7 +211,7 @@ export function PermissionDialog({ data }: Props) {
             e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
           }}
         >
-          {t('permission.deny')}
+          Deny
         </button>
         <button
           onClick={() => handleRespond(true, true)}
@@ -236,7 +235,7 @@ export function PermissionDialog({ data }: Props) {
             e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
-          {t('permission.alwaysAllow')}
+          Always Allow
         </button>
         <button
           onClick={() => handleRespond(true)}
@@ -252,7 +251,7 @@ export function PermissionDialog({ data }: Props) {
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--vscode-button-background)' }}
         >
-          {t('permission.allow')}
+          Allow
         </button>
       </div>
     </div>

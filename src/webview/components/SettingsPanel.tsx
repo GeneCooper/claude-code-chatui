@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { postMessage } from '../hooks'
 import { useSettingsStore, type CustomSnippet } from '../store'
 import { useUIStore } from '../store'
-import { t } from '../i18n'
+
 
 export function SettingsPanel() {
   const { thinkingIntensity, yoloMode, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
@@ -50,30 +50,30 @@ export function SettingsPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b border-(--vscode-panel-border)">
-        <span className="font-medium text-sm">{t('settings.title')}</span>
+        <span className="font-medium text-sm">Settings</span>
         <button
           onClick={() => setActiveView('chat')}
           className="text-xs opacity-60 hover:opacity-100 cursor-pointer bg-transparent border-none text-inherit"
         >
-          {t('settings.backToChat')}
+          Back to Chat
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-4">
         {/* Thinking Intensity */}
         <div>
-          <label className="text-xs font-medium block mb-1.5">{t('settings.thinkingIntensity')}</label>
+          <label className="text-xs font-medium block mb-1.5">Thinking Intensity</label>
           <select
             value={thinkingIntensity}
             onChange={(e) => updateSetting('thinking.intensity', e.target.value)}
             className="w-full px-2 py-1.5 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
           >
-            <option value="think">{t('settings.think')}</option>
-            <option value="think-hard">{t('settings.thinkHard')}</option>
-            <option value="think-harder">{t('settings.thinkHarder')}</option>
-            <option value="ultrathink">{t('settings.ultrathink')}</option>
+            <option value="think">Think</option>
+            <option value="think-hard">Think Hard</option>
+            <option value="think-harder">Think Harder</option>
+            <option value="ultrathink">Ultrathink</option>
           </select>
-          <p className="text-[10px] opacity-50 mt-1">{t('settings.thinkingDesc')}</p>
+          <p className="text-[10px] opacity-50 mt-1">Controls how deeply Claude thinks through problems</p>
         </div>
 
         {/* YOLO Mode */}
@@ -85,22 +85,22 @@ export function SettingsPanel() {
               onChange={(e) => updateSetting('yoloMode', e.target.checked)}
               className="accent-(--vscode-focusBorder)"
             />
-            <span className="text-xs font-medium">{t('settings.yoloMode')}</span>
+            <span className="text-xs font-medium">YOLO Mode</span>
           </label>
           <p className="text-[10px] opacity-50 mt-1">
-            {t('settings.yoloDesc')}
+            Skip all permission prompts. Use with caution — Claude will execute tools without asking.
           </p>
         </div>
 
         {/* Custom Prompt Snippets */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium">{t('settings.snippets')}</label>
+            <label className="text-xs font-medium">Custom Prompt Snippets</label>
             <button
               onClick={() => setShowSnippetForm(!showSnippetForm)}
               className="text-[10px] px-2 py-0.5 rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
             >
-              {showSnippetForm ? t('settings.cancel') : t('settings.addSnippet')}
+              {showSnippetForm ? 'Cancel' : '+ Add'}
             </button>
           </div>
 
@@ -109,19 +109,19 @@ export function SettingsPanel() {
               <input
                 value={snippetCmd}
                 onChange={(e) => setSnippetCmd(e.target.value)}
-                placeholder={t('settings.commandPlaceholder')}
+                placeholder="Command name (e.g. my-review)"
                 className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
               />
               <input
                 value={snippetDesc}
                 onChange={(e) => setSnippetDesc(e.target.value)}
-                placeholder={t('settings.descPlaceholder')}
+                placeholder="Description (optional)"
                 className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
               />
               <textarea
                 value={snippetPrompt}
                 onChange={(e) => setSnippetPrompt(e.target.value)}
-                placeholder={t('settings.promptPlaceholder')}
+                placeholder="Prompt template..."
                 rows={3}
                 className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded resize-none"
               />
@@ -130,7 +130,7 @@ export function SettingsPanel() {
                 disabled={!snippetCmd.trim() || !snippetPrompt.trim()}
                 className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none disabled:opacity-50"
               >
-                {t('settings.saveSnippet')}
+                Save Snippet
               </button>
             </div>
           )}
@@ -150,77 +150,77 @@ export function SettingsPanel() {
                     onClick={() => handleDeleteSnippet(snippet.command)}
                     className="px-1.5 py-0.5 text-[10px] opacity-50 hover:opacity-100 cursor-pointer bg-transparent border-none text-(--vscode-errorForeground)"
                   >
-                    {t('settings.delete')}
+                    Delete
                   </button>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-[10px] opacity-40">{t('settings.noSnippets')}</p>
+            <p className="text-[10px] opacity-40">No custom snippets. Add one to use as /command.</p>
           )}
         </div>
 
         {/* Memories */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
-          <label className="text-xs font-medium block mb-2">{t('settings.memories')}</label>
-          <p className="text-[10px] opacity-50 mb-2">{t('settings.memoriesDesc')}</p>
+          <label className="text-xs font-medium block mb-2">Memories</label>
+          <p className="text-[10px] opacity-50 mb-2">Auto-extract key decisions and patterns from conversations for cross-session learning.</p>
           <div className="flex gap-2">
             <button
               onClick={() => postMessage({ type: 'editMemories' })}
               className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
             >
-              {t('settings.editMemories')}
+              Edit
             </button>
             <button
               onClick={() => postMessage({ type: 'extractMemoriesNow' })}
               className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-inherit"
             >
-              {t('settings.extractNow')}
+              Extract Now
             </button>
             <button
               onClick={() => postMessage({ type: 'clearMemories' })}
               className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-(--vscode-errorForeground)"
             >
-              {t('settings.clearMemories')}
+              Clear
             </button>
           </div>
         </div>
 
         {/* Architecture Rules */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
-          <label className="text-xs font-medium block mb-2">{t('settings.rules')}</label>
-          <p className="text-[10px] opacity-50 mb-2">{t('settings.rulesDesc')}</p>
+          <label className="text-xs font-medium block mb-2">Architecture Rules</label>
+          <p className="text-[10px] opacity-50 mb-2">Define coding standards and architecture rules. Edits are checked against these rules.</p>
           <div className="flex gap-2">
             <button
               onClick={() => postMessage({ type: 'createDefaultRules' })}
               className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
             >
-              {t('settings.createDefaultRules')}
+              Create Defaults
             </button>
             <button
               onClick={() => postMessage({ type: 'getRules' })}
               className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-inherit"
             >
-              {t('settings.manageRules')}
+              Manage
             </button>
           </div>
         </div>
 
         {/* Navigation shortcuts */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
-          <label className="text-xs font-medium block mb-2">{t('settings.quickLinks')}</label>
+          <label className="text-xs font-medium block mb-2">Quick Links</label>
           <div className="space-y-1.5">
             <button
               onClick={() => { useUIStore.getState().setShowMCPModal(true); setActiveView('chat') }}
               className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-(--vscode-list-hoverBackground) cursor-pointer bg-transparent border-none text-inherit"
             >
-              {t('settings.mcpManagement')}
+              MCP Server Management
             </button>
             <button
               onClick={() => setActiveView('history')}
               className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-(--vscode-list-hoverBackground) cursor-pointer bg-transparent border-none text-inherit"
             >
-              {t('settings.conversationHistory')}
+              Conversation History
             </button>
           </div>
         </div>

@@ -2,7 +2,6 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { postMessage } from '../hooks'
 import { useConversationStore } from '../store'
 import { useUIStore } from '../store'
-import { t } from '../i18n'
 
 type ConvEntry = ReturnType<typeof useConversationStore.getState>['conversations'][number]
 
@@ -17,10 +16,10 @@ function groupByTime(conversations: ConvEntry[]): TimeGroup[] {
   const yesterdayStart = todayStart - 86400000
   const weekStart = todayStart - 6 * 86400000
 
-  const todayLabel = t('history.today')
-  const yesterdayLabel = t('history.yesterday')
-  const last7DaysLabel = t('history.last7Days')
-  const earlierLabel = t('history.earlier')
+  const todayLabel = 'Today'
+  const yesterdayLabel = 'Yesterday'
+  const last7DaysLabel = 'Last 7 days'
+  const earlierLabel = 'Earlier'
 
   const groups: Record<string, ConvEntry[]> = {
     [todayLabel]: [],
@@ -99,7 +98,7 @@ export function HistoryView() {
           borderBottom: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>{t('history.title')}</h3>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Conversation History</h3>
         <button
           onClick={() => setActiveView('chat')}
           className="cursor-pointer bg-transparent border-none text-inherit"
@@ -111,7 +110,7 @@ export function HistoryView() {
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
         >
-          {t('history.backToChat')}
+          {"← Back to Chat"}
         </button>
       </div>
 
@@ -133,7 +132,7 @@ export function HistoryView() {
           </span>
           <input
             type="text"
-            placeholder={t('history.search')}
+            placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             style={{
@@ -168,7 +167,7 @@ export function HistoryView() {
             opacity: 0.6,
             fontSize: '14px',
           }}>
-            {searchQuery ? t('history.noMatch') : t('history.noHistory')}
+            {searchQuery ? 'No matching conversations' : 'No conversation history'}
           </div>
         ) : (
           <>
@@ -224,13 +223,13 @@ export function HistoryView() {
                         {formatDate(conv.startTime)} {formatTime(conv.startTime)}
                       </span>
                       <span style={{ fontSize: '10px', color: 'var(--vscode-descriptionForeground)', opacity: 0.8 }}>
-                        {conv.messageCount} {t('history.msgs')} {formatCost(conv.totalCost)}
+                        {conv.messageCount} msgs {formatCost(conv.totalCost)}
                       </span>
                     </div>
 
                     {/* Title / first message */}
                     <div className="truncate" style={{ fontWeight: 500, fontSize: '13px' }}>
-                      {conv.firstUserMessage || t('history.noMessage')}
+                      {conv.firstUserMessage || 'No message'}
                     </div>
 
                     {/* Preview */}
@@ -269,7 +268,7 @@ export function HistoryView() {
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.8' }}
               >
-                {t('history.loadMore', { remaining: String(conversations.length - displayCount) })}
+                {`Load more (${conversations.length - displayCount} remaining)`}
               </button>
             )}
           </>

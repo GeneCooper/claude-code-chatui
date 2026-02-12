@@ -1,6 +1,5 @@
 import React, { Component, type ReactNode, type ErrorInfo } from 'react'
 import { createModuleLogger } from '../../shared/logger'
-import { t } from '../i18n'
 
 const log = createModuleLogger('ErrorBoundary')
 
@@ -48,7 +47,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className="flex flex-col items-center justify-center p-6 text-center">
           <div className="text-(--vscode-errorForeground) text-sm font-medium mb-2">
-            {t('error.somethingWrong')}
+            Something went wrong
           </div>
           <div className="text-(--vscode-descriptionForeground) text-xs mb-4 max-w-md">
             {this.state.error.message}
@@ -57,7 +56,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             onClick={this.handleRetry}
             className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) hover:bg-(--vscode-button-hoverBackground)"
           >
-            {t('error.tryAgain')}
+            Try Again
           </button>
         </div>
       )

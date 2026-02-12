@@ -3,19 +3,18 @@ import { postMessage } from '../hooks'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useMCPStore } from '../store'
 import { useUIStore } from '../store'
-import { t } from '../i18n'
 
 const POPULAR_SERVERS = [
   {
     name: 'context7',
-    description: t('mcp.libraryDocs'),
+    description: 'Up-to-date library docs',
     type: 'http' as const,
     url: 'https://context7.liam.sh/mcp',
     icon: '📚',
   },
   {
     name: 'sequential-thinking',
-    description: t('mcp.stepReasoning'),
+    description: 'Step-by-step reasoning',
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
@@ -23,7 +22,7 @@ const POPULAR_SERVERS = [
   },
   {
     name: 'memory',
-    description: t('mcp.memory'),
+    description: 'Persistent memory/knowledge',
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-memory'],
@@ -31,7 +30,7 @@ const POPULAR_SERVERS = [
   },
   {
     name: 'puppeteer',
-    description: t('mcp.browser'),
+    description: 'Browser automation',
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-puppeteer'],
@@ -39,7 +38,7 @@ const POPULAR_SERVERS = [
   },
   {
     name: 'fetch',
-    description: t('mcp.httpFetch'),
+    description: 'HTTP fetch requests',
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-fetch'],
@@ -47,7 +46,7 @@ const POPULAR_SERVERS = [
   },
   {
     name: 'filesystem',
-    description: t('mcp.localFiles'),
+    description: 'Read/write local files',
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
@@ -194,7 +193,7 @@ export function MCPPanel() {
             flexShrink: 0,
           }}
         >
-          <span id="mcp-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>{t('mcp.title')}</span>
+          <span id="mcp-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>MCP Servers</span>
           <button
             onClick={handleClose}
             style={{
@@ -293,7 +292,7 @@ export function MCPPanel() {
                         e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
                       }}
                     >
-                      {t('mcp.edit')}
+                      Edit
                     </button>
                     <button
                       onClick={() => handleDelete(sName)}
@@ -314,7 +313,7 @@ export function MCPPanel() {
                         e.currentTarget.style.background = 'transparent'
                       }}
                     >
-                      {t('mcp.delete')}
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -345,7 +344,7 @@ export function MCPPanel() {
                 e.currentTarget.style.background = 'transparent'
               }}
             >
-              {t('mcp.addServer')}
+              + Add MCP Server
             </button>
           )}
 
@@ -361,17 +360,17 @@ export function MCPPanel() {
               }}
             >
               <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '14px', opacity: 0.8 }}>
-                {editingServer ? t('mcp.editServer', { name: editingServer }) : t('mcp.newServer')}
+                {editingServer ? `Edit: ${editingServer}` : 'New Server'}
               </div>
 
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
-                  {t('mcp.name')}
+                  Name
                 </label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={t('mcp.namePlaceholder')}
+                  placeholder="my-server"
                   disabled={!!editingServer}
                   style={{ ...inputStyle, opacity: editingServer ? 0.5 : 1 }}
                 />
@@ -379,7 +378,7 @@ export function MCPPanel() {
 
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
-                  {t('mcp.type')}
+                  Type
                 </label>
                 <select
                   value={serverType}
@@ -396,23 +395,23 @@ export function MCPPanel() {
                 <>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
-                      {t('mcp.command')}
+                      Command
                     </label>
                     <input
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
-                      placeholder={t('mcp.commandPlaceholder')}
+                      placeholder="npx -y @modelcontextprotocol/server-xxx"
                       style={inputStyle}
                     />
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
-                      {t('mcp.arguments')}
+                      Arguments (space separated)
                     </label>
                     <input
                       value={args}
                       onChange={(e) => setArgs(e.target.value)}
-                      placeholder={t('mcp.argsPlaceholder')}
+                      placeholder="/path/to/dir --flag value"
                       style={inputStyle}
                     />
                   </div>
@@ -420,12 +419,12 @@ export function MCPPanel() {
               ) : (
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500, fontSize: '11px', opacity: 0.7 }}>
-                    {t('mcp.url')}
+                    URL
                   </label>
                   <input
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    placeholder={t('mcp.urlPlaceholder')}
+                    placeholder="https://example.com/mcp"
                     style={inputStyle}
                   />
                 </div>
@@ -447,7 +446,7 @@ export function MCPPanel() {
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
-                  {t('mcp.cancel')}
+                  Cancel
                 </button>
                 <button
                   onClick={handleSave}
@@ -466,7 +465,7 @@ export function MCPPanel() {
                   onMouseEnter={(e) => { if (name.trim()) e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--vscode-button-background)' }}
                 >
-                  {editingServer ? t('mcp.update') : t('mcp.add')}
+                  {editingServer ? 'Update' : 'Add'}
                 </button>
               </div>
             </div>
@@ -481,7 +480,7 @@ export function MCPPanel() {
               }}
             >
               <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '10px', opacity: 0.7 }}>
-                {t('mcp.popularServers')}
+                Popular Servers
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {POPULAR_SERVERS.filter((s) => !(s.name in servers)).map((server) => (
@@ -516,7 +515,7 @@ export function MCPPanel() {
                       </div>
                     </div>
                     <span style={{ fontSize: '10px', color: 'var(--chatui-accent)', fontWeight: 500, opacity: 0.7 }}>
-                      {t('mcp.add')}
+                      Add
                     </span>
                   </button>
                 ))}

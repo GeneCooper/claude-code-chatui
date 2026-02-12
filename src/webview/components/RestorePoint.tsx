@@ -1,5 +1,4 @@
 import { postMessage } from '../hooks'
-import { t } from '../i18n'
 
 interface Props {
   data: {
@@ -23,7 +22,7 @@ export function RestorePoint({ data }: Props) {
         onClick={() => postMessage({ type: 'restoreBackup', commitSha: data.sha })}
         className="px-2 py-0.5 text-[10px] rounded bg-(--vscode-button-secondaryBackground) text-(--vscode-button-secondaryForeground) hover:bg-(--vscode-button-secondaryHoverBackground) cursor-pointer border-none whitespace-nowrap"
       >
-        {t('restore.restore')}
+        Restore
       </button>
     </div>
   )

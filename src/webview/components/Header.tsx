@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
-import { UsageIndicator } from './UsageIndicator'
 import { BranchIndicator } from './BranchIndicator'
-import { t } from '../i18n'
+
 
 declare global {
   interface Window { __ICON_URI__?: string }
@@ -49,7 +48,7 @@ export function Header() {
       <div className="flex items-center gap-2">
         <LogoIcon size={20} />
         <h2 className="m-0" style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.3px' }}>
-          {t('app.title')}
+          Claude Code ChatUI
         </h2>
         {sessionId && (
           <span className="text-[10px] opacity-40 font-mono">
@@ -75,11 +74,8 @@ export function Header() {
       </div>
 
       <div className="flex items-center" style={{ fontSize: '11px', height: '28px' }}>
-        <UsageIndicator />
-        <HeaderSep />
-
         <HeaderIconButton
-          title={t('header.newChat')}
+          title="New Chat"
           onClick={() => postMessage({ type: 'createNewPanel' })}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -89,7 +85,7 @@ export function Header() {
         </HeaderIconButton>
 
         <HeaderIconButton
-          title={t('header.history')}
+          title="History"
           active={activeView === 'history'}
           onClick={() => setActiveView(activeView === 'history' ? 'chat' : 'history')}
         >

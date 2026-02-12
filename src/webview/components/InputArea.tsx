@@ -7,7 +7,7 @@ import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
-import { t } from '../i18n'
+
 
 export function InputArea() {
   const [text, setText] = useState('')
@@ -434,8 +434,8 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
                 boxShadow: thinkingMode ? '0 0 8px rgba(59, 130, 246, 0.2)' : 'none',
               }}
-              title={t('input.thinkingMode')}
-              aria-label={t('input.thinkingMode')}
+              title="Thinking mode"
+              aria-label="Thinking mode"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -457,14 +457,14 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
                 boxShadow: planMode ? '0 0 8px rgba(168, 85, 247, 0.2)' : 'none',
               }}
-              title={t('input.planMode')}
-              aria-label={t('input.planMode')}
+              title="Plan mode"
+              aria-label="Plan mode"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                 <rect x="9" y="3" width="6" height="4" rx="2" />
               </svg>
-              <span>{t('input.planMode')}</span>
+              <span>Plan mode</span>
             </button>
 
         <button
@@ -484,8 +484,8 @@ export function InputArea() {
             transition: 'all 0.2s ease',
             boxShadow: yoloMode ? '0 0 8px rgba(239, 68, 68, 0.3)' : 'none',
           }}
-          title={t('input.yoloMode')}
-          aria-label={t('input.yoloMode')}
+          title="YOLO mode - Skip all permission checks (dangerous!)"
+          aria-label="YOLO mode - Skip all permission checks (dangerous!)"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -569,7 +569,7 @@ export function InputArea() {
           className="resize-handle"
           onMouseDown={handleResizeStart}
           onDoubleClick={() => { setPreferredHeight(null) }}
-          title={t('input.resizeHandle')}
+          title="Drag to resize, double-click to reset"
         />
         {/* Drag overlay */}
         {isDragging && (
@@ -587,7 +587,7 @@ export function InputArea() {
             }}
           >
             <span style={{ fontSize: '12px', color: 'var(--chatui-accent)', fontWeight: 500 }}>
-              {t('input.dropFiles')}
+              Drop files to attach
             </span>
           </div>
         )}
@@ -599,7 +599,7 @@ export function InputArea() {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={ctrlEnterSend ? t('input.placeholderCtrl') : t('input.placeholder')}
+          placeholder={ctrlEnterSend ? 'Type your message... (Ctrl+Enter to send)' : 'Type your message to Claude Code...'}
           rows={1}
           className="w-full resize-none border-none focus:outline-none"
           style={{
@@ -636,8 +636,8 @@ export function InputArea() {
                 color: currentModel.color,
                 transition: 'all 0.2s ease',
               }}
-              title={t('input.selectModel')}
-              aria-label={t('input.selectModel')}
+              title="Select model"
+              aria-label="Select model"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
             >
@@ -658,12 +658,12 @@ export function InputArea() {
                 color: 'inherit',
                 transition: 'all 0.2s ease',
               }}
-              title={t('input.configureMCP')}
-              aria-label={t('input.configureMCP')}
+              title="Configure MCP servers"
+              aria-label="Configure MCP servers"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
             >
-              {t('input.mcp')}
+              MCP
             </button>
 
             <InputSep />
@@ -681,8 +681,8 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
                 fontSize: '10px',
               }}
-              title={ctrlEnterSend ? t('input.switchToEnter') : t('input.switchToCtrl')}
-              aria-label={ctrlEnterSend ? t('input.switchToEnter') : t('input.switchToCtrl')}
+              title={ctrlEnterSend ? 'Click to switch: Enter to send' : 'Click to switch: Ctrl+Enter to send'}
+              aria-label={ctrlEnterSend ? 'Click to switch: Enter to send' : 'Click to switch: Ctrl+Enter to send'}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
             >
@@ -707,8 +707,8 @@ export function InputArea() {
                 opacity: 0.7,
                 transition: 'all 0.15s ease',
               }}
-              title={t('input.attachFile')}
-              aria-label={t('input.attachFile')}
+              title="Attach workspace file"
+              aria-label="Attach workspace file"
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
                 e.currentTarget.style.opacity = '1'
@@ -739,8 +739,8 @@ export function InputArea() {
                 opacity: 0.7,
                 transition: 'all 0.15s ease',
               }}
-              title={t('input.slashCommands')}
-              aria-label={t('input.slashCommands')}
+              title="Slash commands"
+              aria-label="Slash commands"
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
                 e.currentTarget.style.opacity = '1'
@@ -769,8 +769,8 @@ export function InputArea() {
                   transition: 'opacity 0.15s ease',
                   marginLeft: '2px',
                 }}
-                title={t('input.stop')}
-                aria-label={t('input.stop')}
+                title="Stop"
+                aria-label="Stop"
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
               >
@@ -799,8 +799,8 @@ export function InputArea() {
                     transition: 'all 0.15s ease',
                     marginLeft: '2px',
                   }}
-                  title={t('input.send')}
-                  aria-label={t('input.send')}
+                  title="Send message"
+                  aria-label="Send message"
                   onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
                   onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
                 >
@@ -847,7 +847,7 @@ export function InputArea() {
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
               </svg>
-              <span>{autoContextInfo.totalFiles} {t('input.contextFiles')}</span>
+              <span>{autoContextInfo.totalFiles} context files</span>
             </span>
           </>
         )}

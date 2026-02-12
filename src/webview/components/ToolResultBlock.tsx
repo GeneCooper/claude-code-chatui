@@ -5,7 +5,6 @@ import { DiffView } from './DiffView'
 import { postMessage } from '../hooks'
 import { useSettingsStore } from '../store'
 import { isPermissionError } from '../utils'
-import { t } from '../i18n'
 
 interface Props {
   data: Record<string, unknown>
@@ -78,14 +77,14 @@ export function ToolResultBlock({ data }: Props) {
           background: isError ? '#e74c3c' : '#4ade80',
         }} />
         <span style={{ opacity: 0.6 }}>
-          {toolName ? `${toolName} ${t('tool.result')}` : t('tool.result')}
+          {toolName ? `${toolName} Result` : 'Result'}
         </span>
         {content && (
           <button
             onClick={handleCopy}
             className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
-            {copied ? t('message.copied') : t('message.copy')}
+            {copied ? 'Copied!' : 'Copy'}
           </button>
         )}
         {hasDiff && (
@@ -101,7 +100,7 @@ export function ToolResultBlock({ data }: Props) {
             }}
             className="ml-auto opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
-            {t('tool.openDiff')}
+            Open Diff
           </button>
         )}
       </div>
@@ -129,7 +128,7 @@ export function ToolResultBlock({ data }: Props) {
             color: 'var(--vscode-editorWarning-foreground, #ff9500)',
           }}
         >
-          <span style={{ opacity: 0.8 }}>{t('tool.yoloTip')}</span>
+          <span style={{ opacity: 0.8 }}>Tip: Enable YOLO mode to skip permission prompts</span>
           <button
             onClick={() => postMessage({ type: 'updateSettings', settings: { yoloMode: true } })}
             className="cursor-pointer border-none text-[10px] font-medium"
@@ -141,12 +140,12 @@ export function ToolResultBlock({ data }: Props) {
               borderRadius: 'var(--radius-sm)',
             }}
           >
-            {t('tool.enableYolo')}
+            Enable YOLO Mode
           </button>
         </div>
       )}
 
-      {!hasDiff && content && content !== t('tool.success') && (
+      {!hasDiff && content && content !== 'Tool executed successfully' && (
         <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           {language ? (
             <SyntaxHighlighter
@@ -184,7 +183,7 @@ export function ToolResultBlock({ data }: Props) {
               onClick={() => setExpanded(!expanded)}
               className="px-3 py-1 text-[10px] opacity-50 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit"
             >
-              {expanded ? t('tool.showLess') : t('tool.showMore')}
+              {expanded ? 'Show less' : 'Show more'}
             </button>
           )}
         </div>
