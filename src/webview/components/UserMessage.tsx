@@ -3,13 +3,11 @@ import { useState, useRef, useEffect } from 'react'
 interface Props {
   text: string
   images?: string[]
-  onFork?: () => void
-  onRewind?: () => void
   onEdit?: (newText: string) => void
   isProcessing?: boolean
 }
 
-export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessing }: Props) {
+export function UserMessage({ text, images, onEdit, isProcessing }: Props) {
   const [copied, setCopied] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -83,32 +81,6 @@ export function UserMessage({ text, images, onFork, onRewind, onEdit, isProcessi
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </button>
-              )}
-              {onFork && !isProcessing && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onFork() }}
-                  className="checkpoint-action-btn"
-                  title="Fork from here"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="6" y1="3" x2="6" y2="15" />
-                    <circle cx="18" cy="6" r="3" />
-                    <circle cx="6" cy="18" r="3" />
-                    <path d="M18 9a9 9 0 0 1-9 9" />
-                  </svg>
-                </button>
-              )}
-              {onRewind && !isProcessing && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onRewind() }}
-                  className="checkpoint-action-btn"
-                  title="Rewind to here"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="1 4 1 10 7 10" />
-                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                   </svg>
                 </button>
               )}

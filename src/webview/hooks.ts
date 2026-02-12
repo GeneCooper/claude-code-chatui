@@ -61,7 +61,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
       sessionId?: string
       totalCost?: number
       isProcessing?: boolean
-      branchMetadata?: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number }
     }
     if (!data?.messages) return
 
@@ -70,7 +69,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const chatMessages = data.messages
       .filter((m) => {
         // Only include message types that go into the messages array
-        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest', 'restorePoint']
+        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest']
         return validTypes.includes(m.type)
       })
       .map((m) => ({
@@ -91,7 +90,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
       isProcessing: data.isProcessing || false,
       totals: { ...state.totals, totalCost: data.totalCost || 0 },
       ...(todos ? { todos } : {}),
-      ...(data.branchMetadata ? { branchMetadata: data.branchMetadata } : {}),
     }))
 
     if (data.isProcessing) {
@@ -229,8 +227,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
   },
 
-  restorePoint: (msg) => { useChatStore.getState().addMessage({ type: 'restorePoint', data: msg.data }) },
-
   platformInfo: (msg) => {
     useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
   },
@@ -276,11 +272,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useChatStore.getState().setAutoContextInfo(
       msg.data as { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean },
     )
-  },
-
-  nextEditSuggestions: (msg) => {
-    const data = msg.data as { suggestions: Array<{ id: string; filePath: string; reason: string; changedSymbols: string[]; severity: 'info' | 'warning' }> }
-    useChatStore.getState().setNextEditSuggestions(data.suggestions)
   },
 
   ruleViolations: (msg) => {

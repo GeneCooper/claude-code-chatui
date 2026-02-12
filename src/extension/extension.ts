@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import { ClaudeService, PermissionService } from './claude';
-import { ConversationService, BackupService, MCPService } from './storage';
+import { ConversationService, MCPService } from './storage';
 import { DiffContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider } from './panel';
 import { PanelManager } from './panelManager';
 import { ContextCollector } from './contextCollector';
-import { NextEditAnalyzer } from './nextEditAnalyzer';
 import { RulesService } from './rulesService';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -14,17 +13,12 @@ export function activate(context: vscode.ExtensionContext): void {
   // Initialize shared services
   const conversationService = new ConversationService(context);
   const mcpService = new MCPService(context);
-  const backupService = new BackupService(context);
   const permissionService = new PermissionService(context);
   const outputChannel = vscode.window.createOutputChannel('Claude Code ChatUI');
 
   // Initialize new intelligent services
   const contextCollector = new ContextCollector();
-  const nextEditAnalyzer = new NextEditAnalyzer(contextCollector);
   const rulesService = new RulesService(context);
-
-  // Initialize backup repo in background
-  void backupService.initialize();
 
   // Register diff content provider
   const diffProvider = vscode.workspace.registerTextDocumentContentProvider(
@@ -38,10 +32,8 @@ export function activate(context: vscode.ExtensionContext): void {
     context,
     conversationService,
     mcpService,
-    backupService,
     permissionService,
     contextCollector,
-    nextEditAnalyzer,
     rulesService,
   );
 
@@ -49,9 +41,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const sidebarClaudeService = new ClaudeService(context);
   const sidebarProvider = new PanelProvider(
     context.extensionUri, context, sidebarClaudeService,
-    conversationService, mcpService, backupService, permissionService,
+    conversationService, mcpService, permissionService,
     panelManager,
-    contextCollector, nextEditAnalyzer, rulesService,
+    contextCollector, rulesService,
   );
 
   // Create sidebar webview provider

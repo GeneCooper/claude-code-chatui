@@ -144,16 +144,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   updateTodos: (todos) => set({ todos }),
 
-  setBranchMetadata: (metadata) => set({ branchMetadata: metadata }),
-
   setAutoContextInfo: (info) => set({ autoContextInfo: info }),
-
-  setNextEditSuggestions: (suggestions) => set({ nextEditSuggestions: suggestions }),
-
-  dismissNextEditSuggestion: (id) =>
-    set((state) => ({
-      nextEditSuggestions: state.nextEditSuggestions.filter((s) => s.id !== id),
-    })),
 
   setRuleViolations: (violations) => set({ ruleViolations: violations }),
 
@@ -167,7 +158,6 @@ export const useChatStore = create<ChatState>((set) => ({
       messages: restored.messages !== undefined ? restored.messages : state.messages,
       sessionId: restored.sessionId || null,
       totals: { totalCost: restored.totalCost || 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
-      branchMetadata: restored.branchMetadata || state.branchMetadata,
     })),
 }))
 

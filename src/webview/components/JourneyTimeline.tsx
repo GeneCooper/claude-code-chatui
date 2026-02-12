@@ -1,13 +1,11 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage } from '../store'
-import { postMessage } from '../hooks'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { FollowUpSuggestions } from './FollowUpSuggestions'
-import { NextEditCard } from './NextEditCard'
 import { RuleViolationCard } from './RuleViolationCard'
 
 // ============================================================================
@@ -121,7 +119,6 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
       case 'userInput':
       case 'error':
       case 'permissionRequest':
-      case 'restorePoint':
       case 'compactBoundary':
       case 'compacting':
       case 'loading': {
@@ -255,11 +252,9 @@ function LoadingIndicator() {
   )
 }
 
-function MessageRenderer({ message, userInputIndex, onFork, onRewind, onEdit, isProcessing }: {
+function MessageRenderer({ message, userInputIndex, onEdit, isProcessing }: {
   message: ChatMessage
   userInputIndex?: number
-  onFork?: (index: number) => void
-  onRewind?: (index: number) => void
   onEdit?: (index: number, newText: string) => void
   isProcessing?: boolean
 }) {
@@ -272,8 +267,6 @@ function MessageRenderer({ message, userInputIndex, onFork, onRewind, onEdit, is
         <UserMessage
           text={uText}
           images={uImages}
-          onFork={userInputIndex !== undefined && onFork ? () => onFork(userInputIndex) : undefined}
-          onRewind={userInputIndex !== undefined && onRewind ? () => onRewind(userInputIndex) : undefined}
           onEdit={userInputIndex !== undefined && onEdit ? (newText: string) => onEdit(userInputIndex, newText) : undefined}
           isProcessing={isProcessing}
         />
@@ -299,8 +292,6 @@ function MessageRenderer({ message, userInputIndex, onFork, onRewind, onEdit, is
       )
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
-    case 'restorePoint':
-      return <RestorePoint data={message.data as { sha: string; message: string; timestamp: string }} />
     default:
       return null
   }
@@ -407,13 +398,11 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
 interface Props {
   messages: ChatMessage[]
   isProcessing: boolean
-  onFork?: (userInputIndex: number) => void
-  onRewind?: (userInputIndex: number) => void
   onEdit?: (userInputIndex: number, newText: string) => void
   onRegenerate?: () => void
 }
 
-export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEdit, onRegenerate }: Props) {
+export function JourneyTimeline({ messages, isProcessing, onEdit, onRegenerate }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
   const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
 
@@ -482,8 +471,6 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEd
               key={item.message.id}
               message={item.message}
               userInputIndex={uiIdx}
-              onFork={onFork}
-              onRewind={onRewind}
               onEdit={onEdit}
               isProcessing={isProcessing}
             />
@@ -538,13 +525,8 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEd
         </div>
       )}
 
-      {/* Next Edit predictions & Rule violations */}
-      {!isProcessing && (
-        <>
-          <NextEditCard />
-          <RuleViolationCard />
-        </>
-      )}
+      {/* Rule violations */}
+      {!isProcessing && <RuleViolationCard />}
 
       {/* Follow-up suggestions */}
       {!isProcessing && lastAssistantText && (
@@ -557,26 +539,6 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEd
 // ============================================================================
 // Inlined sub-components (single-use, small)
 // ============================================================================
-
-function RestorePoint({ data }: { data: { sha: string; message: string; timestamp: string } }) {
-  const formatTime = (ts: string) => {
-    const d = new Date(ts)
-    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-xs border border-(--vscode-panel-border) rounded-lg bg-(--vscode-sideBar-background)">
-      <span className="opacity-40">{formatTime(data.timestamp)}</span>
-      <span className="opacity-60 truncate flex-1">{data.message}</span>
-      <button
-        onClick={() => postMessage({ type: 'restoreBackup', commitSha: data.sha })}
-        className="px-2 py-0.5 text-[10px] rounded bg-(--vscode-button-secondaryBackground) text-(--vscode-button-secondaryForeground) hover:bg-(--vscode-button-secondaryHoverBackground) cursor-pointer border-none whitespace-nowrap"
-      >
-        Restore
-      </button>
-    </div>
-  )
-}
 
 function ThinkingBlock({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false)

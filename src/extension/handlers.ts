@@ -4,7 +4,7 @@ import type { PanelManager } from './panelManager';
 import { FILE_SEARCH_EXCLUDES } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, BackupService, MCPService } from './storage';
+import type { ConversationService, MCPService } from './storage';
 import type { SessionStateManager } from './sessionState';
 import type { ClaudeMessageProcessor } from './messageProcessor';
 import type { SettingsManager } from './settings';
@@ -54,7 +54,6 @@ export interface MessageHandlerContext {
   claudeService: ClaudeService;
   conversationService: ConversationService;
   mcpService: MCPService;
-  backupService: BackupService;
   permissionService: PermissionService;
   stateManager: SessionStateManager;
   settingsManager: SettingsManager;
@@ -65,8 +64,6 @@ export interface MessageHandlerContext {
   loadConversation(filename: string): Promise<void>;
   handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
   panelManager?: PanelManager;
-  rewindToMessage(userInputIndex: number): void;
-  forkFromMessage(userInputIndex: number): void;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
   rulesService?: import('./rulesService').RulesService;
@@ -253,20 +250,6 @@ const handleDeleteMCPServer: MessageHandler = (msg, ctx) => {
   }
 };
 
-const handleCreateBackup: MessageHandler = async (msg, ctx) => {
-  const commit = await ctx.backupService.createCheckpoint(msg.message as string);
-  if (commit) ctx.postMessage({ type: 'restorePoint', data: commit });
-};
-
-const handleRestoreBackup: MessageHandler = async (msg, ctx) => {
-  const success = await ctx.backupService.restoreToCommit(msg.commitSha as string);
-  if (success) {
-    ctx.postMessage({ type: 'output', data: 'Workspace restored to checkpoint successfully.' });
-  } else {
-    ctx.postMessage({ type: 'error', data: 'Failed to restore checkpoint.' });
-  }
-};
-
 const handleDeleteConversation: MessageHandler = async (msg, ctx) => {
   const success = await ctx.conversationService.deleteConversation(msg.filename as string);
   if (success) {
@@ -420,8 +403,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   loadMCPServers: handleLoadMCPServers,
   saveMCPServer: handleSaveMCPServer,
   deleteMCPServer: handleDeleteMCPServer,
-  createBackup: handleCreateBackup,
-  restoreBackup: handleRestoreBackup,
   deleteConversation: handleDeleteConversation,
   searchConversations: handleSearchConversations,
   exportConversation: handleExportConversation,
@@ -434,8 +415,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
   createNewPanel: handleCreateNewPanel,
-  rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
-  forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
   editMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.editMessage(msg.userInputIndex as number, msg.newText as string),
   regenerateResponse: (_msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.regenerateResponse(),
   // Rules

@@ -17,14 +17,6 @@ export function ChatView({ onHintClick }: ChatViewProps) {
     behavior: isProcessing ? 'instant' : 'smooth',
   })
 
-  const handleFork = useCallback((userInputIndex: number) => {
-    postMessage({ type: 'forkFromMessage', userInputIndex })
-  }, [])
-
-  const handleRewind = useCallback((userInputIndex: number) => {
-    postMessage({ type: 'rewindToMessage', userInputIndex })
-  }, [])
-
   const handleEdit = useCallback((userInputIndex: number, newText: string) => {
     postMessage({ type: 'editMessage', userInputIndex, newText })
   }, [])
@@ -49,8 +41,6 @@ export function ChatView({ onHintClick }: ChatViewProps) {
         <JourneyTimeline
           messages={messages}
           isProcessing={isProcessing}
-          onFork={handleFork}
-          onRewind={handleRewind}
           onEdit={handleEdit}
           onRegenerate={handleRegenerate}
         />

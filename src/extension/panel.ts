@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
-import { ConversationService, BackupService, MCPService } from './storage';
+import { ConversationService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
@@ -14,7 +14,6 @@ import { createModuleLogger } from '../shared/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
 import type { ContextCollector } from './contextCollector';
-import type { NextEditAnalyzer } from './nextEditAnalyzer';
 import type { RulesService } from './rulesService';
 
 const log = createModuleLogger('PanelProvider');
@@ -124,7 +123,6 @@ export class PanelProvider {
   private _messageProcessor: ClaudeMessageProcessor;
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
-  private _branchMetadata: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number } | undefined;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -132,11 +130,9 @@ export class PanelProvider {
     private readonly _claudeService: ClaudeService,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
-    private readonly _backupService: BackupService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
     private readonly _contextCollector?: ContextCollector,
-    private readonly _nextEditAnalyzer?: NextEditAnalyzer,
     private readonly _rulesService?: RulesService,
   ) {
     log.info('PanelProvider initialized');
@@ -157,24 +153,9 @@ export class PanelProvider {
       onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
       onToolResult: (data) => {
         if (!data.filePath || !data.fileContentBefore || !data.fileContentAfter) return;
-        const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
         const relativePath = vscode.workspace.asRelativePath(data.filePath, false);
 
-        // Feature 3: Next Edit predictions
-        if (this._nextEditAnalyzer) {
-          void this._nextEditAnalyzer.analyzeEdit({
-            filePath: relativePath,
-            fileContentBefore: data.fileContentBefore,
-            fileContentAfter: data.fileContentAfter,
-            workspaceRoot: cwd,
-          }).then((suggestions) => {
-            if (suggestions.length > 0) {
-              this._postMessage({ type: 'nextEditSuggestions', data: { suggestions } });
-            }
-          });
-        }
-
-        // Feature 4: Architecture rules checking
+        // Architecture rules checking
         if (this._rulesService) {
           void this._rulesService.checkEdit({
             filePath: relativePath,
@@ -339,59 +320,23 @@ export class PanelProvider {
     this._replayConversation();
   }
 
-  /** Load conversation data directly (used by fork/PanelManager) */
+  /** Load conversation data directly (used by PanelManager) */
   loadConversationData(
     messages: ConversationMessage[],
     sessionId?: string,
     totalCost?: number,
-    branchMetadata?: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number },
   ): void {
     this._messageProcessor.resetSession();
     this._stateManager.resetSession();
 
     this._sessionId = sessionId;
     if (totalCost) this._stateManager.totalCost = totalCost;
-    this._branchMetadata = branchMetadata;
 
     for (const msg of messages) {
       this._messageProcessor.currentConversation.push({ ...msg });
     }
 
     // Replay will happen when webview sends 'ready'
-  }
-
-  /** Get conversation up to a specific user input index (for fork) */
-  getConversationUpTo(userInputIndex: number): { messages: ConversationMessage[]; title: string } | null {
-    const conversation = this._messageProcessor.currentConversation;
-    const pos = this._findUserInputPosition(conversation, userInputIndex);
-    if (pos === -1) return null;
-
-    const messages = conversation.slice(0, pos + 1);
-    const targetMsg = messages[pos];
-    const text = typeof targetMsg.data === 'string'
-      ? targetMsg.data
-      : ((targetMsg.data as Record<string, unknown>)?.text as string || 'Fork');
-    const title = text.substring(0, 25) + (text.length > 25 ? '...' : '');
-
-    return { messages, title };
-  }
-
-  rewindToMessage(userInputIndex: number): void {
-    if (this._stateManager.isProcessing) return;
-
-    const conversation = this._messageProcessor.currentConversation;
-    const pos = this._findUserInputPosition(conversation, userInputIndex);
-    if (pos === -1) return;
-
-    this._messageProcessor.truncateConversation(pos);
-    this._sessionId = undefined;
-    this._replayConversation();
-  }
-
-  forkFromMessage(userInputIndex: number): void {
-    if (this._panelManager) {
-      this._panelManager.createForkPanel(this, userInputIndex);
-    }
   }
 
   editMessage(userInputIndex: number, newText: string): void {
@@ -480,7 +425,6 @@ export class PanelProvider {
       claudeService: this._claudeService,
       conversationService: this._conversationService,
       mcpService: this._mcpService,
-      backupService: this._backupService,
       permissionService: this._permissionService,
       stateManager: this._stateManager,
       settingsManager: this._settingsManager,
@@ -492,8 +436,6 @@ export class PanelProvider {
       handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
         this._handleSendMessage(text, planMode, thinkingMode, images),
       panelManager: this._panelManager,
-      rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
-      forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
       editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.regenerateResponse(),
       rulesService: this._rulesService,
@@ -512,10 +454,6 @@ export class PanelProvider {
     this._stateManager.draftMessage = '';
 
     this._claudeService.setSessionId(this._sessionId);
-
-    void this._backupService.createCheckpoint(text).then((commit) => {
-      if (commit) this._postMessage({ type: 'restorePoint', data: commit });
-    });
 
     // Save userInput to conversation
     const userInputData = { text, images };
@@ -665,7 +603,6 @@ export class PanelProvider {
           sessionId: this._sessionId,
           totalCost: this._stateManager.totalCost,
           isProcessing: this._stateManager.isProcessing,
-          ...(this._branchMetadata ? { branchMetadata: this._branchMetadata } : {}),
         },
       });
     } else {

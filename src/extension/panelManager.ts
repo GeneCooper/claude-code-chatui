@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, BackupService, MCPService } from './storage';
+import type { ConversationService, MCPService } from './storage';
 import { PanelProvider, getWebviewHtml } from './panel';
 import type { ConversationMessage } from '../shared/types';
 import type { ContextCollector } from './contextCollector';
-import type { NextEditAnalyzer } from './nextEditAnalyzer';
 import type { RulesService } from './rulesService';
 
 export class PanelManager {
@@ -18,10 +17,8 @@ export class PanelManager {
     private readonly _context: vscode.ExtensionContext,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
-    private readonly _backupService: BackupService,
     private readonly _permissionService: PermissionService,
     private readonly _contextCollector?: ContextCollector,
-    private readonly _nextEditAnalyzer?: NextEditAnalyzer,
     private readonly _rulesService?: RulesService,
   ) {}
 
@@ -33,7 +30,6 @@ export class PanelManager {
       initialConversation?: ConversationMessage[];
       sessionId?: string;
       totalCost?: number;
-      branchMetadata?: { parentSessionId?: string; parentConversationTitle?: string; forkIndex?: number };
     },
   ): PanelProvider {
     const panelId = `panel-${++this._panelCounter}`;
@@ -45,11 +41,9 @@ export class PanelManager {
       claudeService,
       this._conversationService,
       this._mcpService,
-      this._backupService,
       this._permissionService,
       this,
       this._contextCollector,
-      this._nextEditAnalyzer,
       this._rulesService,
     );
 
@@ -76,35 +70,16 @@ export class PanelManager {
       this._panels.delete(panelId);
     }, null, this._disposables);
 
-    // Load initial conversation if provided (fork scenario)
+    // Load initial conversation if provided
     if (options?.initialConversation) {
       provider.loadConversationData(
         options.initialConversation,
         options.sessionId,
         options.totalCost,
-        options.branchMetadata,
       );
     }
 
     return provider;
-  }
-
-  createForkPanel(
-    sourceProvider: PanelProvider,
-    userInputIndex: number,
-  ): void {
-    const data = sourceProvider.getConversationUpTo(userInputIndex);
-    if (!data) return;
-
-    const title = data.title + ' (fork)';
-    this.createNewPanel(vscode.ViewColumn.Beside, false, {
-      title,
-      initialConversation: data.messages,
-      branchMetadata: {
-        parentConversationTitle: data.title,
-        forkIndex: userInputIndex,
-      },
-    });
   }
 
   disposeAll(): void {
