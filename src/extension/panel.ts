@@ -450,10 +450,11 @@ export class PanelProvider {
     const yoloMode = this._settingsManager.isYoloModeEnabled();
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
+    const thinkingIntensity = this._settingsManager.getCurrentSettings(this._stateManager.selectedModel).thinkingIntensity;
 
     // Send message directly to Claude CLI - no extra context/prompt injection
     void this._claudeService.sendMessage(text, {
-      cwd, planMode, thinkingMode, yoloMode,
+      cwd, planMode, thinkingMode, thinkingIntensity, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images,
     });

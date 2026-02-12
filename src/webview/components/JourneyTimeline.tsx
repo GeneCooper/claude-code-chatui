@@ -224,7 +224,7 @@ function TimelineToolEntry({ entry, isCollapsed, onToggle }: {
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           padding: '6px 10px',
-          borderRadius: 'var(--radius-sm)',
+          borderRadius: 'var(--radius-lg)',
           background: 'var(--chatui-surface-1)',
           border: entry.isRunning
             ? '1px solid rgba(237, 110, 29, 0.2)'

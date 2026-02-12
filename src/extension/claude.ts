@@ -111,6 +111,7 @@ interface SendMessageOptions {
   cwd: string;
   planMode?: boolean;
   thinkingMode?: boolean;
+  thinkingIntensity?: string;
   yoloMode?: boolean;
   model?: string;
   mcpConfigPath?: string;
@@ -149,7 +150,12 @@ export class ClaudeService implements vscode.Disposable {
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
-    const actualMessage = message;
+    // Prepend thinking intensity keyword when thinking mode is enabled
+    let actualMessage = message;
+    if (options.thinkingMode && options.thinkingIntensity) {
+      const keyword = options.thinkingIntensity.replace(/-/g, ' ');
+      actualMessage = `${keyword}\n\n${message}`;
+    }
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
 
