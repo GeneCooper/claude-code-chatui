@@ -3,7 +3,6 @@ import { useUIStore } from './store'
 import { Header } from './components/Header'
 import { ChatView } from './components/ChatView'
 import { InputArea } from './components/InputArea'
-import { StatusBar } from './components/StatusBar'
 import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -31,7 +30,6 @@ export default function App() {
           <>
             <ChatView onHintClick={handleHintClick} />
             <TodoDisplay />
-            <StatusBar />
             <InputArea />
           </>
         )}

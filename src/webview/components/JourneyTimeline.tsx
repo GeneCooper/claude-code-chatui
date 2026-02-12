@@ -5,7 +5,6 @@ import { AssistantMessage } from './AssistantMessage'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
-import { FollowUpSuggestions } from './FollowUpSuggestions'
 import { RuleViolationCard } from './RuleViolationCard'
 
 // ============================================================================
@@ -446,10 +445,9 @@ interface Props {
   messages: ChatMessage[]
   isProcessing: boolean
   onEdit?: (userInputIndex: number, newText: string) => void
-  onRegenerate?: () => void
 }
 
-export function JourneyTimeline({ messages, isProcessing, onEdit, onRegenerate }: Props) {
+export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   const [collapsedEntries, setCollapsedEntries] = useState<Set<string>>(new Set())
 
   const entries = useMemo(() => buildFlatTimeline(messages, isProcessing), [messages, isProcessing])
@@ -489,27 +487,6 @@ export function JourneyTimeline({ messages, isProcessing, onEdit, onRegenerate }
       return next
     })
   }, [])
-
-  // Last assistant text for follow-up suggestions
-  const lastAssistantText = useMemo(() => {
-    if (isProcessing) return ''
-    for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].kind === 'output') return String((entries[i] as OutputEntry).message.data)
-    }
-    return ''
-  }, [isProcessing, entries])
-
-  // Show regenerate if last non-loading entry is a completed output or tool
-  const lastNonLoadingEntry = useMemo(() => {
-    for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].kind === 'standalone' && (entries[i] as StandaloneEntry).message.type === 'loading') continue
-      return entries[i]
-    }
-    return undefined
-  }, [entries])
-
-  const showRegenerate = !isProcessing && onRegenerate && lastNonLoadingEntry &&
-    (lastNonLoadingEntry.kind === 'output' || (lastNonLoadingEntry.kind === 'tool' && !(lastNonLoadingEntry as ToolEntry).isRunning))
 
   function renderEntry(entry: TimelineEntry) {
     switch (entry.kind) {
@@ -580,50 +557,8 @@ export function JourneyTimeline({ messages, isProcessing, onEdit, onRegenerate }
         )
       })}
 
-      {/* Regenerate button */}
-      {showRegenerate && (
-        <div className="flex items-center gap-2" style={{ paddingLeft: '28px', animation: 'fadeIn 0.2s ease' }}>
-          <button
-            onClick={onRegenerate}
-            className="flex items-center gap-1.5 cursor-pointer border-none"
-            style={{
-              padding: '4px 12px',
-              borderRadius: '12px',
-              border: '1px solid var(--vscode-panel-border)',
-              background: 'rgba(128, 128, 128, 0.05)',
-              color: 'inherit',
-              fontSize: '11px',
-              opacity: 0.6,
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1'
-              e.currentTarget.style.borderColor = 'var(--chatui-accent)'
-              e.currentTarget.style.color = 'var(--chatui-accent)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.6'
-              e.currentTarget.style.borderColor = 'var(--vscode-panel-border)'
-              e.currentTarget.style.color = 'inherit'
-            }}
-            title="Regenerate response"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-            Regenerate
-          </button>
-        </div>
-      )}
-
       {/* Rule violations */}
       {!isProcessing && <RuleViolationCard />}
-
-      {/* Follow-up suggestions */}
-      {!isProcessing && lastAssistantText && (
-        <FollowUpSuggestions lastAssistantText={lastAssistantText} />
-      )}
     </div>
   )
 }

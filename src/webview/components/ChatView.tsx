@@ -22,10 +22,6 @@ export function ChatView({ onHintClick }: ChatViewProps) {
     postMessage({ type: 'editMessage', userInputIndex, newText })
   }, [])
 
-  const handleRegenerate = useCallback(() => {
-    postMessage({ type: 'regenerateResponse' })
-  }, [])
-
   return (
     <div
       ref={containerRef}
@@ -45,7 +41,6 @@ export function ChatView({ onHintClick }: ChatViewProps) {
           messages={messages}
           isProcessing={isProcessing}
           onEdit={handleEdit}
-          onRegenerate={handleRegenerate}
         />
       )}
     </div>

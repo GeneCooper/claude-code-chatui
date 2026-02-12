@@ -186,11 +186,14 @@ export class ClaudeService implements vscode.Disposable {
     }
     args.push('--append-system-prompt', systemPromptParts.join(' '));
 
-    // Permission handling: plan and YOLO are mutually exclusive (enforced by UI)
+    // Permission handling: always use stdio as the permission prompt channel,
+    // so that even if --dangerously-skip-permissions doesn't fully take effect
+    // (CLI version mismatch, config override, etc.), permission requests still
+    // reach the extension and can be auto-approved by the YOLO handler.
+    args.push('--permission-prompt-tool', 'stdio');
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
     } else {
-      args.push('--permission-prompt-tool', 'stdio');
       if (options.planMode) args.push('--permission-mode', 'plan');
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
