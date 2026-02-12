@@ -95,7 +95,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     type: 'platformInfo',
     data: { platform: process.platform, isWindows: process.platform === 'win32' },
   });
-  checkCliAvailable(ctx);
+  checkCliCompatibility(ctx);
 
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
@@ -353,11 +353,50 @@ const handleGetClipboard: MessageHandler = async (_msg, ctx) => {
   }
 };
 
-function checkCliAvailable(ctx: MessageHandlerContext): void {
+const MIN_CLI_VERSION = '1.0.0';
+
+function parseCliVersion(output: string): string | null {
+  const match = output.match(/(\d+\.\d+\.\d+)/);
+  return match ? match[1] : null;
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
+}
+
+function checkCliCompatibility(ctx: MessageHandlerContext): void {
   const { exec } = require('child_process') as typeof import('child_process');
   const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/sh';
-  exec('claude --version', { shell, timeout: 5000 }, (error: Error | null) => {
-    if (error) ctx.postMessage({ type: 'showInstallModal' });
+  exec('claude --version', { shell, timeout: 5000 }, (error: Error | null, stdout: string) => {
+    if (error) {
+      ctx.postMessage({ type: 'showInstallModal' });
+      return;
+    }
+
+    const version = parseCliVersion((stdout || '').trim());
+    if (!version) {
+      ctx.postMessage({
+        type: 'cliVersionInfo',
+        data: { version: null, minVersion: MIN_CLI_VERSION, compatible: true, warning: 'Unable to determine CLI version' },
+      });
+      return;
+    }
+
+    const compatible = compareVersions(version, MIN_CLI_VERSION) >= 0;
+    ctx.postMessage({
+      type: 'cliVersionInfo',
+      data: {
+        version,
+        minVersion: MIN_CLI_VERSION,
+        compatible,
+        warning: compatible ? null : `Claude CLI ${version} is outdated. Minimum required: ${MIN_CLI_VERSION}. Run "npm install -g @anthropic-ai/claude-code" to upgrade.`,
+      },
+    });
   });
 }
 

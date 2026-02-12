@@ -231,6 +231,13 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
   },
 
+  cliVersionInfo: (msg) => {
+    const data = msg.data as { version: string | null; minVersion: string; compatible: boolean; warning: string | null }
+    if (data.warning) {
+      useUIStore.getState().showNotification('warning', 'CLI Version', data.warning, 0)
+    }
+  },
+
   imageFilePicked: (msg) => {
     window.dispatchEvent(new CustomEvent('imageFilePicked', { detail: msg.data }))
   },

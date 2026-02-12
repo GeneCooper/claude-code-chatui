@@ -71,22 +71,25 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
 
   appendToLastOutput: (text) => {
-    const state = useChatStore.getState()
-    const msgs = state.messages
-    // Find the last output message (skip any loading messages at the end)
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i]
-      if (m.type === 'loading') continue
-      if (m.type === 'output') {
-        // Merge text into existing output
-        const updated = [...msgs]
-        updated[i] = { ...m, data: String(m.data) + '\n\n' + text }
-        set({ messages: updated })
-        return true
+    let merged = false
+    set((state) => {
+      const msgs = state.messages
+      // Find the last output message (skip any loading messages at the end)
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i]
+        if (m.type === 'loading') continue
+        if (m.type === 'output') {
+          // Merge text into existing output
+          const updated = [...msgs]
+          updated[i] = { ...m, data: String(m.data) + '\n\n' + text }
+          merged = true
+          return { messages: updated }
+        }
+        break // Stop if we hit any non-loading, non-output message
       }
-      break // Stop if we hit any non-loading, non-output message
-    }
-    return false
+      return {} // no change
+    })
+    return merged
   },
 
   clearMessages: () => set({ messages: [] }),

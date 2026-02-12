@@ -69,16 +69,66 @@ const markdownComponents = {
 }
 
 /**
- * Display text directly as it arrives from the CLI.
- * The natural token arrival pace provides smooth streaming — no artificial animation needed.
+ * Typewriter effect: gradually reveal text using requestAnimationFrame.
+ * - Only animates when new text is appended while streaming
+ * - Historical / batch-replay messages display instantly
  */
-function useStreamingText(fullText: string, _isStreaming: boolean) {
-  return fullText
+function useStreamingText(fullText: string, isStreaming: boolean) {
+  const [displayLen, setDisplayLen] = useState(fullText.length)
+  const prevLenRef = useRef(fullText.length)
+  const rafRef = useRef(0)
+  const targetLenRef = useRef(fullText.length)
+
+  useEffect(() => {
+    targetLenRef.current = fullText.length
+    const prevLen = prevLenRef.current
+    prevLenRef.current = fullText.length
+
+    // Text got shorter or completely replaced (new message / different content) — show instantly
+    if (fullText.length <= prevLen) {
+      setDisplayLen(fullText.length)
+      return
+    }
+
+    // Not streaming (historical / batch replay) — show instantly
+    if (!isStreaming) {
+      setDisplayLen(fullText.length)
+      return
+    }
+
+    // New text appended while streaming — animate from current display position
+    const animate = () => {
+      setDisplayLen((prev) => {
+        const target = targetLenRef.current
+        if (prev >= target) return prev
+        // Adaptive speed: longer remaining text = faster reveal
+        const remaining = target - prev
+        const speed = Math.max(2, Math.min(18, Math.ceil(remaining / 12)))
+        return Math.min(prev + speed, target)
+      })
+      rafRef.current = requestAnimationFrame(animate)
+    }
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(animate)
+
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [fullText, isStreaming])
+
+  // When streaming stops, reveal everything immediately
+  useEffect(() => {
+    if (!isStreaming) {
+      cancelAnimationFrame(rafRef.current)
+      setDisplayLen(fullText.length)
+    }
+  }, [isStreaming, fullText.length])
+
+  return displayLen >= fullText.length ? fullText : fullText.slice(0, displayLen)
 }
 
 export function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
   const displayText = useStreamingText(text, isStreaming)
+  const isAnimating = isStreaming || displayText.length < text.length
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(text)
@@ -101,7 +151,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">
         {renderedMarkdown}
-        {isStreaming && <span className="streaming-cursor" />}
+        {isAnimating && <span className="streaming-cursor" />}
       </div>
 
       {/* Copy button - floats at top-right on hover */}

@@ -258,6 +258,7 @@ type ExtensionToWebviewMessage =
   | { type: 'compacting'; data: { isCompacting: boolean } }
   | { type: 'compactBoundary'; data: { trigger?: string; preTokens?: number } }
   | { type: 'showInstallModal' }
+  | { type: 'cliVersionInfo'; data: { version: string | null; minVersion: string; compatible: boolean; warning: string | null } }
   | { type: 'restoreState'; state: unknown }
   | { type: 'conversationList'; data: ConversationIndexEntry[] }
   | { type: 'settingsData'; data: SettingsData }

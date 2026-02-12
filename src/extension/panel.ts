@@ -501,7 +501,10 @@ export class PanelProvider {
     });
 
     this._claudeService.onPermissionRequest((request) => {
-      if (this._settingsManager.isYoloModeEnabled()) {
+      // Interactive tools that require actual user input must never be auto-approved
+      const isInteractiveTool = request.toolName === 'AskUserQuestion';
+
+      if (this._settingsManager.isYoloModeEnabled() && !isInteractiveTool) {
         log.info('YOLO mode: auto-approving permission', { tool: request.toolName });
         this._claudeService.sendPermissionResponse(request.requestId, true);
         return;
