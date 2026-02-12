@@ -158,25 +158,26 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
       className="group relative max-w-[95%]"
       style={{ padding: '4px 0' }}
     >
-      {/* Copy button - appears on hover, inline at bottom-right */}
-      <button
-        onClick={handleCopyMessage}
-        className="absolute -bottom-4 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
-        style={{
-          padding: '2px 6px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          transition: 'opacity 0.2s ease',
-          color: 'var(--vscode-descriptionForeground)',
-        }}
-        title="Copy message"
-      >
-        {copied ? 'Copied!' : 'Copy'}
-      </button>
-
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">
         {renderedMarkdown}
+      </div>
+
+      {/* Copy button - appears on hover, inline at bottom-right */}
+      <div className="flex justify-end opacity-0 group-hover:opacity-60 hover:opacity-100!" style={{ transition: 'opacity 0.2s ease' }}>
+        <button
+          onClick={handleCopyMessage}
+          className="cursor-pointer bg-transparent border-none"
+          style={{
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            color: 'var(--vscode-descriptionForeground)',
+          }}
+          title="Copy message"
+        >
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
       </div>
     </div>
   )
