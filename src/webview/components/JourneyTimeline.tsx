@@ -8,6 +8,8 @@ import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { RestorePoint } from './RestorePoint'
 import { FollowUpSuggestions } from './FollowUpSuggestions'
+import { NextEditCard } from './NextEditCard'
+import { RuleViolationCard } from './RuleViolationCard'
 import { t } from '../i18n'
 
 // ============================================================================
@@ -536,6 +538,14 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind, onEd
             {t('message.regenerate')}
           </button>
         </div>
+      )}
+
+      {/* Next Edit predictions & Rule violations */}
+      {!isProcessing && (
+        <>
+          <NextEditCard />
+          <RuleViolationCard />
+        </>
       )}
 
       {/* Follow-up suggestions */}

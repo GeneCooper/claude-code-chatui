@@ -4,6 +4,10 @@ import type { PermissionService } from './claude';
 import type { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { PanelProvider, getWebviewHtml } from './panel';
 import type { ConversationMessage } from '../shared/types';
+import type { ContextCollector } from './contextCollector';
+import type { MemoriesService } from './memoriesService';
+import type { NextEditAnalyzer } from './nextEditAnalyzer';
+import type { RulesService } from './rulesService';
 
 export class PanelManager {
   private _panels = new Map<string, { provider: PanelProvider; claudeService: ClaudeService; panel: vscode.WebviewPanel }>();
@@ -18,6 +22,10 @@ export class PanelManager {
     private readonly _backupService: BackupService,
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
+    private readonly _contextCollector?: ContextCollector,
+    private readonly _memoriesService?: MemoriesService,
+    private readonly _nextEditAnalyzer?: NextEditAnalyzer,
+    private readonly _rulesService?: RulesService,
   ) {}
 
   createNewPanel(
@@ -44,6 +52,10 @@ export class PanelManager {
       this._usageService,
       this._permissionService,
       this,
+      this._contextCollector,
+      this._memoriesService,
+      this._nextEditAnalyzer,
+      this._rulesService,
     );
 
     const panel = vscode.window.createWebviewPanel(

@@ -20,6 +20,12 @@ interface Permissions {
   allowedPatterns: PermissionEntry[];
 }
 
+// Pre-compiled regex patterns for rate-limit parsing (avoid recompilation per stderr chunk)
+const RE_5H_UTIL = /anthropic-ratelimit-unified-5h-utilization["']?\s*[":]\s*["']?([0-9.]+)/i;
+const RE_7D_UTIL = /anthropic-ratelimit-unified-7d-utilization["']?\s*[":]\s*["']?([0-9.]+)/i;
+const RE_5H_RESET = /anthropic-ratelimit-unified-5h-reset["']?\s*[":]\s*["']?([0-9]+)/i;
+const RE_7D_RESET = /anthropic-ratelimit-unified-7d-reset["']?\s*[":]\s*["']?([0-9]+)/i;
+
 export class PermissionService implements vscode.Disposable {
   private _permissionsPath: string;
 
@@ -119,6 +125,7 @@ interface SendMessageOptions {
   allowedTools?: string[];
   disallowedTools?: string[];
   continueConversation?: boolean;
+  additionalSystemPrompt?: string;
 }
 
 interface PendingPermission {
@@ -170,16 +177,17 @@ export class ClaudeService implements vscode.Disposable {
     }
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-    args.push(
-      '--append-system-prompt',
-      [
-        'Be an efficient agent: act, don\'t explain.',
-        'Do NOT narrate your plan, restate the question, or describe what you\'re about to do.',
-        'Execute tool calls immediately without preamble.',
-        'When done, give a one-line summary of what changed — nothing more.',
-        'Prefer code over prose. Skip pleasantries.',
-      ].join(' '),
-    );
+    const systemPromptParts = [
+      'Be an efficient agent: act, don\'t explain.',
+      'Do NOT narrate your plan, restate the question, or describe what you\'re about to do.',
+      'Execute tool calls immediately without preamble.',
+      'When done, give a one-line summary of what changed — nothing more.',
+      'Prefer code over prose. Skip pleasantries.',
+    ];
+    if (options.additionalSystemPrompt) {
+      systemPromptParts.push(options.additionalSystemPrompt);
+    }
+    args.push('--append-system-prompt', systemPromptParts.join(' '));
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
@@ -274,13 +282,13 @@ export class ClaudeService implements vscode.Disposable {
       // Parse rate-limit headers from debug output in real-time
       if (chunk.includes('ratelimit') || chunk.includes('utilization')) {
         const rl: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number } = {};
-        const m5h = chunk.match(/anthropic-ratelimit-unified-5h-utilization["']?\s*[":]\s*["']?([0-9.]+)/i);
+        const m5h = RE_5H_UTIL.exec(chunk);
         if (m5h) { const v = parseFloat(m5h[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.session5h = Math.min(1, v); }
-        const m7d = chunk.match(/anthropic-ratelimit-unified-7d-utilization["']?\s*[":]\s*["']?([0-9.]+)/i);
+        const m7d = RE_7D_UTIL.exec(chunk);
         if (m7d) { const v = parseFloat(m7d[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.weekly7d = Math.min(1, v); }
-        const mr5h = chunk.match(/anthropic-ratelimit-unified-5h-reset["']?\s*[":]\s*["']?([0-9]+)/i);
+        const mr5h = RE_5H_RESET.exec(chunk);
         if (mr5h) rl.reset5h = parseInt(mr5h[1], 10);
-        const mr7d = chunk.match(/anthropic-ratelimit-unified-7d-reset["']?\s*[":]\s*["']?([0-9]+)/i);
+        const mr7d = RE_7D_RESET.exec(chunk);
         if (mr7d) rl.reset7d = parseInt(mr7d[1], 10);
         if (rl.session5h !== undefined || rl.weekly7d !== undefined) {
           this._rateLimitEmitter.emit('ratelimit', rl);

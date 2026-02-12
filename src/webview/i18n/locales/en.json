@@ -292,5 +292,19 @@
   "mermaid.error": "Mermaid rendering error",
   "mermaid.rendering": "Rendering diagram...",
 
-  "branch.forkedFrom": "Forked from: {title}"
+  "branch.forkedFrom": "Forked from: {title}",
+
+  "input.contextFiles": "context files",
+
+  "status.memories": "Memories (click to edit)",
+
+  "settings.memories": "Memories",
+  "settings.memoriesDesc": "Auto-extract key decisions and patterns from conversations for cross-session learning.",
+  "settings.editMemories": "Edit",
+  "settings.extractNow": "Extract Now",
+  "settings.clearMemories": "Clear",
+  "settings.rules": "Architecture Rules",
+  "settings.rulesDesc": "Define coding standards and architecture rules. Edits are checked against these rules.",
+  "settings.createDefaultRules": "Create Defaults",
+  "settings.manageRules": "Manage"
 }

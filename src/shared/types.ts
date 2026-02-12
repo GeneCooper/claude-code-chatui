@@ -260,7 +260,20 @@ export type WebviewToExtensionMessage =
   | { type: 'getClipboardText' }
   | { type: 'resolveDroppedFile'; uri: string }
   | { type: 'editMessage'; userInputIndex: number; newText: string }
-  | { type: 'regenerateResponse' };
+  | { type: 'regenerateResponse' }
+  // Memories
+  | { type: 'getMemories' }
+  | { type: 'editMemories' }
+  | { type: 'clearMemories' }
+  | { type: 'extractMemoriesNow' }
+  // Next Edit
+  | { type: 'dismissSuggestion'; suggestionId: string }
+  | { type: 'applySuggestion'; suggestionId: string; filePath: string }
+  // Rules
+  | { type: 'getRules' }
+  | { type: 'createDefaultRules' }
+  | { type: 'openRulesFile'; filePath: string }
+  | { type: 'dismissViolation'; violationId: string };
 
 /** Messages from Extension to Webview */
 type ExtensionToWebviewMessage =
@@ -306,7 +319,16 @@ type ExtensionToWebviewMessage =
   | { type: 'fileDropped'; data: { filePath: string } }
   | { type: 'editorSelection'; data: { filePath: string; startLine: number; endLine: number; text: string } | null }
   | { type: 'activeFileChanged'; data: { filePath: string; languageId: string } | null }
-  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
+  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } }
+  // Auto-context
+  | { type: 'autoContextInfo'; data: { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean } }
+  // Memories
+  | { type: 'memoriesInfo'; data: { count: number; lastUpdated: string | null; filePath: string } }
+  // Next Edit predictions
+  | { type: 'nextEditSuggestions'; data: { suggestions: Array<{ id: string; filePath: string; reason: string; changedSymbols: string[]; severity: 'info' | 'warning' }> } }
+  // Rule violations
+  | { type: 'ruleViolations'; data: { violations: Array<{ id: string; ruleName: string; description: string; severity: 'warning' | 'error'; filePath: string; suggestion?: string }> } }
+  | { type: 'rulesData'; data: { rules: Array<{ name: string; filePath: string; content: string }> } };
 
 interface SettingsData {
   thinkingIntensity: string;

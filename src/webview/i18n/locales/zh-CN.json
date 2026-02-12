@@ -292,5 +292,19 @@
   "mermaid.error": "Mermaid 渲染错误",
   "mermaid.rendering": "正在渲染图表...",
 
-  "branch.forkedFrom": "分支自：{title}"
+  "branch.forkedFrom": "分支自：{title}",
+
+  "input.contextFiles": "个上下文文件",
+
+  "status.memories": "记忆（点击编辑）",
+
+  "settings.memories": "记忆系统",
+  "settings.memoriesDesc": "自动从对话中提取关键决策和模式，实现跨会话学习。",
+  "settings.editMemories": "编辑",
+  "settings.extractNow": "立即提取",
+  "settings.clearMemories": "清除",
+  "settings.rules": "架构规则",
+  "settings.rulesDesc": "定义编码标准和架构规则，编辑时会自动检查是否符合这些规则。",
+  "settings.createDefaultRules": "创建默认规则",
+  "settings.manageRules": "管理"
 }

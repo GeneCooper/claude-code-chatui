@@ -13,6 +13,10 @@ import {
 import { createModuleLogger } from '../shared/logger';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
+import type { ContextCollector } from './contextCollector';
+import type { MemoriesService } from './memoriesService';
+import type { NextEditAnalyzer } from './nextEditAnalyzer';
+import type { RulesService } from './rulesService';
 
 const log = createModuleLogger('PanelProvider');
 
@@ -127,6 +131,10 @@ export class PanelProvider {
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
+    private readonly _contextCollector?: ContextCollector,
+    private readonly _memoriesService?: MemoriesService,
+    private readonly _nextEditAnalyzer?: NextEditAnalyzer,
+    private readonly _rulesService?: RulesService,
   ) {
     log.info('PanelProvider initialized');
 
@@ -144,6 +152,38 @@ export class PanelProvider {
         this._sessionId = sessionId;
       },
       onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
+      onToolResult: (data) => {
+        if (!data.filePath || !data.fileContentBefore || !data.fileContentAfter) return;
+        const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+        const relativePath = vscode.workspace.asRelativePath(data.filePath, false);
+
+        // Feature 3: Next Edit predictions
+        if (this._nextEditAnalyzer) {
+          void this._nextEditAnalyzer.analyzeEdit({
+            filePath: relativePath,
+            fileContentBefore: data.fileContentBefore,
+            fileContentAfter: data.fileContentAfter,
+            workspaceRoot: cwd,
+          }).then((suggestions) => {
+            if (suggestions.length > 0) {
+              this._postMessage({ type: 'nextEditSuggestions', data: { suggestions } });
+            }
+          });
+        }
+
+        // Feature 4: Architecture rules checking
+        if (this._rulesService) {
+          void this._rulesService.checkEdit({
+            filePath: relativePath,
+            fileContentBefore: data.fileContentBefore,
+            fileContentAfter: data.fileContentAfter,
+          }).then((violations) => {
+            if (violations.length > 0) {
+              this._postMessage({ type: 'ruleViolations', data: { violations } });
+            }
+          });
+        }
+      },
     });
 
     this._setupClaudeServiceHandlers();
@@ -460,6 +500,8 @@ export class PanelProvider {
       forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
       editMessage: (userInputIndex: number, newText: string) => this.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.regenerateResponse(),
+      memoriesService: this._memoriesService,
+      rulesService: this._rulesService,
     };
   }
 
@@ -495,11 +537,70 @@ export class PanelProvider {
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
-    void this._claudeService.sendMessage(text, {
-      cwd, planMode, thinkingMode, yoloMode,
-      model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath, images,
+    // Async: build context, memories, rules → then send
+    void this._buildEnhancedMessage(text, cwd).then(({ actualText, additionalSystemPrompt }) => {
+      void this._claudeService.sendMessage(actualText, {
+        cwd, planMode, thinkingMode, yoloMode,
+        model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
+        mcpConfigPath, images, additionalSystemPrompt,
+      });
     });
+  }
+
+  private async _buildEnhancedMessage(text: string, cwd: string): Promise<{ actualText: string; additionalSystemPrompt?: string }> {
+    let actualText = text;
+
+    // Feature 1: Auto-context injection
+    const autoContextEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoContext.enabled', true);
+    if (autoContextEnabled && this._contextCollector) {
+      try {
+        const maxFiles = vscode.workspace.getConfiguration('claudeCodeChatUI').get<number>('autoContext.maxFiles', 10);
+        const includeImports = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoContext.includeImports', true);
+        const includeRecentFiles = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoContext.includeRecentFiles', true);
+
+        const activeEditor = vscode.window.activeTextEditor;
+        const activeFile = activeEditor && activeEditor.document.uri.scheme === 'file'
+          ? vscode.workspace.asRelativePath(activeEditor.document.uri, false)
+          : null;
+
+        const { contextBlock, info } = await this._contextCollector.buildContextBlock({
+          activeFile,
+          editorSelection: null,
+          workspaceRoot: cwd,
+          maxFiles,
+          includeImports,
+          includeRecentFiles,
+        });
+
+        if (contextBlock) {
+          actualText = `${contextBlock}\n\n${text}`;
+        }
+
+        this._postMessage({ type: 'autoContextInfo', data: info });
+      } catch { /* auto-context failure is non-fatal */ }
+    }
+
+    // Feature 2 + 4: Build additional system prompt from memories + rules
+    const systemParts: string[] = [];
+
+    if (this._memoriesService) {
+      try {
+        const memoriesContent = await this._memoriesService.getSystemPromptContent();
+        if (memoriesContent) systemParts.push(memoriesContent);
+      } catch { /* memories failure is non-fatal */ }
+    }
+
+    if (this._rulesService) {
+      try {
+        const rulesContent = await this._rulesService.getSystemPromptContent();
+        if (rulesContent) systemParts.push(rulesContent);
+      } catch { /* rules failure is non-fatal */ }
+    }
+
+    return {
+      actualText,
+      additionalSystemPrompt: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
+    };
   }
 
   private _setupClaudeServiceHandlers(): void {
@@ -519,6 +620,16 @@ export class PanelProvider {
       const isVisible = this._panel?.visible ?? this._webviewView?.visible ?? false;
       if (notifEnabled && !isVisible) {
         vscode.window.showInformationMessage('Claude Code: Response complete');
+      }
+
+      // Feature 2: Auto-extract memories from conversation
+      if (this._memoriesService) {
+        const conversation = this._messageProcessor.currentConversation;
+        void this._memoriesService.extractMemories(conversation).then(() => {
+          void this._memoriesService!.getMemoriesInfo().then((info) => {
+            this._postMessage({ type: 'memoriesInfo', data: info });
+          });
+        });
       }
     });
 

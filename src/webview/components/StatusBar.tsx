@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useChatStore } from '../store'
+import { useUIStore } from '../store'
+import { postMessage } from '../hooks'
 import { MODEL_CONTEXT_LIMIT } from '../../shared/constants'
 import { t } from '../i18n'
 
@@ -43,6 +45,7 @@ export function StatusBar() {
   const tokens = useChatStore((s) => s.tokens)
   const totals = useChatStore((s) => s.totals)
   const isProcessing = useChatStore((s) => s.isProcessing)
+  const memoriesInfo = useUIStore((s) => s.memoriesInfo)
   const [showDetails, setShowDetails] = useState(false)
   const statusText = useProcessingText(isProcessing)
 
@@ -131,6 +134,23 @@ export function StatusBar() {
 
         {tokens.totalTokensOutput > 0 && (
           <span style={{ opacity: 0.5 }}>{formatTokens(tokens.totalTokensOutput)} out</span>
+        )}
+
+        {memoriesInfo && memoriesInfo.count > 0 && (
+          <span
+            className="flex items-center gap-1 cursor-pointer"
+            style={{ opacity: 0.6, transition: 'opacity 0.15s ease' }}
+            onClick={() => postMessage({ type: 'editMemories' })}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
+            title={t('status.memories')}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a10 10 0 0110 10 10 10 0 01-10 10A10 10 0 012 12 10 10 0 0112 2z" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+            <span style={{ color: '#a78bfa' }}>{memoriesInfo.count}</span>
+          </span>
         )}
 
       </div>

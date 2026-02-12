@@ -160,6 +160,52 @@ export function SettingsPanel() {
           )}
         </div>
 
+        {/* Memories */}
+        <div className="border-t border-(--vscode-panel-border) pt-3">
+          <label className="text-xs font-medium block mb-2">{t('settings.memories')}</label>
+          <p className="text-[10px] opacity-50 mb-2">{t('settings.memoriesDesc')}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => postMessage({ type: 'editMemories' })}
+              className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
+            >
+              {t('settings.editMemories')}
+            </button>
+            <button
+              onClick={() => postMessage({ type: 'extractMemoriesNow' })}
+              className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-inherit"
+            >
+              {t('settings.extractNow')}
+            </button>
+            <button
+              onClick={() => postMessage({ type: 'clearMemories' })}
+              className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-(--vscode-errorForeground)"
+            >
+              {t('settings.clearMemories')}
+            </button>
+          </div>
+        </div>
+
+        {/* Architecture Rules */}
+        <div className="border-t border-(--vscode-panel-border) pt-3">
+          <label className="text-xs font-medium block mb-2">{t('settings.rules')}</label>
+          <p className="text-[10px] opacity-50 mb-2">{t('settings.rulesDesc')}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => postMessage({ type: 'createDefaultRules' })}
+              className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
+            >
+              {t('settings.createDefaultRules')}
+            </button>
+            <button
+              onClick={() => postMessage({ type: 'getRules' })}
+              className="px-3 py-1 text-xs rounded cursor-pointer border border-(--vscode-panel-border) bg-transparent text-inherit"
+            >
+              {t('settings.manageRules')}
+            </button>
+          </div>
+        </div>
+
         {/* Navigation shortcuts */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
           <label className="text-xs font-medium block mb-2">{t('settings.quickLinks')}</label>

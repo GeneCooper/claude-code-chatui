@@ -136,7 +136,6 @@
   },
   "dependencies": {
     "katex": "^0.16.28",
-    "lucide-react": "^0.563.0",
     "mermaid": "^11.12.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

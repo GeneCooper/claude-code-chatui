@@ -214,6 +214,7 @@ export interface MessagePoster {
 export interface ProcessorCallbacks {
   onSessionIdReceived(sessionId: string): void;
   onProcessingComplete(result: { sessionId?: string; totalCostUsd?: number }): void;
+  onToolResult?(data: { toolName: string; filePath: string; isError: boolean; fileContentBefore?: string; fileContentAfter?: string; rawInput?: Record<string, unknown> }): void;
 }
 
 export class ClaudeMessageProcessor {
@@ -411,6 +412,18 @@ export class ClaudeMessageProcessor {
           hidden,
         },
       });
+
+      // Trigger onToolResult for post-edit analysis (next-edit predictions, rules checking)
+      if (this._callbacks.onToolResult && FILE_EDIT_TOOLS.includes(toolName || '') && !isError && rawInput?.file_path) {
+        this._callbacks.onToolResult({
+          toolName: toolName || '',
+          filePath: rawInput.file_path as string,
+          isError,
+          fileContentBefore: toolData?.fileContentBefore,
+          fileContentAfter,
+          rawInput,
+        });
+      }
     }
   }
 
@@ -663,6 +676,9 @@ export interface MessageHandlerContext {
   forkFromMessage(userInputIndex: number): void;
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
+  // New services
+  memoriesService?: import('./memoriesService').MemoriesService;
+  rulesService?: import('./rulesService').RulesService;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -985,6 +1001,47 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
 
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
+// === Memories Handlers ===
+const handleGetMemories: MessageHandler = async (_msg, ctx) => {
+  if (!ctx.memoriesService) return;
+  const info = await ctx.memoriesService.getMemoriesInfo();
+  ctx.postMessage({ type: 'memoriesInfo', data: info });
+};
+
+const handleEditMemories: MessageHandler = async (_msg, ctx) => {
+  if (ctx.memoriesService) await ctx.memoriesService.editMemories();
+};
+
+const handleClearMemories: MessageHandler = async (_msg, ctx) => {
+  if (ctx.memoriesService) await ctx.memoriesService.clearMemories();
+  ctx.postMessage({ type: 'memoriesInfo', data: { count: 0, lastUpdated: null, filePath: '.claude-chatui/memories.md' } });
+};
+
+const handleExtractMemoriesNow: MessageHandler = async (_msg, ctx) => {
+  if (!ctx.memoriesService) return;
+  await ctx.memoriesService.extractMemories(ctx.messageProcessor.currentConversation);
+  const info = await ctx.memoriesService.getMemoriesInfo();
+  ctx.postMessage({ type: 'memoriesInfo', data: info });
+};
+
+// === Rules Handlers ===
+const handleGetRules: MessageHandler = async (_msg, ctx) => {
+  if (!ctx.rulesService) return;
+  const rules = await ctx.rulesService.getRules();
+  ctx.postMessage({ type: 'rulesData', data: { rules } });
+};
+
+const handleCreateDefaultRules: MessageHandler = async (_msg, ctx) => {
+  if (!ctx.rulesService) return;
+  await ctx.rulesService.createDefaultRules();
+  const rules = await ctx.rulesService.getRules();
+  ctx.postMessage({ type: 'rulesData', data: { rules } });
+};
+
+const handleOpenRulesFile: MessageHandler = async (msg, ctx) => {
+  if (ctx.rulesService) await ctx.rulesService.openRulesFile(msg.filePath as string);
+};
+
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
   newSession: handleNewSession,
@@ -1027,6 +1084,15 @@ const messageHandlers: Record<string, MessageHandler> = {
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
   editMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.editMessage(msg.userInputIndex as number, msg.newText as string),
   regenerateResponse: (_msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.regenerateResponse(),
+  // Memories
+  getMemories: handleGetMemories,
+  editMemories: handleEditMemories,
+  clearMemories: handleClearMemories,
+  extractMemoriesNow: handleExtractMemoriesNow,
+  // Rules
+  getRules: handleGetRules,
+  createDefaultRules: handleCreateDefaultRules,
+  openRulesFile: handleOpenRulesFile,
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

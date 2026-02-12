@@ -4,13 +4,19 @@ import { markOptimisticUserInput } from '../mutations'
 import { useUIStore } from '../store'
 import { t } from '../i18n'
 
+// Pre-compiled regex patterns for suggestion heuristics
+const RE_CODE = /```/
+const RE_TODO = /TODO|FIXME/i
+const RE_ERROR = /error|exception|bug|fix/i
+const RE_TEST = /test|spec|assert/i
+
 function generateSuggestions(text: string): string[] {
   const suggestions: string[] = []
 
-  const hasCode = /```/.test(text)
-  const hasTodo = /TODO|FIXME/i.test(text)
-  const hasError = /error|exception|bug|fix/i.test(text)
-  const hasTest = /test|spec|assert/i.test(text)
+  const hasCode = RE_CODE.test(text)
+  const hasTodo = RE_TODO.test(text)
+  const hasError = RE_ERROR.test(text)
+  const hasTest = RE_TEST.test(text)
   const isLong = text.length > 2000
 
   if (hasCode && !hasTest) {

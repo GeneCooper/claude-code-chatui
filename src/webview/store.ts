@@ -4,6 +4,41 @@ import type { UsageData, TodoItem, MCPServerConfig } from '../shared/types'
 export type { TodoItem }
 
 // ============================================================================
+// Intelligent feature types (auto-context, memories, next-edit, rules)
+// ============================================================================
+
+export interface AutoContextInfo {
+  importedFiles: string[]
+  recentFiles: string[]
+  activeFile: string | null
+  totalFiles: number
+  enabled: boolean
+}
+
+export interface MemoriesInfo {
+  count: number
+  lastUpdated: string | null
+  filePath: string
+}
+
+export interface NextEditSuggestion {
+  id: string
+  filePath: string
+  reason: string
+  changedSymbols: string[]
+  severity: 'info' | 'warning'
+}
+
+export interface RuleViolation {
+  id: string
+  ruleName: string
+  description: string
+  severity: 'warning' | 'error'
+  filePath: string
+  suggestion?: string
+}
+
+// ============================================================================
 // Chat Store
 // ============================================================================
 
@@ -44,6 +79,9 @@ interface ChatState {
   totals: TotalsState
   todos: TodoItem[]
   branchMetadata: BranchMetadata | null
+  autoContextInfo: AutoContextInfo | null
+  nextEditSuggestions: NextEditSuggestion[]
+  ruleViolations: RuleViolation[]
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
@@ -56,6 +94,11 @@ interface ChatState {
   updatePermissionStatus: (id: string, status: string) => void
   updateTodos: (todos: TodoItem[]) => void
   setBranchMetadata: (metadata: BranchMetadata | null) => void
+  setAutoContextInfo: (info: AutoContextInfo | null) => void
+  setNextEditSuggestions: (suggestions: NextEditSuggestion[]) => void
+  dismissNextEditSuggestion: (id: string) => void
+  setRuleViolations: (violations: RuleViolation[]) => void
+  dismissRuleViolation: (id: string) => void
   restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number; branchMetadata?: BranchMetadata }) => void
 }
 
@@ -67,6 +110,9 @@ export const useChatStore = create<ChatState>((set) => ({
   sessionId: null,
   todos: [],
   branchMetadata: null,
+  autoContextInfo: null,
+  nextEditSuggestions: [],
+  ruleViolations: [],
   tokens: {
     totalTokensInput: 0, totalTokensOutput: 0,
     currentInputTokens: 0, currentOutputTokens: 0,
@@ -126,6 +172,22 @@ export const useChatStore = create<ChatState>((set) => ({
   updateTodos: (todos) => set({ todos }),
 
   setBranchMetadata: (metadata) => set({ branchMetadata: metadata }),
+
+  setAutoContextInfo: (info) => set({ autoContextInfo: info }),
+
+  setNextEditSuggestions: (suggestions) => set({ nextEditSuggestions: suggestions }),
+
+  dismissNextEditSuggestion: (id) =>
+    set((state) => ({
+      nextEditSuggestions: state.nextEditSuggestions.filter((s) => s.id !== id),
+    })),
+
+  setRuleViolations: (violations) => set({ ruleViolations: violations }),
+
+  dismissRuleViolation: (id) =>
+    set((state) => ({
+      ruleViolations: state.ruleViolations.filter((v) => v.id !== id),
+    })),
 
   restoreState: (restored) =>
     set((state) => ({
@@ -251,6 +313,7 @@ interface UIState {
   accountType: 'pro' | 'max' | undefined
   platformInfo: { platform: string; isWindows: boolean } | null
   notifications: Notification[]
+  memoriesInfo: MemoriesInfo | null
 
   setActiveView: (view: ActiveView) => void
   setShowSlashPicker: (show: boolean) => void
@@ -265,6 +328,7 @@ interface UIState {
   setUsageData: (data: UsageData | null) => void
   setAccountType: (type: 'pro' | 'max' | undefined) => void
   setPlatformInfo: (info: { platform: string; isWindows: boolean } | null) => void
+  setMemoriesInfo: (info: MemoriesInfo | null) => void
   showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
   dismissNotification: (id: string) => void
 }
@@ -286,6 +350,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   accountType: undefined,
   platformInfo: null,
   notifications: [],
+  memoriesInfo: null,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowSlashPicker: (show) => set({ showSlashPicker: show }),
@@ -300,6 +365,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
+  setMemoriesInfo: (info) => set({ memoriesInfo: info }),
 
   showNotification: (type, title, message, timeout = 5000) => {
     const id = `notif-${++notifCounter}`

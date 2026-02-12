@@ -72,14 +72,14 @@ const markdownComponents = {
 
 /**
  * Hook to progressively reveal text for a streaming effect.
- * On first mount or when new text is appended, reveals content character-by-character
- * at a fast rate to simulate streaming output.
+ * Throttles state updates to ~100ms intervals to avoid re-parsing markdown every frame.
  */
 function useStreamingText(fullText: string, isStreaming: boolean) {
   const [displayText, setDisplayText] = useState(isStreaming ? '' : fullText)
   const prevTextRef = useRef(fullText)
   const revealedRef = useRef(isStreaming ? 0 : fullText.length)
   const rafRef = useRef<number>(0)
+  const lastFlushRef = useRef(0)
 
   useEffect(() => {
     if (!isStreaming) {
@@ -104,8 +104,9 @@ function useStreamingText(fullText: string, isStreaming: boolean) {
       return
     }
 
-    // Streaming reveal — ~30 chars per frame at 60fps = ~1800 chars/sec
+    // Streaming reveal — advance pointer every frame but only flush to React every ~100ms
     const CHARS_PER_FRAME = 30
+    const FLUSH_INTERVAL_MS = 100
 
     const reveal = () => {
       revealedRef.current = Math.min(revealedRef.current + CHARS_PER_FRAME, fullText.length)
@@ -116,8 +117,16 @@ function useStreamingText(fullText: string, isStreaming: boolean) {
           revealedRef.current = nextSpace + 1
         }
       }
-      setDisplayText(fullText.substring(0, revealedRef.current))
-      if (revealedRef.current < fullText.length) {
+
+      const now = performance.now()
+      const done = revealedRef.current >= fullText.length
+      // Only trigger React setState (and markdown re-parse) every FLUSH_INTERVAL_MS or when done
+      if (done || now - lastFlushRef.current >= FLUSH_INTERVAL_MS) {
+        lastFlushRef.current = now
+        setDisplayText(fullText.substring(0, revealedRef.current))
+      }
+
+      if (!done) {
         rafRef.current = requestAnimationFrame(reveal)
       }
     }

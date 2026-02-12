@@ -286,6 +286,32 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const data = msg.data as { locale: string }
     if (data?.locale) setLocale(data.locale)
   },
+
+  autoContextInfo: (msg) => {
+    useChatStore.getState().setAutoContextInfo(
+      msg.data as { importedFiles: string[]; recentFiles: string[]; activeFile: string | null; totalFiles: number; enabled: boolean },
+    )
+  },
+
+  memoriesInfo: (msg) => {
+    useUIStore.getState().setMemoriesInfo(
+      msg.data as { count: number; lastUpdated: string | null; filePath: string },
+    )
+  },
+
+  nextEditSuggestions: (msg) => {
+    const data = msg.data as { suggestions: Array<{ id: string; filePath: string; reason: string; changedSymbols: string[]; severity: 'info' | 'warning' }> }
+    useChatStore.getState().setNextEditSuggestions(data.suggestions)
+  },
+
+  ruleViolations: (msg) => {
+    const data = msg.data as { violations: Array<{ id: string; ruleName: string; description: string; severity: 'warning' | 'error'; filePath: string; suggestion?: string }> }
+    useChatStore.getState().setRuleViolations(data.violations)
+  },
+
+  rulesData: () => {
+    // Rules data is handled by settings panel directly
+  },
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {
