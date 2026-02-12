@@ -196,7 +196,7 @@ export class ClaudeService implements vscode.Disposable {
       const contentBlocks: unknown[] = [{ type: 'text', text: actualMessage }];
       if (options.images?.length) {
         for (const dataUrl of options.images) {
-          const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+          const match = dataUrl.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
           if (match) {
             contentBlocks.push({
               type: 'image',

@@ -694,6 +694,39 @@ export function InputArea() {
               </svg>
             </button>
 
+            {/* Pick image button */}
+            <button
+              onClick={() => postMessage({ type: 'pickImageFile' })}
+              className="cursor-pointer flex items-center justify-center"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
+                padding: '0',
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--radius-md)',
+                color: 'inherit',
+                opacity: 0.7,
+                transition: 'all 0.15s ease',
+              }}
+              title="Attach image"
+              aria-label="Attach image"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
+                e.currentTarget.style.opacity = '1'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.opacity = '0.7'
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+
             {/* Slash command button */}
             <button
               onClick={() => { setShowSlashPicker(true); setSlashFilter('') }}
