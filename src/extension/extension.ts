@@ -55,15 +55,22 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
-  // Register command to open chat with current file context
+  // Register command to open chat with current file/folder context
   const openChatWithFileCmd = vscode.commands.registerCommand(
     'claude-code-chatui.openChatWithFile',
-    () => {
-      const editor = vscode.window.activeTextEditor;
+    (uri?: vscode.Uri) => {
       const panel = panelManager.createNewPanel(vscode.ViewColumn.Beside, false);
-      if (editor) {
-        const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+      if (uri) {
+        // Called from explorer context menu (file or folder)
+        const relativePath = vscode.workspace.asRelativePath(uri, false);
         panel.attachFileContext(relativePath);
+      } else {
+        // Called from editor title bar or command palette
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+          panel.attachFileContext(relativePath);
+        }
       }
     },
   );
