@@ -136,6 +136,7 @@ export class ClaudeService implements vscode.Disposable {
   private _pendingPermissions = new Map<string, PendingPermission>();
   private _subscriptionType: 'pro' | 'max' | undefined;
   private _accountInfoFetched = false;
+  private _isStopping = false;
 
   private _messageEmitter = new EventEmitter();
   private _processEndEmitter = new EventEmitter();
@@ -281,34 +282,50 @@ export class ClaudeService implements vscode.Disposable {
 
     claudeProcess.on('close', (code) => {
       if (!this._process) return;
+      const wasStopping = this._isStopping;
       this._process = undefined;
+      this._isStopping = false;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
-      if (code !== 0 && errorOutput.trim()) this._errorEmitter.emit('error', errorOutput.trim());
+      if (code !== 0 && errorOutput.trim() && !wasStopping) this._errorEmitter.emit('error', errorOutput.trim());
     });
 
     claudeProcess.on('error', (error) => {
       if (!this._process) return;
+      const wasStopping = this._isStopping;
       this._process = undefined;
+      this._isStopping = false;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
-      this._errorEmitter.emit('error', `Error running Claude: ${error.message}`);
+      if (!wasStopping) this._errorEmitter.emit('error', `Error running Claude: ${error.message}`);
     });
   }
 
   async stopProcess(): Promise<void> {
     if (!this._process) return;
+    this._isStopping = true;
+    const proc = this._process;
+    const pid = proc.pid;
     try {
-      this._abortController?.abort();
-      if (this._process.stdin && !this._process.stdin.destroyed) this._process.stdin.end();
-      if (process.platform === 'win32' && this._process.pid) {
-        cp.exec(`taskkill /pid ${this._process.pid} /T /F`);
-      } else if (this._process.pid) {
-        process.kill(-this._process.pid, 'SIGTERM');
+      // Close stdin first to signal the process to stop
+      if (proc.stdin && !proc.stdin.destroyed) proc.stdin.end();
+      // Kill the process tree
+      if (process.platform === 'win32' && pid) {
+        cp.exec(`taskkill /pid ${pid} /T /F`);
+      } else if (pid) {
+        process.kill(-pid, 'SIGTERM');
       }
+      // abort() fires error event synchronously, so call it after kill
+      this._abortController?.abort();
     } catch { /* already dead */ }
-    this._process = undefined;
-    this._cancelPendingPermissions();
+    // If the error event fired synchronously from abort(), _process is already cleared.
+    // If not, clean up here. Keep _isStopping=true for the async close event.
+    if (this._process) {
+      this._process = undefined;
+      this._cancelPendingPermissions();
+      this._processEndEmitter.emit('end');
+      this._isStopping = false;
+    }
   }
 
   sendPermissionResponse(requestId: string, approved: boolean, alwaysAllow?: boolean): void {

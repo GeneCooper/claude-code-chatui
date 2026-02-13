@@ -152,7 +152,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
 
   return (
     <div
-      className="group max-w-[95%]"
+      className="group relative max-w-[95%]"
       style={{ padding: '4px 0' }}
     >
       {/* Message content */}
@@ -160,8 +160,8 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
         {renderedMarkdown}
       </div>
 
-      {/* Copy button - appears at bottom-right on hover */}
-      <div className="flex justify-end opacity-0 group-hover:opacity-100" style={{ transition: 'opacity 0.2s ease', marginTop: '2px' }}>
+      {/* Copy button - appears at top-right on hover, overlaid */}
+      <div className="absolute top-1 right-0 opacity-0 group-hover:opacity-100" style={{ transition: 'opacity 0.2s ease' }}>
         <button
           onClick={handleCopyMessage}
           className="cursor-pointer bg-transparent border-none flex items-center gap-1"
