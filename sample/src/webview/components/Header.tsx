@@ -4,7 +4,6 @@ import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
 import { UsageIndicator } from './UsageIndicator'
 
-
 declare global {
   interface Window { __ICON_URI__?: string }
 }
@@ -26,15 +25,11 @@ function LogoIcon({ size = 20 }: { size?: number }) {
 export { LogoIcon }
 
 export function Header() {
-  const sessionId = useChatStore((s) => s.sessionId)
-  const isProcessing = useChatStore((s) => s.isProcessing)
-  const activeView = useUIStore((s) => s.activeView)
-  const setActiveView = useUIStore((s) => s.setActiveView)
-  const requestStartTime = useUIStore((s) => s.requestStartTime)
+  const { sessionId, isProcessing } = useChatStore()
+  const { activeView, setActiveView, requestStartTime } = useUIStore()
 
   return (
     <div
-      role="banner"
       className="flex items-center justify-between px-4 py-3"
       style={{
         borderBottom: '1px solid var(--chatui-glass-border)',
@@ -98,22 +93,6 @@ export function Header() {
   )
 }
 
-function HeaderSep() {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: '1px',
-        height: '14px',
-        background: 'var(--vscode-panel-border, rgba(255,255,255,0.2))',
-        opacity: 0.5,
-        margin: '0 8px',
-        verticalAlign: 'middle',
-      }}
-    />
-  )
-}
-
 function RequestTimer({ startTime }: { startTime: number }) {
   const [elapsed, setElapsed] = useState(0)
 
@@ -136,6 +115,22 @@ function RequestTimer({ startTime }: { startTime: number }) {
   )
 }
 
+function HeaderSep() {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: '1px',
+        height: '14px',
+        background: 'var(--vscode-panel-border, rgba(255,255,255,0.2))',
+        opacity: 0.5,
+        margin: '0 8px',
+        verticalAlign: 'middle',
+      }}
+    />
+  )
+}
+
 function HeaderIconButton({
   title,
   active,
@@ -151,7 +146,6 @@ function HeaderIconButton({
     <button
       onClick={onClick}
       title={title}
-      aria-label={title}
       className="cursor-pointer border-none flex items-center justify-center"
       style={{
         background: 'transparent',
@@ -169,3 +163,4 @@ function HeaderIconButton({
     </button>
   )
 }
+

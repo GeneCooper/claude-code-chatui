@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as readline from 'readline';
 import { EventEmitter } from 'events';
-import type { ClaudeMessage, PermissionRequest, RateLimitData } from '../shared/types';
+import type { ClaudeMessage, PermissionRequest } from '../shared/types';
+import { THINKING_INTENSITIES, ThinkingIntensity } from '../shared/constants';
 
 // ============================================================================
 // PermissionService
@@ -110,6 +110,8 @@ export class PermissionService implements vscode.Disposable {
 
 interface SendMessageOptions {
   cwd: string;
+  planMode?: boolean;
+  thinkingMode?: boolean;
   yoloMode?: boolean;
   model?: string;
   mcpConfigPath?: string;
@@ -125,35 +127,59 @@ interface PendingPermission {
   input: Record<string, unknown>;
   suggestions?: unknown[];
   toolUseId: string;
-  timeout: ReturnType<typeof setTimeout>;
 }
-
-const PERMISSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export class ClaudeService implements vscode.Disposable {
   private _process: cp.ChildProcess | undefined;
   private _abortController: AbortController | undefined;
   private _sessionId: string | undefined;
   private _pendingPermissions = new Map<string, PendingPermission>();
+  private _subscriptionType: 'pro' | 'max' | undefined;
+  private _accountInfoFetched = false;
+
   private _messageEmitter = new EventEmitter();
   private _processEndEmitter = new EventEmitter();
   private _errorEmitter = new EventEmitter();
   private _permissionRequestEmitter = new EventEmitter();
   private _rateLimitEmitter = new EventEmitter();
+  private _accountInfoEmitter = new EventEmitter();
 
-  constructor(private readonly _context: vscode.ExtensionContext) {}
+  constructor(private readonly _context: vscode.ExtensionContext) {
+    this._subscriptionType = _context.globalState.get<'pro' | 'max' | undefined>('claude.subscriptionType');
+  }
+
+  get subscriptionType(): 'pro' | 'max' | undefined { return this._subscriptionType; }
+  onAccountInfo(cb: (type: 'pro' | 'max' | undefined) => void): void { this._accountInfoEmitter.on('info', cb); }
 
   onMessage(cb: (msg: ClaudeMessage) => void): void { this._messageEmitter.on('message', cb); }
   onProcessEnd(cb: () => void): void { this._processEndEmitter.on('end', cb); }
   onError(cb: (err: string) => void): void { this._errorEmitter.on('error', cb); }
   onPermissionRequest(cb: (req: PermissionRequest) => void): void { this._permissionRequestEmitter.on('request', cb); }
-  onRateLimitUpdate(cb: (data: RateLimitData) => void): void { this._rateLimitEmitter.on('update', cb); }
+  onRateLimitUpdate(cb: (data: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number }) => void): void { this._rateLimitEmitter.on('ratelimit', cb); }
 
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
+    let actualMessage = message;
+    if (options.thinkingMode) {
+      const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+      const intensity = config.get<ThinkingIntensity>('thinking.intensity', ThinkingIntensity.Think);
+      const prompt = THINKING_INTENSITIES[intensity] || THINKING_INTENSITIES.think;
+      actualMessage = `${prompt}\n\n${actualMessage}`;
+    }
+
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
+    args.push(
+      '--append-system-prompt',
+      [
+        'Be an efficient agent: act, don\'t explain.',
+        'Do NOT narrate your plan, restate the question, or describe what you\'re about to do.',
+        'Execute tool calls immediately without preamble.',
+        'When done, give a one-line summary of what changed — nothing more.',
+        'Prefer code over prose. Skip pleasantries.',
+      ].join(' '),
+    );
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
@@ -161,6 +187,7 @@ export class ClaudeService implements vscode.Disposable {
       args.push('--permission-prompt-tool', 'stdio');
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
+    if (options.planMode && !options.yoloMode) args.push('--permission-mode', 'plan');
     if (options.model && options.model !== 'default') args.push('--model', options.model);
     if (options.allowedTools?.length) {
       for (const tool of options.allowedTools) args.push('--allowedTools', tool);
@@ -187,7 +214,7 @@ export class ClaudeService implements vscode.Disposable {
     this._process = claudeProcess;
 
     if (claudeProcess.stdin) {
-      const contentBlocks: unknown[] = [{ type: 'text', text: message }];
+      const contentBlocks: unknown[] = [{ type: 'text', text: actualMessage }];
       if (options.images?.length) {
         for (const dataUrl of options.images) {
           const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
@@ -206,30 +233,59 @@ export class ClaudeService implements vscode.Disposable {
         parent_tool_use_id: null,
       };
       claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
+
+      // Send initialize control_request to detect account/subscription type
+      if (!this._accountInfoFetched) {
+        this._accountInfoFetched = true;
+        const initReq = {
+          type: 'control_request',
+          request_id: `init-${Date.now()}`,
+          request: { subtype: 'initialize' },
+        };
+        claudeProcess.stdin.write(JSON.stringify(initReq) + '\n');
+      }
     }
 
-    // Only keep the last chunk of stderr for error reporting (avoid unbounded memory growth)
-    let lastStderrChunk = '';
+    let rawOutput = '';
+    let errorOutput = '';
 
-    if (claudeProcess.stdout) {
-      const rl = readline.createInterface({ input: claudeProcess.stdout, crlfDelay: Infinity });
-      rl.on('line', (line) => {
-        if (!line.trim()) return;
+    claudeProcess.stdout?.on('data', (data: Buffer) => {
+      rawOutput += data.toString();
+      const lines = rawOutput.split('\n');
+      rawOutput = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
         try {
           const json = JSON.parse(line.trim());
-          if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); return; }
+          if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
+          if (json.type === 'control_response') { this._handleControlResponse(json); continue; }
           if (json.type === 'result') {
             if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) claudeProcess.stdin.end();
           }
           this._messageEmitter.emit('message', json as ClaudeMessage);
         } catch { /* non-JSON */ }
-      });
-    }
+      }
+    });
 
     claudeProcess.stderr?.on('data', (data: Buffer) => {
       const chunk = data.toString();
-      lastStderrChunk = chunk;
-      this._parseRateLimitHeaders(chunk);
+      errorOutput += chunk;
+      // Parse rate-limit headers from debug output in real-time
+      if (chunk.includes('ratelimit') || chunk.includes('utilization')) {
+        const rl: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number } = {};
+        const m5h = chunk.match(/anthropic-ratelimit-unified-5h-utilization["']?\s*[":]\s*["']?([0-9.]+)/i);
+        if (m5h) { const v = parseFloat(m5h[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.session5h = Math.min(1, v); }
+        const m7d = chunk.match(/anthropic-ratelimit-unified-7d-utilization["']?\s*[":]\s*["']?([0-9.]+)/i);
+        if (m7d) { const v = parseFloat(m7d[1]); if (!isNaN(v) && v >= 0 && v <= 2) rl.weekly7d = Math.min(1, v); }
+        const mr5h = chunk.match(/anthropic-ratelimit-unified-5h-reset["']?\s*[":]\s*["']?([0-9]+)/i);
+        if (mr5h) rl.reset5h = parseInt(mr5h[1], 10);
+        const mr7d = chunk.match(/anthropic-ratelimit-unified-7d-reset["']?\s*[":]\s*["']?([0-9]+)/i);
+        if (mr7d) rl.reset7d = parseInt(mr7d[1], 10);
+        if (rl.session5h !== undefined || rl.weekly7d !== undefined) {
+          this._rateLimitEmitter.emit('ratelimit', rl);
+        }
+      }
     });
 
     claudeProcess.on('close', (code) => {
@@ -237,7 +293,7 @@ export class ClaudeService implements vscode.Disposable {
       this._process = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
-      if (code !== 0 && lastStderrChunk.trim()) this._errorEmitter.emit('error', lastStderrChunk.trim());
+      if (code !== 0 && errorOutput.trim()) this._errorEmitter.emit('error', errorOutput.trim());
     });
 
     claudeProcess.on('error', (error) => {
@@ -250,33 +306,23 @@ export class ClaudeService implements vscode.Disposable {
   }
 
   async stopProcess(): Promise<void> {
-    const proc = this._process;
-    if (!proc) return;
-    this._process = undefined;
-    this._cancelPendingPermissions();
-
+    if (!this._process) return;
     try {
       this._abortController?.abort();
-      if (proc.stdin && !proc.stdin.destroyed) proc.stdin.end();
-      if (process.platform === 'win32' && proc.pid) {
-        // taskkill /F already sends a forceful kill on Windows
-        cp.exec(`taskkill /pid ${proc.pid} /T /F`);
-      } else if (proc.pid) {
-        const pid = proc.pid;
-        process.kill(-pid, 'SIGTERM');
-        // SIGKILL fallback: if process doesn't exit within 3s, force kill
-        const killTimer = setTimeout(() => {
-          try { process.kill(-pid, 'SIGKILL'); } catch { /* already dead */ }
-        }, 3000);
-        proc.once('exit', () => clearTimeout(killTimer));
+      if (this._process.stdin && !this._process.stdin.destroyed) this._process.stdin.end();
+      if (process.platform === 'win32' && this._process.pid) {
+        cp.exec(`taskkill /pid ${this._process.pid} /T /F`);
+      } else if (this._process.pid) {
+        process.kill(-this._process.pid, 'SIGTERM');
       }
     } catch { /* already dead */ }
+    this._process = undefined;
+    this._cancelPendingPermissions();
   }
 
   sendPermissionResponse(requestId: string, approved: boolean, alwaysAllow?: boolean): void {
     const pending = this._pendingPermissions.get(requestId);
     if (!pending) return;
-    clearTimeout(pending.timeout);
     this._pendingPermissions.delete(requestId);
     if (this._process?.stdin && !this._process.stdin.destroyed) {
       const response = approved
@@ -306,14 +352,7 @@ export class ClaudeService implements vscode.Disposable {
               },
             },
           };
-      void this._writeStdin(this._process.stdin, JSON.stringify(response) + '\n');
-    }
-  }
-
-  private async _writeStdin(stdin: NodeJS.WritableStream, data: string): Promise<void> {
-    const ok = stdin.write(data);
-    if (!ok) {
-      await new Promise<void>((resolve) => stdin.once('drain', resolve));
+      this._process.stdin.write(JSON.stringify(response) + '\n');
     }
   }
 
@@ -327,13 +366,7 @@ export class ClaudeService implements vscode.Disposable {
     const suggestions = (request as { permission_suggestions?: unknown[] }).permission_suggestions;
     const toolUseId = (request as { tool_use_id?: string }).tool_use_id || requestId;
 
-    const timeout = setTimeout(() => {
-      if (this._pendingPermissions.has(requestId)) {
-        this.sendPermissionResponse(requestId, false);
-      }
-    }, PERMISSION_TIMEOUT_MS);
-
-    this._pendingPermissions.set(requestId, { requestId, toolName, input, suggestions, toolUseId, timeout });
+    this._pendingPermissions.set(requestId, { requestId, toolName, input, suggestions, toolUseId });
 
     let pattern: string | undefined;
     if (toolName === 'Bash' && input.command) {
@@ -346,6 +379,19 @@ export class ClaudeService implements vscode.Disposable {
       blockedPath: (request as { blocked_path?: string }).blocked_path,
       pattern,
     });
+  }
+
+  private _handleControlResponse(response: Record<string, unknown>): void {
+    try {
+      const data = response.data as Record<string, unknown> | undefined;
+      const innerResponse = (response.response as Record<string, unknown>)?.response as Record<string, unknown> | undefined;
+      const account = (data?.account || innerResponse?.account) as Record<string, unknown> | undefined;
+      if (account?.subscriptionType) {
+        this._subscriptionType = account.subscriptionType as 'pro' | 'max';
+        void this._context.globalState.update('claude.subscriptionType', this._subscriptionType);
+        this._accountInfoEmitter.emit('info', this._subscriptionType);
+      }
+    } catch { /* ignore malformed responses */ }
   }
 
   // Common command patterns: [firstWord, subcommand] → wildcard pattern
@@ -442,52 +488,7 @@ export class ClaudeService implements vscode.Disposable {
     return parts.length > 1 ? `${firstWord} *` : firstWord;
   }
 
-  private _rateLimitBuffer = '';
-
-  private _parseRateLimitHeaders(chunk: string): void {
-    // Accumulate chunks since headers may span multiple data events
-    this._rateLimitBuffer += chunk;
-
-    // Cap buffer size to avoid unbounded memory growth (keep last 8KB)
-    if (this._rateLimitBuffer.length > 8192) {
-      this._rateLimitBuffer = this._rateLimitBuffer.slice(-8192);
-    }
-
-    // Look for the rate limit headers in the debug output
-    const has5h = this._rateLimitBuffer.includes('anthropic-ratelimit-unified-5h-utilization');
-    const has7d = this._rateLimitBuffer.includes('anthropic-ratelimit-unified-7d-utilization');
-    if (!has5h || !has7d) return;
-
-    const extract = (key: string): string | null => {
-      // Match both formats: 'key': 'value' (JS object) and key: value (raw headers)
-      const re = new RegExp(`'${key}':\\s*'([^']*)'|${key}:\\s*([^\\s,}]+)`, 'i');
-      const m = this._rateLimitBuffer.match(re);
-      return m ? (m[1] || m[2] || null) : null;
-    };
-
-    const sessionUtil = extract('anthropic-ratelimit-unified-5h-utilization');
-    const sessionReset = extract('anthropic-ratelimit-unified-5h-reset');
-    const weeklyUtil = extract('anthropic-ratelimit-unified-7d-utilization');
-    const weeklyReset = extract('anthropic-ratelimit-unified-7d-reset');
-    const status = extract('anthropic-ratelimit-unified-status');
-
-    if (sessionUtil && weeklyUtil) {
-      this._rateLimitEmitter.emit('update', {
-        sessionUtilization: parseFloat(sessionUtil),
-        sessionResetTs: sessionReset ? parseInt(sessionReset, 10) : 0,
-        weeklyUtilization: parseFloat(weeklyUtil),
-        weeklyResetTs: weeklyReset ? parseInt(weeklyReset, 10) : 0,
-        status: status || 'unknown',
-      } satisfies RateLimitData);
-      // Clear buffer after successful parse to avoid re-emitting stale data
-      this._rateLimitBuffer = '';
-    }
-  }
-
   private _cancelPendingPermissions(): void {
-    for (const pending of this._pendingPermissions.values()) {
-      clearTimeout(pending.timeout);
-    }
     this._pendingPermissions.clear();
   }
 

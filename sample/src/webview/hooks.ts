@@ -4,10 +4,10 @@ import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
 import { useUIStore } from './store'
-import type { UsageData } from '../shared/types'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
+import type { UsageData } from '../shared/types'
 
 // ============================================================================
 // VS Code API Bridge
@@ -70,7 +70,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const chatMessages = data.messages
       .filter((m) => {
         // Only include message types that go into the messages array
-        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest']
+        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest', 'restorePoint']
         return validTypes.includes(m.type)
       })
       .map((m) => ({
@@ -170,8 +170,8 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   toolResult: (msg) => {
-    // Always add toolResult so timeline can match it to its toolUse and stop the spinner
-    useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
+    const result = msg.data as { hidden?: boolean }
+    if (!result.hidden) useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
   },
 
   permissionRequest: (msg) => { useChatStore.getState().addMessage({ type: 'permissionRequest', data: msg.data }) },
@@ -228,19 +228,18 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
   },
 
+  restorePoint: (msg) => { useChatStore.getState().addMessage({ type: 'restorePoint', data: msg.data }) },
+
+  usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
+  usageError: () => {},
+
+  accountInfo: (msg) => {
+    const info = msg.data as { subscriptionType: 'pro' | 'max' | undefined }
+    useUIStore.getState().setAccountType(info.subscriptionType)
+  },
+
   platformInfo: (msg) => {
     useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
-  },
-
-  usageUpdate: (msg) => {
-    useUIStore.getState().setUsageData(msg.data as UsageData)
-  },
-
-  cliVersionInfo: (msg) => {
-    const data = msg.data as { version: string | null; minVersion: string; compatible: boolean; warning: string | null }
-    if (data.warning) {
-      useUIStore.getState().showNotification('warning', 'CLI Version', data.warning, 0)
-    }
   },
 
   imageFilePicked: (msg) => {
@@ -279,13 +278,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const data = msg.data as { filePath: string; languageId: string } | null
     window.dispatchEvent(new CustomEvent('activeFileChanged', { detail: data }))
   },
-
-  rateLimitUpdate: (msg) => {
-    const data = msg.data as { sessionUtilization: number; sessionResetTs: number; weeklyUtilization: number; weeklyResetTs: number; status: string }
-    useChatStore.getState().updateRateLimit(data)
-  },
-
-
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {
@@ -434,88 +426,5 @@ export function useAutoScroll<T extends HTMLElement = HTMLDivElement>(
     containerRef, isNearBottom, isAutoScrollEnabled,
     scrollToBottom, enableAutoScroll, disableAutoScroll, toggleAutoScroll, checkIsAtBottom,
   }
-}
-
-// ============================================================================
-// useFocusTrap Hook
-// ============================================================================
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'textarea:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(', ')
-
-/**
- * Traps focus within a container element when active.
- * - Cycles Tab/Shift+Tab through focusable elements
- * - Closes on Escape
- * - Auto-focuses the first focusable element on mount
- */
-export function useFocusTrap<T extends HTMLElement>(
-  active: boolean,
-  onClose?: () => void,
-): RefObject<T | null> {
-  const containerRef = useRef<T>(null)
-  const previousActiveRef = useRef<Element | null>(null)
-
-  useEffect(() => {
-    if (!active) return
-
-    const container = containerRef.current
-    if (!container) return
-
-    // Save previously focused element
-    previousActiveRef.current = document.activeElement
-
-    // Auto-focus first focusable element
-    const focusableElements = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-    if (focusableElements.length > 0) {
-      requestAnimationFrame(() => focusableElements[0].focus())
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onClose) {
-        e.preventDefault()
-        onClose()
-        return
-      }
-
-      if (e.key !== 'Tab') return
-
-      const focusable = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-      if (focusable.length === 0) return
-
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
-      }
-    }
-
-    container.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      container.removeEventListener('keydown', handleKeyDown)
-      // Restore focus to previous element
-      if (previousActiveRef.current instanceof HTMLElement) {
-        previousActiveRef.current.focus()
-      }
-    }
-  }, [active, onClose])
-
-  return containerRef
 }
 

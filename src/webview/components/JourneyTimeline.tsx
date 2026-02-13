@@ -1,35 +1,10 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import type { ChatMessage } from '../store'
-import { postMessage } from '../hooks'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
-
-function BackupCheckpoint({ data }: { data: { sha: string; message: string; timestamp: string } }) {
-  const time = new Date(data.timestamp).toLocaleTimeString()
-  return (
-    <div className="flex items-center gap-2 py-1" style={{ fontSize: '11px', opacity: 0.6 }}>
-      <button
-        onClick={() => postMessage({ type: 'restoreCommit', commitSha: data.sha })}
-        className="cursor-pointer border-none"
-        style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid var(--vscode-panel-border)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '2px 8px',
-          color: 'inherit',
-          fontSize: '11px',
-        }}
-        title={`Restore to: ${data.message}`}
-      >
-        Restore checkpoint
-      </button>
-      <span style={{ opacity: 0.5 }}>{time}</span>
-    </div>
-  )
-}
 
 
 // ============================================================================
@@ -542,8 +517,6 @@ function MessageRenderer({ message, userInputIndex, onEdit, isProcessing }: {
       )
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
-    case 'backup':
-      return <BackupCheckpoint data={message.data as { sha: string; message: string; timestamp: string }} />
     default:
       return null
   }
@@ -650,7 +623,7 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   const showBottomLoading = useMemo(() => {
     if (!isProcessing) return false
     // Check last few entries (not just the very last) for loading/streaming/running state
-    // This avoids duplicate loading when a backup checkpoint appears after the loading entry
+    // This avoids duplicate loading indicators
     for (let i = entries.length - 1; i >= Math.max(0, entries.length - 3); i--) {
       const entry = entries[i]
       if (entry.kind === 'standalone' && entry.message.type === 'loading') return false

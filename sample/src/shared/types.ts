@@ -2,12 +2,12 @@
 // Claude CLI Message Types (from stdout stream-json)
 // ============================================================================
 
-export interface ClaudeCliMessage {
+interface ClaudeCliMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
 }
 
 // System messages
-export interface SystemInitMessage extends ClaudeCliMessage {
+interface SystemInitMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'init';
   session_id: string;
@@ -15,13 +15,13 @@ export interface SystemInitMessage extends ClaudeCliMessage {
   mcp_servers?: unknown[];
 }
 
-export interface SystemStatusMessage extends ClaudeCliMessage {
+interface SystemStatusMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'status';
   status: 'compacting' | null;
 }
 
-export interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
+interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
   type: 'system';
   subtype: 'compact_boundary';
   compact_metadata?: {
@@ -30,20 +30,20 @@ export interface SystemCompactBoundaryMessage extends ClaudeCliMessage {
   };
 }
 
-export type SystemMessage = SystemInitMessage | SystemStatusMessage | SystemCompactBoundaryMessage;
+type SystemMessage = SystemInitMessage | SystemStatusMessage | SystemCompactBoundaryMessage;
 
 // Content blocks
-export interface TextContent {
+interface TextContent {
   type: 'text';
   text: string;
 }
 
-export interface ThinkingContent {
+interface ThinkingContent {
   type: 'thinking';
   thinking: string;
 }
 
-export interface ToolUseContent {
+interface ToolUseContent {
   type: 'tool_use';
   id?: string;
   tool_use_id?: string;
@@ -51,17 +51,17 @@ export interface ToolUseContent {
   input?: Record<string, unknown>;
 }
 
-export interface ToolResultContent {
+interface ToolResultContent {
   type: 'tool_result';
   tool_use_id?: string;
   content?: string | unknown;
   is_error?: boolean;
 }
 
-export type ContentBlock = TextContent | ThinkingContent | ToolUseContent | ToolResultContent;
+type ContentBlock = TextContent | ThinkingContent | ToolUseContent | ToolResultContent;
 
 // Token usage
-export interface TokenUsage {
+interface TokenUsage {
   input_tokens: number;
   output_tokens: number;
   cache_read_input_tokens?: number;
@@ -69,7 +69,7 @@ export interface TokenUsage {
 }
 
 // Assistant message
-export interface AssistantMessage extends ClaudeCliMessage {
+interface AssistantMessage extends ClaudeCliMessage {
   type: 'assistant';
   message?: {
     content: ContentBlock[];
@@ -78,7 +78,7 @@ export interface AssistantMessage extends ClaudeCliMessage {
 }
 
 // User message (tool results)
-export interface UserMessage extends ClaudeCliMessage {
+interface UserMessage extends ClaudeCliMessage {
   type: 'user';
   message?: {
     content: (TextContent | ToolResultContent)[];
@@ -86,7 +86,7 @@ export interface UserMessage extends ClaudeCliMessage {
 }
 
 // Result message
-export interface ResultMessage extends ClaudeCliMessage {
+interface ResultMessage extends ClaudeCliMessage {
   type: 'result';
   subtype: 'success' | 'error';
   session_id?: string;
@@ -99,15 +99,6 @@ export interface ResultMessage extends ClaudeCliMessage {
 
 // Union type for all CLI messages
 export type ClaudeMessage = SystemMessage | AssistantMessage | UserMessage | ResultMessage;
-
-// Rate limit data from API response headers
-export interface RateLimitData {
-  sessionUtilization: number;   // 0-1 (from 5h header)
-  sessionResetTs: number;       // unix timestamp
-  weeklyUtilization: number;    // 0-1 (from 7d header)
-  weeklyResetTs: number;        // unix timestamp
-  status: string;               // 'allowed' | 'throttled' etc
-}
 
 // ============================================================================
 // Permission types
@@ -181,6 +172,17 @@ export interface MCPConfig {
 }
 
 // ============================================================================
+// Backup types
+// ============================================================================
+
+export interface BackupCommit {
+  id: string;
+  sha: string;
+  message: string;
+  timestamp: string;
+}
+
+// ============================================================================
 // File picker types
 // ============================================================================
 
@@ -201,6 +203,15 @@ export interface SlashCommand {
 }
 
 // ============================================================================
+// Usage types
+// ============================================================================
+
+export interface UsageData {
+  currentSession: { usageCost: number; costLimit: number; resetsIn: string };
+  weekly: { costLikely: number; costLimit: number; resetsAt: string };
+}
+
+// ============================================================================
 // Todo types
 // ============================================================================
 
@@ -211,23 +222,16 @@ export interface TodoItem {
 }
 
 // ============================================================================
-// Usage types
-// ============================================================================
-
-export interface UsageData {
-  currentSession: { usageCost: number; costLimit: number; resetsIn: string };
-  weekly: { costLikely: number; costLimit: number; resetsAt: string };
-}
-
-// ============================================================================
 // Webview communication types
 // ============================================================================
 
 /** Messages from Webview to Extension */
 export type WebviewToExtensionMessage =
-  | { type: 'sendMessage'; text: string; thinkingMode?: boolean; planMode?: boolean; model?: string; images?: string[] }
+  | { type: 'sendMessage'; text: string; planMode?: boolean; thinkingMode?: boolean; model?: string; images?: string[] }
   | { type: 'newSession' }
   | { type: 'createNewPanel' }
+  | { type: 'rewindToMessage'; userInputIndex: number }
+  | { type: 'forkFromMessage'; userInputIndex: number }
   | { type: 'stopRequest' }
   | { type: 'ready' }
   | { type: 'permissionResponse'; id: string; approved: boolean; alwaysAllow?: boolean }
@@ -247,15 +251,14 @@ export type WebviewToExtensionMessage =
   | { type: 'loadMCPServers' }
   | { type: 'saveMCPServer'; name: string; config: MCPServerConfig }
   | { type: 'deleteMCPServer'; name: string }
+  | { type: 'createBackup'; message: string }
+  | { type: 'restoreBackup'; commitSha: string }
+  | { type: 'refreshUsage' }
+  | { type: 'openCCUsageTerminal' }
   | { type: 'pickImageFile' }
   | { type: 'pickWorkspaceFile' }
   | { type: 'getClipboardText' }
-  | { type: 'resolveDroppedFile'; uri: string }
-  | { type: 'editMessage'; userInputIndex: number; newText: string }
-  | { type: 'regenerateResponse' }
-  | { type: 'refreshUsage' }
-  | { type: 'openCCUsageTerminal' }
-;
+  | { type: 'resolveDroppedFile'; uri: string };
 
 /** Messages from Extension to Webview */
 type ExtensionToWebviewMessage =
@@ -278,7 +281,6 @@ type ExtensionToWebviewMessage =
   | { type: 'compacting'; data: { isCompacting: boolean } }
   | { type: 'compactBoundary'; data: { trigger?: string; preTokens?: number } }
   | { type: 'showInstallModal' }
-  | { type: 'cliVersionInfo'; data: { version: string | null; minVersion: string; compatible: boolean; warning: string | null } }
   | { type: 'restoreState'; state: unknown }
   | { type: 'conversationList'; data: ConversationIndexEntry[] }
   | { type: 'settingsData'; data: SettingsData }
@@ -287,10 +289,14 @@ type ExtensionToWebviewMessage =
   | { type: 'mcpServerSaved'; data: { name: string } }
   | { type: 'mcpServerDeleted'; data: { name: string } }
   | { type: 'mcpServerError'; data: { error: string } }
+  | { type: 'restorePoint'; data: BackupCommit }
   | { type: 'slashCommands'; data: SlashCommand[] }
   | { type: 'showLoginRequired'; data: { message: string } }
+  | { type: 'usageUpdate'; data: UsageData }
+  | { type: 'usageError'; data: string }
   | { type: 'todosUpdate'; data: { todos: TodoItem[] } }
   | { type: 'installComplete'; data: { success: boolean; error?: string } }
+  | { type: 'accountInfo'; data: { subscriptionType: 'pro' | 'max' | undefined } }
   | { type: 'platformInfo'; data: { platform: string; isWindows: boolean } }
   | { type: 'imageFilePicked'; data: { name: string; dataUrl: string } }
   | { type: 'clipboardContent'; data: { text: string } }
@@ -298,9 +304,7 @@ type ExtensionToWebviewMessage =
   | { type: 'fileDropped'; data: { filePath: string } }
   | { type: 'editorSelection'; data: { filePath: string; startLine: number; endLine: number; text: string } | null }
   | { type: 'activeFileChanged'; data: { filePath: string; languageId: string } | null }
-  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } }
-  | { type: 'usageUpdate'; data: UsageData }
-;
+  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
 
 interface SettingsData {
   thinkingIntensity: string;

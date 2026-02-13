@@ -1,15 +1,19 @@
 import { create } from 'zustand'
-import type { TodoItem, MCPServerConfig, RateLimitData, UsageData } from '../shared/types'
-
-export type { TodoItem }
+import type { UsageData } from '../shared/types'
 
 // ============================================================================
 // Chat Store
 // ============================================================================
 
+export interface TodoItem {
+  content: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm?: string
+}
+
 export interface ChatMessage {
   id: string
-  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'todosUpdate'
+  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint' | 'todosUpdate'
   data: unknown
   timestamp: string
 }
@@ -37,7 +41,6 @@ interface ChatState {
   tokens: TokenState
   totals: TotalsState
   todos: TodoItem[]
-  rateLimit: RateLimitData | null
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
@@ -49,7 +52,6 @@ interface ChatState {
   updateTotals: (totals: Partial<TotalsState>) => void
   updatePermissionStatus: (id: string, status: string) => void
   updateTodos: (todos: TodoItem[]) => void
-  updateRateLimit: (data: RateLimitData) => void
   restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
 }
 
@@ -66,7 +68,6 @@ export const useChatStore = create<ChatState>((set) => ({
     cacheCreationTokens: 0, cacheReadTokens: 0,
   },
   totals: { totalCost: 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
-  rateLimit: null,
 
   addMessage: (msg) =>
     set((state) => ({
@@ -74,25 +75,22 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
 
   appendToLastOutput: (text) => {
-    let merged = false
-    set((state) => {
-      const msgs = state.messages
-      // Find the last output message (skip any loading messages at the end)
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        const m = msgs[i]
-        if (m.type === 'loading') continue
-        if (m.type === 'output') {
-          // Merge text into existing output
-          const updated = [...msgs]
-          updated[i] = { ...m, data: String(m.data) + '\n\n' + text }
-          merged = true
-          return { messages: updated }
-        }
-        break // Stop if we hit any non-loading, non-output message
+    const state = useChatStore.getState()
+    const msgs = state.messages
+    // Find the last output message (skip any loading messages at the end)
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i]
+      if (m.type === 'loading') continue
+      if (m.type === 'output') {
+        // Merge text into existing output
+        const updated = [...msgs]
+        updated[i] = { ...m, data: String(m.data) + '\n\n' + text }
+        set({ messages: updated })
+        return true
       }
-      return {} // no change
-    })
-    return merged
+      break // Stop if we hit any non-loading, non-output message
+    }
+    return false
   },
 
   clearMessages: () => set({ messages: [] }),
@@ -121,7 +119,6 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
 
   updateTodos: (todos) => set({ todos }),
-  updateRateLimit: (data) => set({ rateLimit: data }),
 
   restoreState: (restored) =>
     set((state) => ({
@@ -159,6 +156,14 @@ export const useConversationStore = create<ConversationState>((set) => ({
 // ============================================================================
 // MCP Store
 // ============================================================================
+
+interface MCPServerConfig {
+  type: 'stdio' | 'http' | 'sse'
+  command?: string
+  url?: string
+  args?: string[]
+  headers?: Record<string, string>
+}
 
 interface MCPState {
   servers: Record<string, MCPServerConfig>
@@ -201,7 +206,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  thinkingIntensity: 'think-hard',
+  thinkingIntensity: 'think',
   yoloMode: true,
   customSnippets: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
