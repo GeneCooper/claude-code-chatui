@@ -5,6 +5,7 @@ import { postMessage } from '../hooks'
 const MODES = [
   { key: 'fast', label: 'Fast', desc: 'Minimal tokens — act immediately, concise output', icon: '⚡' },
   { key: 'deep', label: 'Deep', desc: 'Structured workflow — understand, locate, execute, summarize', icon: '🧠' },
+  { key: 'precise', label: 'Precise', desc: 'Anti-hallucination — cite sources, never guess, verify before acting', icon: '🎯' },
 ]
 
 interface Props {

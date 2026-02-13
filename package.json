@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -98,10 +98,11 @@
           "type": "string",
           "enum": [
             "fast",
-            "deep"
+            "deep",
+            "precise"
           ],
           "default": "fast",
-          "description": "Agent mode: fast (minimal tokens) or deep (structured workflow)"
+          "description": "Agent mode: fast (minimal tokens), deep (structured workflow), or precise (anti-hallucination)"
         },
         "claudeCodeChatUI.permissions.yoloMode": {
           "type": "boolean",

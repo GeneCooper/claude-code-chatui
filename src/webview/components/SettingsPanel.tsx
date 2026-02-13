@@ -69,8 +69,9 @@ export function SettingsPanel() {
           >
             <option value="fast">Fast</option>
             <option value="deep">Deep</option>
+            <option value="precise">Precise</option>
           </select>
-          <p className="text-[10px] opacity-50 mt-1">Fast: minimal tokens | Deep: structured workflow</p>
+          <p className="text-[10px] opacity-50 mt-1">Fast: minimal tokens | Deep: structured workflow | Precise: anti-hallucination</p>
         </div>
 
         {/* YOLO Mode */}
