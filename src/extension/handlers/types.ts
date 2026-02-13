@@ -6,6 +6,7 @@ import type { SessionStateManager } from '../sessionState';
 import type { ClaudeMessageProcessor } from '../messageProcessor';
 import type { SettingsManager } from '../settings';
 import type { PanelManager } from '../panelManager';
+import type { RateLimitData } from '../../shared/types';
 
 export interface MessageHandlerContext {
   claudeService: ClaudeService;
@@ -24,6 +25,7 @@ export interface MessageHandlerContext {
   editMessage(userInputIndex: number, newText: string): void;
   regenerateResponse(): void;
   restoreCommit(commitSha: string): Promise<void>;
+  lastRateLimitData: RateLimitData | null;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };

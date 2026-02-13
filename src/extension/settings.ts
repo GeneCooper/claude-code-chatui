@@ -61,6 +61,19 @@ const DEFAULTS = {
   MAX_CONTEXT_LINES: 500,
 } as const;
 
+// Migrate old intensity values (low/medium/high) to new format
+const INTENSITY_MIGRATION: Record<string, string> = {
+  low: 'think',
+  medium: 'think-hard',
+  high: 'think-harder',
+};
+const VALID_INTENSITIES = new Set(['think', 'think-hard', 'think-harder', 'ultrathink']);
+
+function migrateIntensity(value: string): string {
+  if (VALID_INTENSITIES.has(value)) return value;
+  return INTENSITY_MIGRATION[value] || DEFAULTS.THINKING_INTENSITY;
+}
+
 export class SettingsManager {
   private readonly _configSection = 'claudeCodeChatUI';
 
@@ -70,9 +83,17 @@ export class SettingsManager {
 
   getCurrentSettings(selectedModel: string): WebviewSettings {
     const config = this._getConfig();
+    const rawIntensity = config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY);
+    const thinkingIntensity = migrateIntensity(rawIntensity);
+
+    // Auto-fix: persist the migrated value if it changed
+    if (thinkingIntensity !== rawIntensity) {
+      void config.update(CONFIG_KEYS.THINKING_INTENSITY, thinkingIntensity, vscode.ConfigurationTarget.Global);
+    }
+
     return {
       selectedModel,
-      thinkingIntensity: config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY),
+      thinkingIntensity,
       showThinkingProcess: config.get<boolean>(CONFIG_KEYS.THINKING_SHOW_PROCESS, DEFAULTS.THINKING_SHOW_PROCESS),
       yoloMode: config.get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE),
       autoApprovePatterns: config.get<string[]>(CONFIG_KEYS.PERMISSIONS_AUTO_APPROVE, DEFAULTS.AUTO_APPROVE_PATTERNS),

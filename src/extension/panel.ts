@@ -300,6 +300,7 @@ export class PanelProvider {
       editMessage: (userInputIndex: number, newText: string) => this.chat.editMessage(userInputIndex, newText),
       regenerateResponse: () => this.chat.regenerateResponse(),
       restoreCommit: (commitSha: string) => this.chat.restoreCommit(commitSha),
+      lastRateLimitData: this.chat.lastRateLimitData,
     };
   }
 

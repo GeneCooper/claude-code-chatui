@@ -649,12 +649,14 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   // Show bottom loading when processing but nothing is actively streaming or running
   const showBottomLoading = useMemo(() => {
     if (!isProcessing) return false
-    // Don't show if there's already a loading standalone entry visible
-    const lastEntry = entries[entries.length - 1]
-    if (!lastEntry) return true
-    if (lastEntry.kind === 'standalone' && lastEntry.message.type === 'loading') return false
-    if (lastEntry.kind === 'output' && lastEntry.isStreaming) return false
-    if (lastEntry.kind === 'tool' && lastEntry.isRunning) return false
+    // Check last few entries (not just the very last) for loading/streaming/running state
+    // This avoids duplicate loading when a backup checkpoint appears after the loading entry
+    for (let i = entries.length - 1; i >= Math.max(0, entries.length - 3); i--) {
+      const entry = entries[i]
+      if (entry.kind === 'standalone' && entry.message.type === 'loading') return false
+      if (entry.kind === 'output' && entry.isStreaming) return false
+      if (entry.kind === 'tool' && entry.isRunning) return false
+    }
     return true
   }, [isProcessing, entries])
 

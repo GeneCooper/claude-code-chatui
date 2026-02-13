@@ -28,6 +28,11 @@ export const handleReady: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
   ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode } });
 
+  // Restore last known rate limit data so the usage indicator appears immediately
+  if (ctx.lastRateLimitData) {
+    ctx.postMessage({ type: 'rateLimitUpdate', data: ctx.lastRateLimitData });
+  }
+
   const conversation = ctx.messageProcessor.currentConversation;
   if (conversation.length > 0) {
     const replayMessages = conversation.map((m) => ({ type: m.messageType, data: m.data }));

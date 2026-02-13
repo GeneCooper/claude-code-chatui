@@ -9,7 +9,7 @@ import {
   type MessagePoster,
 } from './handlers';
 import { createModuleLogger } from '../shared/logger';
-import type { ClaudeMessage, ConversationMessage } from '../shared/types';
+import type { ClaudeMessage, ConversationMessage, RateLimitData } from '../shared/types';
 import type { PanelManager } from './panelManager';
 
 const log = createModuleLogger('ChatController');
@@ -17,6 +17,7 @@ const log = createModuleLogger('ChatController');
 export class ChatController {
   private _saveTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly _backupService: BackupService;
+  private _lastRateLimitData: RateLimitData | null = null;
 
   readonly settingsManager = new SettingsManager();
   readonly messageProcessor: ClaudeMessageProcessor;
@@ -52,6 +53,7 @@ export class ChatController {
   }
 
   get sessionId(): string | undefined { return this._claudeService.sessionId; }
+  get lastRateLimitData(): RateLimitData | null { return this._lastRateLimitData; }
 
   // ==================== Session Management ====================
 
@@ -267,6 +269,7 @@ export class ChatController {
     });
 
     this._claudeService.onRateLimitUpdate((data) => {
+      this._lastRateLimitData = data;
       this._postMessage({ type: 'rateLimitUpdate', data });
     });
 

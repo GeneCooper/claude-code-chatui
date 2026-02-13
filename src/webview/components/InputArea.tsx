@@ -5,7 +5,7 @@ import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
-import { ThinkingIntensityModal } from './ThinkingIntensityModal'
+import { ThinkingPopover } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
 
@@ -26,13 +26,16 @@ export function InputArea() {
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
   const [activeFile, setActiveFile] = useState<{ filePath: string; languageId: string } | null>(null)
+  const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const { showSlashPicker, setShowSlashPicker, draftText, setDraftText } = useUIStore()
 
+  const [showThinkingPopover, setShowThinkingPopover] = useState(false)
   const [slashFilter, setSlashFilter] = useState('')
   const [preferredHeight, setPreferredHeight] = useState<number | null>(null)
   const isDraggingResizeRef = useRef(false)
   const startYRef = useRef(0)
   const startHeightRef = useRef(0)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const saved = getState<{ draft?: string; model?: string; ctrlEnterSend?: boolean }>()
@@ -327,6 +330,19 @@ export function InputArea() {
     reader.readAsDataURL(file)
   }
 
+  const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          addImageFile(file)
+        }
+      }
+    }
+    // Reset so the same file can be selected again
+    e.target.value = ''
+  }
+
 
   const handleSlashSelect = (command: string, category: 'snippet' | 'native') => {
     if (category === 'native') {
@@ -361,7 +377,6 @@ export function InputArea() {
     >
       {/* Pickers & Modals */}
       <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
-      <ThinkingIntensityModal />
       <ModelSelectorModal
         show={showModelPicker}
         selectedModel={selectedModel}
@@ -417,29 +432,36 @@ export function InputArea() {
 
       {/* Mode toggles */}
       <div className="flex items-center gap-2 pb-2" role="toolbar" aria-label="Chat options" style={{ fontSize: '11px' }}>
-        <button
-          onClick={() => setThinkingMode(!thinkingMode)}
-          onContextMenu={(e) => { e.preventDefault(); useUIStore.getState().setShowIntensityModal(true) }}
-              className="flex items-center gap-1 cursor-pointer border-none"
-              style={{
-                padding: '2px 10px',
-                borderRadius: '12px',
-                border: `1px solid ${thinkingMode ? '#3b82f6' : 'var(--vscode-panel-border)'}`,
-                background: thinkingMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                color: thinkingMode ? '#3b82f6' : 'inherit',
-                opacity: thinkingMode ? 1 : 0.7,
-                transition: 'all 0.2s ease',
-                boxShadow: thinkingMode ? '0 0 8px rgba(59, 130, 246, 0.2)' : 'none',
-              }}
-              title="Think mode (right-click for intensity)"
-              aria-label="Think mode toggle"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 8v4l2 2" />
-              </svg>
-              <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
-            </button>
+        <div style={{ position: 'relative' }}>
+          <ThinkingPopover
+            show={showThinkingPopover}
+            onClose={() => setShowThinkingPopover(false)}
+            thinkingMode={thinkingMode}
+            onToggle={setThinkingMode}
+          />
+          <button
+            onClick={() => setShowThinkingPopover(!showThinkingPopover)}
+            className="flex items-center gap-1 cursor-pointer border-none"
+            style={{
+              padding: '2px 10px',
+              borderRadius: '12px',
+              border: `1px solid ${thinkingMode ? '#3b82f6' : 'var(--vscode-panel-border)'}`,
+              background: thinkingMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+              color: thinkingMode ? '#3b82f6' : 'inherit',
+              opacity: thinkingMode ? 1 : 0.7,
+              transition: 'all 0.2s ease',
+              boxShadow: thinkingMode ? '0 0 8px rgba(59, 130, 246, 0.2)' : 'none',
+            }}
+            title="Think mode settings"
+            aria-label="Think mode settings"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4l2 2" />
+            </svg>
+            <span>Think{thinkingMode ? ` · ${thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
+          </button>
+        </div>
 
         <button
           onClick={() => {
@@ -697,9 +719,25 @@ export function InputArea() {
               </svg>
             </button>
 
-            {/* Pick image button */}
+            {/* Pick image button — uses hidden <input type="file"> for reliable webview support */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml,image/bmp"
+              multiple
+              onChange={handleImageInputChange}
+              style={{ display: 'none' }}
+            />
             <button
-              onClick={() => postMessage({ type: 'pickImageFile' })}
+              onClick={() => {
+                // Primary: use native file input (works reliably in webviews)
+                if (imageInputRef.current) {
+                  imageInputRef.current.click()
+                } else {
+                  // Fallback: VS Code file picker via extension API
+                  postMessage({ type: 'pickImageFile' })
+                }
+              }}
               className="cursor-pointer flex items-center justify-center"
               style={{
                 background: 'transparent',

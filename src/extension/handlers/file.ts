@@ -68,13 +68,33 @@ export const handlePickWorkspaceFile: MessageHandler = async (_msg, ctx) => {
   }
 };
 
-export const handleResolveDroppedFile: MessageHandler = (_msg, ctx) => {
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']);
+
+export const handleResolveDroppedFile: MessageHandler = async (_msg, ctx) => {
   const uriStr = optStr(_msg.uri);
   if (!uriStr) return;
   try {
     const uri = vscode.Uri.parse(uriStr);
-    const relativePath = vscode.workspace.asRelativePath(uri, false);
-    ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
+    const ext = uri.fsPath.split('.').pop()?.toLowerCase() || '';
+
+    if (IMAGE_EXTENSIONS.has(ext)) {
+      // Handle as image: read file, convert to base64, send as imageFilePicked
+      const data = await vscode.workspace.fs.readFile(uri);
+      const base64 = Buffer.from(data).toString('base64');
+      const mimeMap: Record<string, string> = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+      };
+      const name = uri.fsPath.split(/[\\/]/).pop() || 'image';
+      ctx.postMessage({
+        type: 'imageFilePicked',
+        data: { name, dataUrl: `data:${mimeMap[ext] || 'image/png'};base64,${base64}` },
+      });
+    } else {
+      // Handle as regular file attachment
+      const relativePath = vscode.workspace.asRelativePath(uri, false);
+      ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
+    }
   } catch { /* ignore invalid URIs */ }
 };
 
