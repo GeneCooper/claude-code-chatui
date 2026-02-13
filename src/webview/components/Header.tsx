@@ -30,13 +30,14 @@ export function Header() {
 
   return (
     <div
+      style={{ position: 'relative', zIndex: 100 }}
+    >
+    <div
       className="flex items-center justify-between px-4 py-3"
       style={{
         borderBottom: '1px solid var(--chatui-glass-border)',
         backgroundColor: 'var(--chatui-glass-bg)',
         backdropFilter: 'blur(12px)',
-        position: 'relative',
-        zIndex: 100,
       }}
     >
       <div className="flex items-center gap-2">
@@ -89,6 +90,30 @@ export function Header() {
           </svg>
         </HeaderIconButton>
       </div>
+    </div>
+    {/* Marquee loading bar */}
+    {isProcessing && (
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '2px',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            height: '100%',
+            width: '40%',
+            background: 'linear-gradient(90deg, transparent, var(--chatui-accent), transparent)',
+            animation: 'marquee-slide 1.5s ease-in-out infinite',
+          }}
+        />
+      </div>
+    )}
     </div>
   )
 }

@@ -150,6 +150,14 @@ export class PanelProvider {
     this._usageService.onUsageUpdate((data) => { this._postMessage({ type: 'usageUpdate', data }); });
     this._usageService.onError((err) => { this._postMessage({ type: 'usageError', data: err }); });
 
+    // Send current usage data immediately so the indicator shows on startup
+    const currentUsage = this._usageService.currentUsage;
+    if (currentUsage) {
+      this._postMessage({ type: 'usageUpdate', data: currentUsage });
+    } else {
+      this._usageService.fetchUsageData();
+    }
+
     // Real-time rate-limit updates from the main Claude process stderr
     this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
 

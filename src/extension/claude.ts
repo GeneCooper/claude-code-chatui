@@ -173,11 +173,14 @@ export class ClaudeService implements vscode.Disposable {
     args.push(
       '--append-system-prompt',
       [
-        'Be an efficient agent: act, don\'t explain.',
-        'Do NOT narrate your plan, restate the question, or describe what you\'re about to do.',
-        'Execute tool calls immediately without preamble.',
-        'When done, give a one-line summary of what changed — nothing more.',
-        'Prefer code over prose. Skip pleasantries.',
+        'CRITICAL OUTPUT RULES:',
+        '1. Act immediately — never narrate, restate, or describe your plan before acting.',
+        '2. Call tools directly without preamble text.',
+        '3. NEVER use TodoWrite. Do the work directly instead of listing tasks.',
+        '4. After completing work, reply with ONE short sentence summarizing what changed. No bullet lists, no explanations.',
+        '5. Code over prose. If asked to fix/change something, just do it.',
+        '6. No pleasantries, no "Sure!", no "Let me...", no "I\'ll...".',
+        '7. If you need to explain something, use at most 2-3 sentences.',
       ].join(' '),
     );
 

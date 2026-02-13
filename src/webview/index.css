@@ -234,6 +234,26 @@ body {
   border-color: var(--chatui-accent) !important;
 }
 
+/* ===== AI Processing Marquee ===== */
+.textarea-glow.ai-processing::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -40%;
+  height: 2px;
+  width: 40%;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: linear-gradient(90deg, transparent, var(--chatui-accent, #ed6e1d), transparent);
+  animation: marquee-slide 1.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes marquee-slide {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
 /* ===== Markdown Content ===== */
 .markdown-content h1,
 .markdown-content h2,

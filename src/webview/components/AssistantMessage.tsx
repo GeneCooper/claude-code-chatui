@@ -129,7 +129,16 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
   const displayText = useStreamingText(text, isStreaming)
 
   const handleCopyMessage = () => {
-    navigator.clipboard.writeText(text)
+    // Normalize soft line breaks within paragraphs so copy produces continuous text,
+    // while preserving intentional double-newline paragraph breaks and code blocks.
+    const normalized = text.replace(/```[\s\S]*?```/g, (m) => m) // keep code blocks as-is (handled below)
+    const parts = normalized.split(/(```[\s\S]*?```)/)
+    const result = parts.map((part) => {
+      if (part.startsWith('```')) return part // code block — preserve
+      // Collapse single newlines (soft wraps) into spaces, keep double newlines (paragraph breaks)
+      return part.replace(/([^\n])\n(?!\n)/g, '$1 ')
+    }).join('')
+    navigator.clipboard.writeText(result)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -143,28 +152,37 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
 
   return (
     <div
-      className="group relative max-w-[95%]"
+      className="group max-w-[95%]"
       style={{ padding: '4px 0' }}
     >
-      {/* Copy button - appears above on hover */}
-      <button
-        onClick={handleCopyMessage}
-        className="absolute -top-5 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
-        style={{
-          padding: '2px 6px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          transition: 'opacity 0.2s ease',
-          color: 'var(--vscode-descriptionForeground)',
-        }}
-        title="Copy message"
-      >
-        {copied ? 'Copied!' : 'Copy'}
-      </button>
-
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">
         {renderedMarkdown}
+      </div>
+
+      {/* Copy button - appears at bottom-right on hover */}
+      <div className="flex justify-end opacity-0 group-hover:opacity-100" style={{ transition: 'opacity 0.2s ease', marginTop: '2px' }}>
+        <button
+          onClick={handleCopyMessage}
+          className="cursor-pointer bg-transparent border-none flex items-center gap-1"
+          style={{
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            color: copied ? '#4ade80' : 'var(--vscode-descriptionForeground)',
+            opacity: copied ? 1 : 0.6,
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = copied ? '1' : '0.6' }}
+          title="Copy message"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
       </div>
     </div>
   )

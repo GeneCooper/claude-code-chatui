@@ -10,9 +10,8 @@ import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
 export function InputArea() {
   const [text, setText] = useState('')
-  const [agentMode, setAgentMode] = useState(true)
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
-  const [planMode, setPlanMode] = useState(false)
+  const [planMode, setPlanMode] = useState(true)
   const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
@@ -31,12 +30,11 @@ export function InputArea() {
   const [slashFilter, setSlashFilter] = useState('')
 
   useEffect(() => {
-    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; agentMode?: boolean; ctrlEnterSend?: boolean }>()
+    const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; ctrlEnterSend?: boolean }>()
     if (saved?.draft) setText(saved.draft)
     if (saved?.model) setSelectedModel(saved.model)
     if (saved?.planMode !== undefined) setPlanMode(saved.planMode)
     if (saved?.thinkingMode !== undefined) setThinkingMode(saved.thinkingMode)
-    if (saved?.agentMode !== undefined) setAgentMode(saved.agentMode)
     if (saved?.ctrlEnterSend !== undefined) setCtrlEnterSend(saved.ctrlEnterSend)
   }, [])
 
@@ -50,8 +48,8 @@ export function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend })
-  }, [text, selectedModel, planMode, thinkingMode, agentMode, ctrlEnterSend])
+    setState({ draft: text, model: selectedModel, planMode, thinkingMode, ctrlEnterSend })
+  }, [text, selectedModel, thinkingMode, ctrlEnterSend])
 
   useEffect(() => {
     debouncedSave(text)
@@ -164,21 +162,12 @@ export function InputArea() {
     const refs = [fileRefs, selRef].filter(Boolean).join(' ')
     const userText = refs ? `${refs} ${trimmed}` : trimmed
 
-    // Agent mode: inject directive prefix for adaptive behavior
-    const agentDirective = 'Think briefly, then give a concise and actionable answer.\n\n'
-    const fullText = agentMode ? `${agentDirective}${userText}` : userText
-
-    // Agent mode forces thinking on
-    const effectiveThinking = agentMode ? true : thinkingMode
-    const effectivePlan = agentMode ? false : planMode
-
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
     // Optimistic update: immediately show message + processing state
     // This eliminates the IPC round-trip delay before the user sees their message
     const store = useChatStore.getState()
     markOptimisticUserInput()
-    // Show only user's original text in the chat (without agent directive)
     store.addMessage({ type: 'userInput', data: { text: userText, images: imageData } })
     store.setProcessing(true)
     store.addMessage({ type: 'loading', data: 'Claude is working...' })
@@ -187,9 +176,9 @@ export function InputArea() {
     // Then tell extension to process
     postMessage({
       type: 'sendMessage',
-      text: fullText,
-      planMode: effectivePlan,
-      thinkingMode: effectiveThinking,
+      text: userText,
+      planMode,
+      thinkingMode,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
     })
@@ -390,76 +379,49 @@ export function InputArea() {
 
       {/* Mode toggles */}
       <div className="flex items-center gap-2 pb-2" style={{ fontSize: '11px' }}>
-        {/* Agent mode toggle */}
+        {/* Think toggle */}
         <button
-          onClick={() => setAgentMode(!agentMode)}
+          onClick={() => useUIStore.getState().setShowIntensityModal(true)}
           className="flex items-center gap-1 cursor-pointer border-none"
           style={{
             padding: '2px 10px',
             borderRadius: '12px',
-            border: `1px solid ${agentMode ? '#10b981' : 'var(--vscode-panel-border)'}`,
-            background: agentMode ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-            color: agentMode ? '#10b981' : 'inherit',
-            opacity: agentMode ? 1 : 0.7,
+            border: `1px solid ${thinkingMode ? 'var(--chatui-accent)' : 'var(--vscode-panel-border)'}`,
+            background: thinkingMode ? 'rgba(237, 110, 29, 0.1)' : 'transparent',
+            color: thinkingMode ? 'var(--chatui-accent)' : 'inherit',
+            opacity: thinkingMode ? 1 : 0.7,
             transition: 'all 0.2s ease',
-            boxShadow: agentMode ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
           }}
-          title="Agent mode - Auto think, plan & parallelize based on task complexity"
+          title="Thinking mode"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2a4 4 0 014 4v1a2 2 0 012 2v1a4 4 0 01-2 3.5V15l3 4h-4l-1.5-2h-3L9 19H5l3-4v-1.5A4 4 0 016 10V9a2 2 0 012-2V6a4 4 0 014-4z" />
-            <circle cx="10" cy="10" r="1" fill="currentColor" />
-            <circle cx="14" cy="10" r="1" fill="currentColor" />
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4l2 2" />
           </svg>
-          <span>Agent</span>
+          <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
         </button>
 
-        {/* Manual Think/Plan controls (only visible when Agent mode is off) */}
-        {!agentMode && (
-          <>
-            <button
-              onClick={() => useUIStore.getState().setShowIntensityModal(true)}
-              className="flex items-center gap-1 cursor-pointer border-none"
-              style={{
-                padding: '2px 10px',
-                borderRadius: '12px',
-                border: `1px solid ${thinkingMode ? 'var(--chatui-accent)' : 'var(--vscode-panel-border)'}`,
-                background: 'transparent',
-                color: thinkingMode ? 'var(--chatui-accent)' : 'inherit',
-                opacity: thinkingMode ? 1 : 0.7,
-                transition: 'all 0.2s ease',
-              }}
-              title="Thinking mode"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 8v4l2 2" />
-              </svg>
-              <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
-            </button>
-
-            <button
-              onClick={() => setPlanMode(!planMode)}
-              className="flex items-center gap-1 cursor-pointer border-none"
-              style={{
-                padding: '2px 10px',
-                borderRadius: '12px',
-                border: `1px solid ${planMode ? 'var(--chatui-accent)' : 'var(--vscode-panel-border)'}`,
-                background: 'transparent',
-                color: planMode ? 'var(--chatui-accent)' : 'inherit',
-                opacity: planMode ? 1 : 0.7,
-                transition: 'all 0.2s ease',
-              }}
-              title="Plan mode"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-                <rect x="9" y="3" width="6" height="4" rx="2" />
-              </svg>
-              <span>Plan</span>
-            </button>
-          </>
-        )}
+        {/* Plan toggle */}
+        <button
+          onClick={() => setPlanMode(!planMode)}
+          className="flex items-center gap-1 cursor-pointer border-none"
+          style={{
+            padding: '2px 10px',
+            borderRadius: '12px',
+            border: `1px solid ${planMode ? '#3b82f6' : 'var(--vscode-panel-border)'}`,
+            background: planMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+            color: planMode ? '#3b82f6' : 'inherit',
+            opacity: planMode ? 1 : 0.7,
+            transition: 'all 0.2s ease',
+          }}
+          title="Plan mode - Claude plans before executing"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+            <rect x="9" y="3" width="6" height="4" rx="2" />
+          </svg>
+          <span>PLAN</span>
+        </button>
 
         <button
           onClick={() => {
