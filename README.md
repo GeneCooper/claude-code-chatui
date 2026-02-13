@@ -83,6 +83,20 @@ npm install
 # Press F5 in VS Code to launch Extension Development Host
 ```
 
+## Packaging & Publishing
+
+Package the extension into a `.vsix` file:
+
+```bash
+npx vsce package
+```
+
+Publish to the VS Code Marketplace:
+
+```bash
+npx vsce publish
+```
+
 ## Acknowledgments
 
 This project is built upon the following open source projects:
