@@ -3,25 +3,35 @@
 // ============================================================================
 
 /**
- * Thinking intensity levels
+ * Agent mode: fast (minimal token) vs deep (thorough analysis)
  */
-export enum ThinkingIntensity {
-    Think = "think",
-    ThinkHard = "think-hard",
-    ThinkHarder = "think-harder",
-    Ultrathink = "ultrathink",
+export enum AgentMode {
+    Fast = "fast",
+    Deep = "deep",
 }
 
-/** Thinking intensity levels with output constraints */
-export const THINKING_INTENSITIES = {
-    think: "Think briefly, then give a concise and actionable answer.",
-    "think-hard":
-        "THINK HARD about this step by step. Be thorough but keep your response focused. Prefer code over explanation.",
-    "think-harder":
-        "THINK HARDER THROUGH THIS STEP BY STEP. Analyze carefully and consider edge cases, but converge on a precise, actionable solution. Avoid over-explaining \u2014 show, don't tell.",
-    ultrathink:
-        "ULTRATHINK: Perform deep analysis. Consider all approaches, trade-offs, and edge cases. Then provide the optimal solution with clear but concise reasoning. Prioritize correctness and code over verbose explanation.",
+/** Agent mode prompts — injected as user message prefix */
+export const AGENT_MODE_PROMPTS = {
+    fast: "Be concise. Act immediately. Code over explanation. One-sentence summary when done.",
+    deep: [
+        "Follow this workflow strictly:",
+        "1. UNDERSTAND: Restate the core requirement in one sentence. If ambiguous, ask before proceeding.",
+        "2. LOCATE: Find the relevant code with minimal tool calls. State what you found.",
+        "3. EXECUTE: Make the changes. No narration during execution.",
+        "4. SUMMARIZE: One sentence — what changed and why.",
+    ].join("\n"),
 } as const;
+
+/** Agent system prompt — appended via --append-system-prompt */
+export const AGENT_SYSTEM_PROMPT = [
+    "OUTPUT RULES:",
+    "1. Act immediately — no preamble, no restating the question, no \"Let me...\".",
+    "2. Call tools directly. Batch independent reads/searches in parallel.",
+    "3. Code over prose. If asked to fix/change something, just do it.",
+    "4. After completing work, reply with ONE short sentence summarizing what changed.",
+    "5. No pleasantries, no bullet-list explanations, no unnecessary comments in code.",
+    "6. If clarification is needed, ask ONE specific question — do not guess.",
+].join(" ");
 
 /** File-editing tools that need before/after diff */
 export const FILE_EDIT_TOOLS: string[] = ["Edit", "MultiEdit", "Write"];

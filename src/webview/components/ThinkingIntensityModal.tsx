@@ -2,11 +2,9 @@ import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { postMessage } from '../hooks'
 
-const LEVELS = [
-  { key: 'think', label: 'Think', desc: 'Basic reasoning - fastest response', icon: '💡' },
-  { key: 'think-hard', label: 'Think Hard', desc: 'More detailed reasoning', icon: '🧠' },
-  { key: 'think-harder', label: 'Think Harder', desc: 'Extended reasoning for complex tasks', icon: '🔬' },
-  { key: 'ultrathink', label: 'Ultrathink', desc: 'Maximum reasoning depth', icon: '⚡' },
+const MODES = [
+  { key: 'fast', label: 'Fast', desc: 'Minimal tokens — act immediately, concise output', icon: '⚡' },
+  { key: 'deep', label: 'Deep', desc: 'Structured workflow — understand, locate, execute, summarize', icon: '🧠' },
 ]
 
 interface Props {
@@ -74,9 +72,8 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
             alignItems: 'center',
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: '14px' }}>Thinking Mode</span>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Agent Mode</span>
           <div className="flex items-center gap-3">
-            {/* On/Off toggle */}
             <div
               onClick={handleToggle}
               className="cursor-pointer"
@@ -103,7 +100,6 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
                 }}
               />
             </div>
-            {/* Close */}
             <button
               onClick={() => setShow(false)}
               style={{
@@ -121,14 +117,14 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
           </div>
         </div>
 
-        {/* Levels */}
+        {/* Modes */}
         <div style={{ padding: '12px', opacity: enabled ? 1 : 0.4, pointerEvents: enabled ? 'auto' : 'none', transition: 'opacity 0.2s ease' }}>
-          {LEVELS.map((level) => {
-            const isSelected = currentIntensity === level.key
+          {MODES.map((mode) => {
+            const isSelected = currentIntensity === mode.key
             return (
               <button
-                key={level.key}
-                onClick={() => handleSelect(level.key)}
+                key={mode.key}
+                onClick={() => handleSelect(mode.key)}
                 className="w-full text-left cursor-pointer border-none text-inherit"
                 style={{
                   display: 'flex',
@@ -152,10 +148,10 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
                   if (!isSelected) e.currentTarget.style.background = 'transparent'
                 }}
               >
-                <span style={{ fontSize: '20px' }}>{level.icon}</span>
+                <span style={{ fontSize: '20px' }}>{mode.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '2px' }}>
-                    {level.label}
+                    {mode.label}
                     {isSelected && (
                       <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--chatui-accent)' }}>
                         Current
@@ -163,7 +159,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
                     )}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', opacity: 0.7 }}>
-                    {level.desc}
+                    {mode.desc}
                   </div>
                 </div>
               </button>

@@ -398,7 +398,7 @@ export function InputArea() {
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4l2 2" />
           </svg>
-          <span>Think{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity.replace(/-/g, ' ')}` : ''}</span>
+          <span>Agent{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity}` : ''}</span>
         </button>
 
         {/* Plan toggle */}

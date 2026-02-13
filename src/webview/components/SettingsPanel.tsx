@@ -59,20 +59,18 @@ export function SettingsPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 space-y-4">
-        {/* Thinking Intensity */}
+        {/* Agent Mode */}
         <div>
-          <label className="text-xs font-medium block mb-1.5">Thinking Intensity</label>
+          <label className="text-xs font-medium block mb-1.5">Agent Mode</label>
           <select
             value={thinkingIntensity}
             onChange={(e) => updateSetting('thinking.intensity', e.target.value)}
             className="w-full px-2 py-1.5 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
           >
-            <option value="think">Think</option>
-            <option value="think-hard">Think Hard</option>
-            <option value="think-harder">Think Harder</option>
-            <option value="ultrathink">Ultrathink</option>
+            <option value="fast">Fast</option>
+            <option value="deep">Deep</option>
           </select>
-          <p className="text-[10px] opacity-50 mt-1">Controls how deeply Claude thinks through problems</p>
+          <p className="text-[10px] opacity-50 mt-1">Fast: minimal tokens | Deep: structured workflow</p>
         </div>
 
         {/* YOLO Mode */}

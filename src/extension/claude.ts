@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../shared/types';
-import { THINKING_INTENSITIES, ThinkingIntensity } from '../shared/constants';
+import { AGENT_MODE_PROMPTS, AGENT_SYSTEM_PROMPT, AgentMode } from '../shared/constants';
 
 // ============================================================================
 // PermissionService
@@ -164,25 +164,13 @@ export class ClaudeService implements vscode.Disposable {
     let actualMessage = message;
     if (options.thinkingMode) {
       const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-      const intensity = config.get<ThinkingIntensity>('thinking.intensity', ThinkingIntensity.Think);
-      const prompt = THINKING_INTENSITIES[intensity] || THINKING_INTENSITIES.think;
+      const mode = config.get<AgentMode>('thinking.intensity', AgentMode.Fast);
+      const prompt = AGENT_MODE_PROMPTS[mode] || AGENT_MODE_PROMPTS.fast;
       actualMessage = `${prompt}\n\n${actualMessage}`;
     }
 
     const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-    args.push(
-      '--append-system-prompt',
-      [
-        'CRITICAL OUTPUT RULES:',
-        '1. Act immediately — never narrate, restate, or describe your plan before acting.',
-        '2. Call tools directly without preamble text.',
-        '3. NEVER use TodoWrite. Do the work directly instead of listing tasks.',
-        '4. After completing work, reply with ONE short sentence summarizing what changed. No bullet lists, no explanations.',
-        '5. Code over prose. If asked to fix/change something, just do it.',
-        '6. No pleasantries, no "Sure!", no "Let me...", no "I\'ll...".',
-        '7. If you need to explain something, use at most 2-3 sentences.',
-      ].join(' '),
-    );
+    args.push('--append-system-prompt', AGENT_SYSTEM_PROMPT);
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
@@ -211,7 +199,7 @@ export class ClaudeService implements vscode.Disposable {
       detached: process.platform !== 'win32',
       cwd: options.cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1', ANTHROPIC_LOG: 'debug' },
+      env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1', ANTHROPIC_LOG: 'debug', PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
     });
 
     this._process = claudeProcess;
