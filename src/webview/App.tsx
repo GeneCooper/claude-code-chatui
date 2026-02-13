@@ -3,6 +3,7 @@ import { useUIStore } from './store'
 import { Header } from './components/Header'
 import { ChatView } from './components/ChatView'
 import { InputArea } from './components/InputArea'
+import { StatusBar } from './components/StatusBar'
 import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -22,20 +23,18 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen" role="application">
-      <a href="#main-content" className="sr-only">Skip to content</a>
+    <div className="flex flex-col h-screen">
       <Header />
-      <div id="main-content" className="flex flex-col flex-1 min-h-0">
-        {activeView === 'chat' && (
-          <>
-            <ChatView onHintClick={handleHintClick} />
-            <TodoDisplay />
-            <InputArea />
-          </>
-        )}
-        {activeView === 'history' && <HistoryView />}
-        {activeView === 'settings' && <SettingsPanel />}
-      </div>
+      {activeView === 'chat' && (
+        <>
+          <ChatView onHintClick={handleHintClick} />
+          <TodoDisplay />
+          <StatusBar />
+          <InputArea />
+        </>
+      )}
+      {activeView === 'history' && <HistoryView />}
+      {activeView === 'settings' && <SettingsPanel />}
       <MCPPanel />
       <InstallModal />
       <LoginModal />

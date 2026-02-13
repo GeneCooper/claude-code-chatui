@@ -3,7 +3,6 @@ import { postMessage } from '../hooks'
 import { useSettingsStore, type CustomSnippet } from '../store'
 import { useUIStore } from '../store'
 
-
 export function SettingsPanel() {
   const { thinkingIntensity, yoloMode, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
@@ -68,9 +67,10 @@ export function SettingsPanel() {
             onChange={(e) => updateSetting('thinking.intensity', e.target.value)}
             className="w-full px-2 py-1.5 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
+            <option value="think">Think</option>
+            <option value="think-hard">Think Hard</option>
+            <option value="think-harder">Think Harder</option>
+            <option value="ultrathink">Ultrathink</option>
           </select>
           <p className="text-[10px] opacity-50 mt-1">Controls how deeply Claude thinks through problems</p>
         </div>
@@ -87,7 +87,7 @@ export function SettingsPanel() {
             <span className="text-xs font-medium">YOLO Mode</span>
           </label>
           <p className="text-[10px] opacity-50 mt-1">
-            Skip all permission prompts. Use with caution — Claude will execute tools without asking.
+            Skip all permission prompts. Use with caution �?Claude will execute tools without asking.
           </p>
         </div>
 

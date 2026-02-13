@@ -262,20 +262,6 @@ body {
   margin: 0.6em 0;
   line-height: 1.65;
 }
-.markdown-content > :first-child {
-  margin-top: 0;
-}
-
-/* Streaming cursor - blinking caret at end of streaming text */
-.streaming-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: var(--chatui-accent);
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  animation: blink 1s step-end infinite;
-}
 .markdown-content ul,
 .markdown-content ol {
   margin: 0.6em 0;
@@ -286,83 +272,6 @@ body {
   line-height: 1.5;
 }
 
-/* ===== Tool Running Progress Bar ===== */
-.tool-running-bar {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(237, 110, 29, 0.4) 25%,
-    var(--chatui-accent) 50%,
-    rgba(237, 110, 29, 0.4) 75%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: toolRunningSlide 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  box-shadow: 0 0 8px rgba(237, 110, 29, 0.4), 0 0 2px rgba(237, 110, 29, 0.6);
-}
-
-@keyframes toolRunningSlide {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* ===== Tool Completion Flash ===== */
-.tool-complete-flash {
-  animation: toolCompleteFlash 0.5s ease-out forwards;
-}
-
-@keyframes toolCompleteFlash {
-  0% {
-    opacity: 1;
-    height: 2px;
-    box-shadow: 0 0 12px rgba(74, 222, 128, 0.8), 0 0 4px rgba(74, 222, 128, 0.6);
-  }
-  50% {
-    opacity: 0.8;
-    height: 2px;
-    box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
-  }
-  100% {
-    opacity: 0;
-    height: 0px;
-    box-shadow: none;
-  }
-}
-
-.tool-error-flash {
-  animation: toolErrorFlash 0.5s ease-out forwards;
-}
-
-@keyframes toolErrorFlash {
-  0% {
-    opacity: 1;
-    height: 2px;
-    box-shadow: 0 0 12px rgba(231, 76, 60, 0.8), 0 0 4px rgba(231, 76, 60, 0.6);
-  }
-  50% {
-    opacity: 0.8;
-    height: 2px;
-    box-shadow: 0 0 6px rgba(231, 76, 60, 0.4);
-  }
-  100% {
-    opacity: 0;
-    height: 0px;
-    box-shadow: none;
-  }
-}
-
-/* ===== Timeline Indicator Pulse ===== */
-@keyframes indicatorPulse {
-  0%, 100% {
-    box-shadow: 0 0 4px var(--chatui-accent), 0 0 8px rgba(237, 110, 29, 0.3);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 8px var(--chatui-accent), 0 0 16px rgba(237, 110, 29, 0.5);
-    transform: scale(1.2);
-  }
-}
-
 /* ===== Loading Dots ===== */
 .loading-dot {
   animation: bounceDot 1.4s ease-in-out infinite both;
@@ -370,41 +279,3 @@ body {
 .loading-dot:nth-child(1) { animation-delay: -0.32s; }
 .loading-dot:nth-child(2) { animation-delay: -0.16s; }
 .loading-dot:nth-child(3) { animation-delay: 0s; }
-
-/* ===== Resize Handle ===== */
-.resize-handle {
-  height: 4px;
-  cursor: ns-resize;
-  background: transparent;
-  transition: background 0.15s ease;
-  flex-shrink: 0;
-}
-.resize-handle:hover {
-  background: var(--chatui-accent-subtle);
-}
-.resize-handle:active {
-  background: var(--chatui-accent);
-}
-
-/* ===== Screen reader only ===== */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-.sr-only:focus {
-  position: static;
-  width: auto;
-  height: auto;
-  padding: 4px 8px;
-  margin: 0;
-  overflow: visible;
-  clip: auto;
-  white-space: normal;
-}

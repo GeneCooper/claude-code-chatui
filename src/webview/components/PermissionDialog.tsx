@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { postMessage, useFocusTrap } from '../hooks'
+import { postMessage } from '../hooks'
 import { useChatStore } from '../store'
 import { markOptimisticPermission } from '../mutations'
 
@@ -15,8 +15,6 @@ export function PermissionDialog({ data }: Props) {
   const decisionReason = data.decisionReason as string | undefined
   const [showMore, setShowMore] = useState(false)
   const [showRawInput, setShowRawInput] = useState(false)
-
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(status === 'pending')
 
   if (status !== 'pending') {
     return (
@@ -64,10 +62,6 @@ export function PermissionDialog({ data }: Props) {
 
   return (
     <div
-      ref={focusTrapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="permission-dialog-title"
       className="overflow-hidden"
       style={{
         margin: '4px 0 20px 0',
@@ -82,7 +76,7 @@ export function PermissionDialog({ data }: Props) {
       {/* Header */}
       <div className="flex items-center gap-2 mb-3" style={{ fontWeight: 600 }}>
         <span style={{ fontSize: '16px' }}>{'⚠️'}</span>
-        <span id="permission-dialog-title" className="text-sm">{`Permission Required: ${tool}`}</span>
+        <span className="text-sm">Permission Required: {tool}</span>
 
         {/* More menu */}
         <div className="relative ml-auto">

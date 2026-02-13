@@ -8,7 +8,6 @@ import { SlashCommandPicker } from './SlashCommandPicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
-
 export function InputArea() {
   const [text, setText] = useState('')
   const [agentMode, setAgentMode] = useState(true)
@@ -30,10 +29,6 @@ export function InputArea() {
   const { showSlashPicker, setShowSlashPicker, draftText, setDraftText } = useUIStore()
 
   const [slashFilter, setSlashFilter] = useState('')
-  const [preferredHeight, setPreferredHeight] = useState<number | null>(null)
-  const isDraggingResizeRef = useRef(false)
-  const startYRef = useRef(0)
-  const startHeightRef = useRef(0)
 
   useEffect(() => {
     const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; agentMode?: boolean; ctrlEnterSend?: boolean }>()
@@ -122,13 +117,6 @@ export function InputArea() {
     const el = textareaRef.current
     if (!el) return
 
-    // If user has set a preferred height via drag, use that
-    if (preferredHeight) {
-      el.style.height = `${preferredHeight}px`
-      el.style.overflowY = 'auto'
-      return
-    }
-
     // Reset to measure true scrollHeight
     el.style.height = 'auto'
 
@@ -150,34 +138,6 @@ export function InputArea() {
       el.style.height = `${maxHeight}px`
       el.style.overflowY = 'auto'
     }
-  }, [preferredHeight])
-
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    isDraggingResizeRef.current = true
-    startYRef.current = e.clientY
-    startHeightRef.current = textareaRef.current?.offsetHeight ?? 68
-
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDraggingResizeRef.current) return
-      // Dragging up = smaller clientY = increase height
-      const delta = startYRef.current - ev.clientY
-      const newHeight = Math.min(400, Math.max(68, startHeightRef.current + delta))
-      setPreferredHeight(newHeight)
-      if (textareaRef.current) {
-        textareaRef.current.style.height = `${newHeight}px`
-        textareaRef.current.style.overflowY = 'auto'
-      }
-    }
-
-    const onMouseUp = () => {
-      isDraggingResizeRef.current = false
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-    }
-
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
   }, [])
 
   useEffect(() => { adjustHeight() }, [text, adjustHeight])
@@ -340,6 +300,7 @@ export function InputArea() {
     reader.readAsDataURL(file)
   }
 
+
   const handleSlashSelect = (command: string, category: 'snippet' | 'native') => {
     if (category === 'native') {
       postMessage({ type: 'executeSlashCommand', command })
@@ -360,7 +321,7 @@ export function InputArea() {
 
   return (
     <div
-      className="relative shrink-0"
+      className="relative"
       style={{
         padding: '10px 10px 12px',
         borderTop: '1px solid var(--vscode-panel-border)',
@@ -428,7 +389,7 @@ export function InputArea() {
       )}
 
       {/* Mode toggles */}
-      <div className="flex items-center gap-2 pb-2" role="toolbar" aria-label="Chat options" style={{ fontSize: '11px' }}>
+      <div className="flex items-center gap-2 pb-2" style={{ fontSize: '11px' }}>
         {/* Agent mode toggle */}
         <button
           onClick={() => setAgentMode(!agentMode)}
@@ -444,7 +405,6 @@ export function InputArea() {
             boxShadow: agentMode ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
           }}
           title="Agent mode - Auto think, plan & parallelize based on task complexity"
-          aria-label="Agent mode"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 2a4 4 0 014 4v1a2 2 0 012 2v1a4 4 0 01-2 3.5V15l3 4h-4l-1.5-2h-3L9 19H5l3-4v-1.5A4 4 0 016 10V9a2 2 0 012-2V6a4 4 0 014-4z" />
@@ -470,7 +430,6 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
               }}
               title="Thinking mode"
-              aria-label="Thinking mode"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -492,7 +451,6 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
               }}
               title="Plan mode"
-              aria-label="Plan mode"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
@@ -521,7 +479,6 @@ export function InputArea() {
             boxShadow: yoloMode ? '0 0 8px rgba(239, 68, 68, 0.3)' : 'none',
           }}
           title="YOLO mode - Skip all permission checks (dangerous!)"
-          aria-label="YOLO mode"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -600,13 +557,6 @@ export function InputArea() {
           position: 'relative',
         }}
       >
-        {/* Resize handle */}
-        <div
-          className="resize-handle"
-          onMouseDown={handleResizeStart}
-          onDoubleClick={() => { setPreferredHeight(null) }}
-          title="Drag to resize, double-click to reset"
-        />
         {/* Drag overlay */}
         {isDragging && (
           <div
@@ -630,7 +580,6 @@ export function InputArea() {
         <textarea
           ref={textareaRef}
           autoFocus
-          aria-label="Message input"
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -673,7 +622,6 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
               }}
               title="Select model"
-              aria-label="Select model"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
             >
@@ -695,7 +643,6 @@ export function InputArea() {
                 transition: 'all 0.2s ease',
               }}
               title="Configure MCP servers"
-              aria-label="Configure MCP servers"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
             >
@@ -718,7 +665,6 @@ export function InputArea() {
                 fontSize: '10px',
               }}
               title={ctrlEnterSend ? 'Click to switch: Enter to send' : 'Click to switch: Ctrl+Enter to send'}
-              aria-label={ctrlEnterSend ? 'Click to switch: Enter to send' : 'Click to switch: Ctrl+Enter to send'}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
             >
@@ -744,7 +690,6 @@ export function InputArea() {
                 transition: 'all 0.15s ease',
               }}
               title="Attach workspace file"
-              aria-label="Attach workspace file"
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
                 e.currentTarget.style.opacity = '1'
@@ -756,39 +701,6 @@ export function InputArea() {
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
-
-            {/* Pick image button */}
-            <button
-              onClick={() => postMessage({ type: 'pickImageFile' })}
-              className="cursor-pointer flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
-                padding: '0',
-                width: '24px',
-                height: '24px',
-                borderRadius: 'var(--radius-md)',
-                color: 'inherit',
-                opacity: 0.7,
-                transition: 'all 0.15s ease',
-              }}
-              title="Attach image"
-              aria-label="Attach image"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                e.currentTarget.style.opacity = '1'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.opacity = '0.7'
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
               </svg>
             </button>
 
@@ -809,7 +721,6 @@ export function InputArea() {
                 transition: 'all 0.15s ease',
               }}
               title="Slash commands"
-              aria-label="Slash commands"
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
                 e.currentTarget.style.opacity = '1'
@@ -839,7 +750,6 @@ export function InputArea() {
                   marginLeft: '2px',
                 }}
                 title="Stop"
-                aria-label="Stop"
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
               >
@@ -869,7 +779,6 @@ export function InputArea() {
                     marginLeft: '2px',
                   }}
                   title="Send message"
-                  aria-label="Send message"
                   onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
                   onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
                 >
@@ -884,7 +793,7 @@ export function InputArea() {
         </div>
       </div>
 
-      {/* Bottom status bar: active file */}
+      {/* Bottom status bar: permission mode + active file */}
       <div
         className="flex items-center gap-2"
         style={{

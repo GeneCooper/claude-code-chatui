@@ -24,7 +24,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
 
   const handleSelect = (key: string) => {
     updateSettings({ thinkingIntensity: key })
-    postMessage({ type: 'updateSettings', settings: { thinkingIntensity: key } })
+    postMessage({ type: 'updateSettings', settings: { 'thinking.intensity': key } })
     if (!enabled) onToggle(true)
     setShow(false)
   }

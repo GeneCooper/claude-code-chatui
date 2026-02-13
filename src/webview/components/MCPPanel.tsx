@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { postMessage, useFocusTrap } from '../hooks'
+import { postMessage } from '../hooks'
 import { useMCPStore } from '../store'
 import { useUIStore } from '../store'
 
@@ -50,38 +50,6 @@ const POPULAR_SERVERS = [
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
     icon: '📁',
-  },
-  {
-    name: 'github',
-    description: 'GitHub repos, PRs & issues',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-github'],
-    icon: '🐙',
-  },
-  {
-    name: 'brave-search',
-    description: 'Web search via Brave',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-brave-search'],
-    icon: '🔍',
-  },
-  {
-    name: 'figma',
-    description: 'Figma design to code',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', 'figma-developer-mcp'],
-    icon: '🎨',
-  },
-  {
-    name: 'postgres',
-    description: 'PostgreSQL database queries',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-postgres'],
-    icon: '🐘',
   },
 ]
 
@@ -157,8 +125,6 @@ export function MCPPanel() {
     resetForm()
   }
 
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, handleClose)
-
   if (!show) return null
 
   const serverEntries = Object.entries(servers)
@@ -178,10 +144,6 @@ export function MCPPanel() {
 
   return (
     <div
-      ref={focusTrapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="mcp-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -224,7 +186,7 @@ export function MCPPanel() {
             flexShrink: 0,
           }}
         >
-          <span id="mcp-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>MCP Servers</span>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>MCP Servers</span>
           <button
             onClick={handleClose}
             style={{
@@ -546,7 +508,7 @@ export function MCPPanel() {
                       </div>
                     </div>
                     <span style={{ fontSize: '10px', color: 'var(--chatui-accent)', fontWeight: 500, opacity: 0.7 }}>
-                      Add
+                      + Add
                     </span>
                   </button>
                 ))}

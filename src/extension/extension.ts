@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ClaudeService, PermissionService } from './claude';
-import { ConversationService, MCPService } from './storage';
+import { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { DiffContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider } from './panel';
 import { PanelManager } from './panelManager';
@@ -11,8 +11,13 @@ export function activate(context: vscode.ExtensionContext): void {
   // Initialize shared services
   const conversationService = new ConversationService(context);
   const mcpService = new MCPService(context);
+  const backupService = new BackupService(context);
   const permissionService = new PermissionService(context);
   const outputChannel = vscode.window.createOutputChannel('Claude Code ChatUI');
+  const usageService = new UsageService(outputChannel);
+
+  // Initialize backup repo in background
+  void backupService.initialize();
 
   // Register diff content provider
   const diffProvider = vscode.workspace.registerTextDocumentContentProvider(
@@ -26,6 +31,8 @@ export function activate(context: vscode.ExtensionContext): void {
     context,
     conversationService,
     mcpService,
+    backupService,
+    usageService,
     permissionService,
   );
 
@@ -33,7 +40,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const sidebarClaudeService = new ClaudeService(context);
   const sidebarProvider = new PanelProvider(
     context.extensionUri, context, sidebarClaudeService,
-    conversationService, mcpService, permissionService,
+    conversationService, mcpService, backupService, usageService, permissionService,
     panelManager,
   );
 
@@ -93,6 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
     statusBarItem,
     sidebarClaudeService,
     permissionService,
+    usageService,
     outputChannel,
     { dispose: () => panelManager.disposeAll() },
     { dispose: () => sidebarProvider.disposeAll() },

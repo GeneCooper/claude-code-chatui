@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { postMessage, useFocusTrap } from '../hooks'
+import { postMessage } from '../hooks'
 import { useUIStore } from '../store'
 
 type Stage = 'prompt' | 'installing' | 'success' | 'error'
@@ -10,19 +10,17 @@ export function InstallModal() {
   const [stage, setStage] = useState<Stage>('prompt')
   const [errorMsg, setErrorMsg] = useState('')
 
-  const handleClose = () => {
-    setShow(false)
-    setStage('prompt')
-    setErrorMsg('')
-  }
-
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, handleClose)
-
   if (!show) return null
 
   const handleInstall = () => {
     setStage('installing')
     postMessage({ type: 'runInstallCommand' })
+  }
+
+  const handleClose = () => {
+    setShow(false)
+    setStage('prompt')
+    setErrorMsg('')
   }
 
   // Listen for install result
@@ -37,10 +35,6 @@ export function InstallModal() {
 
   return (
     <div
-      ref={focusTrapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="install-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -91,7 +85,7 @@ export function InstallModal() {
                   <path d="M12 3V15M12 15L7 10M12 15L17 10" />
                 </svg>
               </div>
-              <h3 id="install-modal-title" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
                 Install Claude Code
               </h3>
               <p style={{ margin: '0 0 24px', fontSize: '12px', opacity: 0.6, lineHeight: 1.5 }}>

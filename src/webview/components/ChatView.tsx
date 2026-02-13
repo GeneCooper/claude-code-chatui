@@ -17,16 +17,17 @@ export function ChatView({ onHintClick }: ChatViewProps) {
     behavior: isProcessing ? 'instant' : 'smooth',
   })
 
-  const handleEdit = useCallback((userInputIndex: number, newText: string) => {
-    postMessage({ type: 'editMessage', userInputIndex, newText })
+  const handleFork = useCallback((userInputIndex: number) => {
+    postMessage({ type: 'forkFromMessage', userInputIndex })
+  }, [])
+
+  const handleRewind = useCallback((userInputIndex: number) => {
+    postMessage({ type: 'rewindToMessage', userInputIndex })
   }, [])
 
   return (
     <div
       ref={containerRef}
-      role="log"
-      aria-live="polite"
-      aria-label="Chat messages"
       className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 min-h-0"
     >
       {messages.length === 0 && (
@@ -37,7 +38,8 @@ export function ChatView({ onHintClick }: ChatViewProps) {
         <JourneyTimeline
           messages={messages}
           isProcessing={isProcessing}
-          onEdit={handleEdit}
+          onFork={handleFork}
+          onRewind={handleRewind}
         />
       )}
     </div>

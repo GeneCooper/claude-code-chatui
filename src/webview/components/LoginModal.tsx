@@ -1,12 +1,10 @@
 import { useUIStore } from '../store'
-import { postMessage, useFocusTrap } from '../hooks'
+import { postMessage } from '../hooks'
 
 export function LoginModal() {
   const show = useUIStore((s) => s.showLoginModal)
   const setShow = useUIStore((s) => s.setShowLoginModal)
   const errorMessage = useUIStore((s) => s.loginErrorMessage)
-
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, () => setShow(false))
 
   if (!show) return null
 
@@ -17,10 +15,6 @@ export function LoginModal() {
 
   return (
     <div
-      ref={focusTrapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="login-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -68,7 +62,7 @@ export function LoginModal() {
             </svg>
           </div>
 
-          <h3 id="login-modal-title" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600 }}>
             Authentication Required
           </h3>
           <p style={{ margin: '0 0 16px', fontSize: '12px', opacity: 0.6, lineHeight: 1.5 }}>

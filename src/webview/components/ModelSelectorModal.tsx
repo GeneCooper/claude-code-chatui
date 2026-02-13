@@ -1,4 +1,4 @@
-import { postMessage, useFocusTrap } from '../hooks'
+import { postMessage } from '../hooks'
 
 const MODELS = [
   { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
@@ -17,8 +17,6 @@ interface Props {
 export { MODELS }
 
 export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: Props) {
-  const focusTrapRef = useFocusTrap<HTMLDivElement>(show, onClose)
-
   if (!show) return null
 
   const handleSelect = (value: string) => {
@@ -28,10 +26,6 @@ export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: P
 
   return (
     <div
-      ref={focusTrapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="model-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -70,7 +64,7 @@ export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: P
             alignItems: 'center',
           }}
         >
-          <span id="model-modal-title" style={{ fontWeight: 600, fontSize: '14px' }}>Select Model</span>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Select Model</span>
           <button
             onClick={onClose}
             style={{

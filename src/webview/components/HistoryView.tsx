@@ -16,24 +16,19 @@ function groupByTime(conversations: ConvEntry[]): TimeGroup[] {
   const yesterdayStart = todayStart - 86400000
   const weekStart = todayStart - 6 * 86400000
 
-  const todayLabel = 'Today'
-  const yesterdayLabel = 'Yesterday'
-  const last7DaysLabel = 'Last 7 days'
-  const earlierLabel = 'Earlier'
-
   const groups: Record<string, ConvEntry[]> = {
-    [todayLabel]: [],
-    [yesterdayLabel]: [],
-    [last7DaysLabel]: [],
-    [earlierLabel]: [],
+    Today: [],
+    Yesterday: [],
+    'Last 7 days': [],
+    Earlier: [],
   }
 
   for (const conv of conversations) {
-    const ts = new Date(conv.startTime).getTime()
-    if (ts >= todayStart) groups[todayLabel].push(conv)
-    else if (ts >= yesterdayStart) groups[yesterdayLabel].push(conv)
-    else if (ts >= weekStart) groups[last7DaysLabel].push(conv)
-    else groups[earlierLabel].push(conv)
+    const t = new Date(conv.startTime).getTime()
+    if (t >= todayStart) groups['Today'].push(conv)
+    else if (t >= yesterdayStart) groups['Yesterday'].push(conv)
+    else if (t >= weekStart) groups['Last 7 days'].push(conv)
+    else groups['Earlier'].push(conv)
   }
 
   return Object.entries(groups)
@@ -48,7 +43,7 @@ export function HistoryView() {
   const setActiveView = useUIStore((s) => s.setActiveView)
   const [searchQuery, setSearchQuery] = useState('')
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     postMessage({ type: 'getConversationList' })
@@ -110,7 +105,7 @@ export function HistoryView() {
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
         >
-          {"← Back to Chat"}
+          {'←'} Back to Chat
         </button>
       </div>
 
@@ -268,7 +263,7 @@ export function HistoryView() {
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.8' }}
               >
-                {`Load more (${conversations.length - displayCount} remaining)`}
+                Load more ({conversations.length - displayCount} remaining)
               </button>
             )}
           </>

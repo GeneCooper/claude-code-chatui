@@ -1,14 +1,20 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
-import { ConversationService, MCPService } from './storage';
+import { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
+  ClaudeMessageProcessor,
+  SessionStateManager,
+  SettingsManager,
   handleWebviewMessage,
+  type MessagePoster,
   type WebviewMessage,
 } from './handlers';
-import { ChatController } from './chatController';
-import type { WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
+import { createModuleLogger } from '../shared/logger';
+import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
+
+const log = createModuleLogger('PanelProvider');
 
 // ============================================================================
 // HTML Generator
@@ -38,7 +44,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
     content="default-src 'none';
       style-src ${webview.cspSource} 'unsafe-inline';
       script-src 'nonce-${nonce}';
-      connect-src ${webview.cspSource};
       img-src ${webview.cspSource} https: data:;
       font-src ${webview.cspSource};">
   <link href="${styleUri}" rel="stylesheet">
@@ -87,12 +92,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
       <div>Loading...</div>
     </div>
   </div>
-  <script nonce="${nonce}">
-    window.__ICON_URI__="${iconUri}";
-    window.onerror=function(msg,src,line,col,err){
-      document.getElementById('root').innerHTML='<div style="padding:20px;color:red;font-size:13px;"><b>Load Error:</b><br>'+msg+'<br>Source: '+src+'<br>Line: '+line+'</div>';
-    };
-  </script>
+  <script nonce="${nonce}">window.__ICON_URI__="${iconUri}";</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
@@ -109,7 +109,12 @@ export class PanelProvider {
   private _disposables: vscode.Disposable[] = [];
   private _messageHandlerDisposable: vscode.Disposable | undefined;
 
-  readonly chat: ChatController;
+  private readonly _settingsManager = new SettingsManager();
+
+  // Single session state (no tabs)
+  private _messageProcessor: ClaudeMessageProcessor;
+  private _stateManager: SessionStateManager;
+  private _sessionId: string | undefined;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -117,28 +122,36 @@ export class PanelProvider {
     private readonly _claudeService: ClaudeService,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
+    private readonly _backupService: BackupService,
+    private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
   ) {
-    this.chat = new ChatController(
-      this._context,
-      this._claudeService,
-      this._conversationService,
-      this._mcpService,
-      this._permissionService,
-      (msg) => this._postMessage(msg),
-      this._panelManager,
-    );
+    log.info('PanelProvider initialized');
 
-    // Desktop notification when panel is not visible
-    this._claudeService.onProcessEnd(() => {
-      const notifEnabled = vscode.workspace.getConfiguration('claudeCodeChatUI')
-        .get<boolean>('notifications.enabled', true);
-      const isVisible = this._panel?.visible ?? this._webviewView?.visible ?? false;
-      if (notifEnabled && !isVisible) {
-        vscode.window.showInformationMessage('Claude Code: Response complete');
-      }
+    this._stateManager = new SessionStateManager();
+    this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
+
+    const poster: MessagePoster = {
+      postMessage: (msg) => this._postMessage(msg),
+      sendAndSaveMessage: (msg) => this._postMessage(msg),
+    };
+
+    this._messageProcessor = new ClaudeMessageProcessor(poster, this._stateManager, {
+      onSessionIdReceived: (sessionId) => {
+        this._claudeService.setSessionId(sessionId);
+        this._sessionId = sessionId;
+      },
+      onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
     });
+
+    this._setupClaudeServiceHandlers();
+
+    this._usageService.onUsageUpdate((data) => { this._postMessage({ type: 'usageUpdate', data }); });
+    this._usageService.onError((err) => { this._postMessage({ type: 'usageError', data: err }); });
+
+    // Real-time rate-limit updates from the main Claude process stderr
+    this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
 
     // Track editor text selection and send to webview
     this._disposables.push(
@@ -182,8 +195,8 @@ export class PanelProvider {
 
   // ==================== Public API ====================
 
-  get messageProcessor() { return this.chat.messageProcessor; }
-  get stateManager() { return this.chat.stateManager; }
+  get messageProcessor(): ClaudeMessageProcessor { return this._messageProcessor; }
+  get stateManager(): SessionStateManager { return this._stateManager; }
 
   show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two, preserveFocus = false): void {
     const actualColumn = column instanceof vscode.Uri ? vscode.ViewColumn.Two : column;
@@ -204,6 +217,7 @@ export class PanelProvider {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);
 
+    // Lock the editor group so the chat panel stays pinned
     void vscode.commands.executeCommand('workbench.action.lockEditorGroup');
   }
 
@@ -223,6 +237,7 @@ export class PanelProvider {
     }
   }
 
+  /** Bind to an externally-created webview (used by PanelManager) */
   bindToWebview(webview: vscode.Webview): void {
     this._webview = webview;
     this._setupWebviewMessageHandler(webview);
@@ -245,17 +260,102 @@ export class PanelProvider {
     // No-op: with retainContextWhenHidden the webview stays alive
   }
 
-  async newSession(): Promise<void> { return this.chat.newSession(); }
-  async loadConversation(filename: string): Promise<void> { return this.chat.loadConversation(filename); }
-  loadConversationData(messages: ConversationMessage[], sessionId?: string, totalCost?: number): void {
-    this.chat.loadConversationData(messages, sessionId, totalCost);
+  async newSession(): Promise<void> {
+    if (this._panelManager) {
+      // Create a new panel instead of resetting current
+      this._panelManager.createNewPanel();
+      return;
+    }
+    // Sidebar fallback: reset current session
+    this._saveConversation(this._sessionId);
+    if (this._stateManager.isProcessing) {
+      await this._claudeService.stopProcess();
+    }
+    this._messageProcessor.resetSession();
+    this._stateManager.resetSession();
+    this._sessionId = undefined;
+    this._postMessage({ type: 'sessionCleared' });
   }
-  editMessage(userInputIndex: number, newText: string): void { this.chat.editMessage(userInputIndex, newText); }
-  regenerateResponse(): void { this.chat.regenerateResponse(); }
+
+  async loadConversation(filename: string): Promise<void> {
+    const conversation = this._conversationService.loadConversation(filename);
+    if (!conversation) {
+      this._postMessage({ type: 'error', data: 'Failed to load conversation' });
+      return;
+    }
+
+    // Reset current session
+    this._messageProcessor.resetSession();
+    this._stateManager.resetSession();
+
+    this._sessionId = conversation.sessionId;
+    this._stateManager.restoreFromConversation({
+      totalCost: conversation.totalCost,
+      totalTokens: conversation.totalTokens,
+    });
+
+    for (const msg of conversation.messages) {
+      this._messageProcessor.currentConversation.push(msg);
+    }
+
+    this._replayConversation();
+  }
+
+  /** Load conversation data directly (used by fork/PanelManager) */
+  loadConversationData(messages: ConversationMessage[], sessionId?: string, totalCost?: number): void {
+    this._messageProcessor.resetSession();
+    this._stateManager.resetSession();
+
+    this._sessionId = sessionId;
+    if (totalCost) this._stateManager.totalCost = totalCost;
+
+    for (const msg of messages) {
+      this._messageProcessor.currentConversation.push({ ...msg });
+    }
+
+    // Replay will happen when webview sends 'ready'
+  }
+
+  /** Get conversation up to a specific user input index (for fork) */
+  getConversationUpTo(userInputIndex: number): { messages: ConversationMessage[]; title: string } | null {
+    const conversation = this._messageProcessor.currentConversation;
+    const pos = this._findUserInputPosition(conversation, userInputIndex);
+    if (pos === -1) return null;
+
+    const messages = conversation.slice(0, pos + 1);
+    const targetMsg = messages[pos];
+    const text = typeof targetMsg.data === 'string'
+      ? targetMsg.data
+      : ((targetMsg.data as Record<string, unknown>)?.text as string || 'Fork');
+    const title = text.substring(0, 25) + (text.length > 25 ? '...' : '');
+
+    return { messages, title };
+  }
+
+  rewindToMessage(userInputIndex: number): void {
+    if (this._stateManager.isProcessing) return;
+
+    const conversation = this._messageProcessor.currentConversation;
+    const pos = this._findUserInputPosition(conversation, userInputIndex);
+    if (pos === -1) return;
+
+    this._messageProcessor.truncateConversation(pos);
+    this._sessionId = undefined;
+    this._replayConversation();
+  }
+
+  forkFromMessage(userInputIndex: number): void {
+    if (this._panelManager) {
+      this._panelManager.createForkPanel(this, userInputIndex);
+    }
+  }
 
   dispose(): void {
-    this.chat.stopIfProcessing();
-    this.chat.flushSave();
+    // Stop Claude process if running
+    if (this._stateManager.isProcessing) {
+      void this._claudeService.stopProcess();
+    }
+    this._saveConversation(this._sessionId);
     this._panel = undefined;
     this._messageHandlerDisposable?.dispose();
     this._messageHandlerDisposable = undefined;
@@ -286,22 +386,162 @@ export class PanelProvider {
       claudeService: this._claudeService,
       conversationService: this._conversationService,
       mcpService: this._mcpService,
+      backupService: this._backupService,
+      usageService: this._usageService,
       permissionService: this._permissionService,
-      stateManager: this.chat.stateManager,
-      settingsManager: this.chat.settingsManager,
-      messageProcessor: this.chat.messageProcessor,
+      stateManager: this._stateManager,
+      settingsManager: this._settingsManager,
+      messageProcessor: this._messageProcessor,
       extensionContext: this._context,
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
-      newSession: () => this.chat.newSession(),
-      loadConversation: (filename: string) => this.chat.loadConversation(filename),
-      handleSendMessage: (text: string, thinkingMode?: boolean, images?: string[]) =>
-        this.chat.handleSendMessage(text, thinkingMode, images),
+      newSession: () => this.newSession(),
+      loadConversation: (filename: string) => this.loadConversation(filename),
+      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
+        this._handleSendMessage(text, planMode, thinkingMode, images),
       panelManager: this._panelManager,
-      editMessage: (userInputIndex: number, newText: string) => this.chat.editMessage(userInputIndex, newText),
-      regenerateResponse: () => this.chat.regenerateResponse(),
-      restoreCommit: (commitSha: string) => this.chat.restoreCommit(commitSha),
-      lastRateLimitData: this.chat.lastRateLimitData,
+      rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
+      forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
     };
+  }
+
+  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
+    if (this._stateManager.isProcessing) return;
+
+    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
+
+    this._stateManager.isProcessing = true;
+    this._stateManager.draftMessage = '';
+
+    this._claudeService.setSessionId(this._sessionId);
+
+    void this._backupService.createCheckpoint(text).then((commit) => {
+      if (commit) this._postMessage({ type: 'restorePoint', data: commit });
+    });
+
+    // Save userInput to conversation
+    const userInputData = { text, images };
+    this._messageProcessor.currentConversation.push({
+      timestamp: new Date().toISOString(),
+      messageType: 'userInput',
+      data: userInputData,
+    });
+    this._postMessage({ type: 'userInput', data: userInputData });
+    this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
+    this._postMessage({ type: 'loading', data: 'Claude is working...' });
+
+    const yoloMode = this._settingsManager.isYoloModeEnabled();
+    const mcpServers = this._mcpService.loadServers();
+    const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
+
+    void this._claudeService.sendMessage(text, {
+      cwd, planMode, thinkingMode, yoloMode,
+      model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
+      mcpConfigPath, images,
+    });
+  }
+
+  private _setupClaudeServiceHandlers(): void {
+    this._claudeService.onMessage((message: ClaudeMessage) => {
+      void this._messageProcessor.processMessage(message);
+    });
+
+    this._claudeService.onProcessEnd(() => {
+      this._stateManager.isProcessing = false;
+      this._postMessage({ type: 'clearLoading' });
+      this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+      this._usageService.onClaudeSessionEnd();
+    });
+
+    this._claudeService.onError((error) => {
+      log.error('Claude service error', { message: error });
+      this._stateManager.isProcessing = false;
+      this._postMessage({ type: 'clearLoading' });
+      this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+
+      if (error.includes('ENOENT') || error.includes('command not found')) {
+        this._postMessage({ type: 'showInstallModal' });
+      } else if (error.includes('authentication') || error.includes('login') || error.includes('API key') || error.includes('unauthorized') || error.includes('401')) {
+        this._postMessage({ type: 'showLoginRequired', data: { message: error } });
+      } else {
+        this._postMessage({ type: 'error', data: error });
+        if (error.includes('permission') || error.includes('denied')) {
+          if (!this._settingsManager.isYoloModeEnabled()) {
+            this._postMessage({ type: 'error', data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.' });
+          }
+        }
+      }
+    });
+
+    this._claudeService.onAccountInfo((subscriptionType) => {
+      this._postMessage({ type: 'accountInfo', data: { subscriptionType } });
+    });
+
+    this._claudeService.onPermissionRequest((request) => {
+      if (this._settingsManager.isYoloModeEnabled()) {
+        log.info('YOLO mode: auto-approving permission', { tool: request.toolName });
+        this._claudeService.sendPermissionResponse(request.requestId, true);
+        return;
+      }
+
+      this._postMessage({
+        type: 'permissionRequest',
+        data: {
+          id: request.requestId,
+          tool: request.toolName,
+          input: request.input,
+          pattern: request.pattern,
+          suggestions: request.suggestions,
+          decisionReason: request.decisionReason,
+          blockedPath: request.blockedPath,
+          status: 'pending',
+        },
+      });
+    });
+  }
+
+  private _replayConversation(): void {
+    const conversation = this._messageProcessor.currentConversation;
+    if (conversation.length > 0) {
+      const replayMessages = conversation.map((msg) => ({ type: msg.messageType, data: msg.data }));
+      this._postMessage({
+        type: 'batchReplay',
+        data: {
+          messages: replayMessages,
+          sessionId: this._sessionId,
+          totalCost: this._stateManager.totalCost,
+          isProcessing: this._stateManager.isProcessing,
+        },
+      });
+    } else {
+      this._postMessage({ type: 'sessionCleared' });
+    }
+  }
+
+  private _saveConversation(sessionId?: string): void {
+    if (!sessionId) return;
+    const conversation = this._messageProcessor.currentConversation;
+    if (conversation.length === 0) return;
+
+    void this._conversationService.saveConversation(
+      sessionId, conversation,
+      this._stateManager.totalCost,
+      this._stateManager.totalTokensInput,
+      this._stateManager.totalTokensOutput,
+    );
+  }
+
+  private _findUserInputPosition(conversation: ConversationMessage[], userInputIndex: number): number {
+    let count = -1;
+    for (let i = 0; i < conversation.length; i++) {
+      if (conversation[i].messageType === 'userInput') {
+        count++;
+        if (count === userInputIndex) return i;
+      }
+    }
+    return -1;
   }
 
   private _postMessage(message: Record<string, unknown>): void {
@@ -334,6 +574,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this._extensionUri],
     };
 
+    // Prevent webview destruction when sidebar is hidden
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this._panelProvider.closeMainPanel();

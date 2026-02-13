@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, MCPService } from './storage';
+import type { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { PanelProvider, getWebviewHtml } from './panel';
 import type { ConversationMessage } from '../shared/types';
 
@@ -15,6 +15,8 @@ export class PanelManager {
     private readonly _context: vscode.ExtensionContext,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
+    private readonly _backupService: BackupService,
+    private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
   ) {}
 
@@ -37,6 +39,8 @@ export class PanelManager {
       claudeService,
       this._conversationService,
       this._mcpService,
+      this._backupService,
+      this._usageService,
       this._permissionService,
       this,
     );
@@ -64,7 +68,7 @@ export class PanelManager {
       this._panels.delete(panelId);
     }, null, this._disposables);
 
-    // Load initial conversation if provided
+    // Load initial conversation if provided (fork scenario)
     if (options?.initialConversation) {
       provider.loadConversationData(
         options.initialConversation,
@@ -74,6 +78,20 @@ export class PanelManager {
     }
 
     return provider;
+  }
+
+  createForkPanel(
+    sourceProvider: PanelProvider,
+    userInputIndex: number,
+  ): void {
+    const data = sourceProvider.getConversationUpTo(userInputIndex);
+    if (!data) return;
+
+    const title = data.title + ' (fork)';
+    this.createNewPanel(vscode.ViewColumn.Beside, false, {
+      title,
+      initialConversation: data.messages,
+    });
   }
 
   disposeAll(): void {

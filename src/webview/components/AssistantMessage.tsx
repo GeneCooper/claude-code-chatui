@@ -1,9 +1,6 @@
-import { useState, useMemo, useEffect, useRef, useId } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-import rehypeKatex from 'rehype-katex'
-import 'katex/dist/katex.min.css'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ComponentPropsWithoutRef } from 'react'
@@ -69,66 +66,67 @@ const markdownComponents = {
 }
 
 /**
- * Typewriter effect: gradually reveal text using requestAnimationFrame.
- * - Only animates when new text is appended while streaming
- * - Historical / batch-replay messages display instantly
+ * Hook to progressively reveal text for a streaming effect.
+ * On first mount or when new text is appended, reveals content character-by-character
+ * at a fast rate to simulate streaming output.
  */
 function useStreamingText(fullText: string, isStreaming: boolean) {
-  const [displayLen, setDisplayLen] = useState(fullText.length)
-  const prevLenRef = useRef(fullText.length)
-  const rafRef = useRef(0)
-  const targetLenRef = useRef(fullText.length)
+  const [displayText, setDisplayText] = useState(isStreaming ? '' : fullText)
+  const prevTextRef = useRef(fullText)
+  const revealedRef = useRef(isStreaming ? 0 : fullText.length)
+  const rafRef = useRef<number>(0)
 
   useEffect(() => {
-    targetLenRef.current = fullText.length
-    const prevLen = prevLenRef.current
-    prevLenRef.current = fullText.length
-
-    // Text got shorter or completely replaced (new message / different content) — show instantly
-    if (fullText.length <= prevLen) {
-      setDisplayLen(fullText.length)
-      return
-    }
-
-    // Not streaming (historical / batch replay) — show instantly
     if (!isStreaming) {
-      setDisplayLen(fullText.length)
+      setDisplayText(fullText)
+      revealedRef.current = fullText.length
+      prevTextRef.current = fullText
       return
     }
 
-    // New text appended while streaming — animate from current display position
-    const animate = () => {
-      setDisplayLen((prev) => {
-        const target = targetLenRef.current
-        if (prev >= target) return prev
-        // Adaptive speed: longer remaining text = faster reveal
-        const remaining = target - prev
-        const speed = Math.max(2, Math.min(18, Math.ceil(remaining / 12)))
-        return Math.min(prev + speed, target)
-      })
-      rafRef.current = requestAnimationFrame(animate)
+    // If text grew (new content appended), keep revealed portion and stream the rest
+    const prevLen = prevTextRef.current.length
+    if (fullText.length > prevLen && fullText.startsWith(prevTextRef.current)) {
+      // Previous text is a prefix — keep the revealed count
+    } else {
+      // Text changed entirely — reset
+      revealedRef.current = 0
     }
-    cancelAnimationFrame(rafRef.current)
-    rafRef.current = requestAnimationFrame(animate)
+    prevTextRef.current = fullText
 
+    if (revealedRef.current >= fullText.length) {
+      setDisplayText(fullText)
+      return
+    }
+
+    // Streaming reveal — ~30 chars per frame at 60fps = ~1800 chars/sec
+    const CHARS_PER_FRAME = 30
+
+    const reveal = () => {
+      revealedRef.current = Math.min(revealedRef.current + CHARS_PER_FRAME, fullText.length)
+      // Snap to next word boundary to avoid cutting mid-word
+      if (revealedRef.current < fullText.length) {
+        const nextSpace = fullText.indexOf(' ', revealedRef.current)
+        if (nextSpace !== -1 && nextSpace - revealedRef.current < 20) {
+          revealedRef.current = nextSpace + 1
+        }
+      }
+      setDisplayText(fullText.substring(0, revealedRef.current))
+      if (revealedRef.current < fullText.length) {
+        rafRef.current = requestAnimationFrame(reveal)
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(reveal)
     return () => cancelAnimationFrame(rafRef.current)
   }, [fullText, isStreaming])
 
-  // When streaming stops, reveal everything immediately
-  useEffect(() => {
-    if (!isStreaming) {
-      cancelAnimationFrame(rafRef.current)
-      setDisplayLen(fullText.length)
-    }
-  }, [isStreaming, fullText.length])
-
-  return displayLen >= fullText.length ? fullText : fullText.slice(0, displayLen)
+  return displayText
 }
 
 export function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
   const displayText = useStreamingText(text, isStreaming)
-  const isAnimating = isStreaming || displayText.length < text.length
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(text)
@@ -138,7 +136,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
 
   // Memoize markdown rendering — only re-parse when displayText actually changes
   const renderedMarkdown = useMemo(() => (
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
       {displayText}
     </ReactMarkdown>
   ), [displayText])
@@ -146,32 +144,28 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
   return (
     <div
       className="group relative max-w-[95%]"
-      style={{ padding: '2px 0' }}
+      style={{ padding: '4px 0' }}
     >
-      {/* Message content */}
-      <div className="markdown-content text-sm leading-relaxed">
-        {renderedMarkdown}
-        {isAnimating && <span className="streaming-cursor" />}
-      </div>
-
-      {/* Copy button - floats at top-right on hover */}
+      {/* Copy button - appears above on hover */}
       <button
         onClick={handleCopyMessage}
-        className="cursor-pointer bg-transparent border-none opacity-0 group-hover:opacity-70 hover:opacity-100!"
+        className="absolute -top-5 right-0 opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer bg-transparent border-none"
         style={{
-          position: 'absolute',
-          top: '2px',
-          right: '0px',
           padding: '2px 6px',
           borderRadius: '4px',
           fontSize: '11px',
-          color: 'var(--vscode-descriptionForeground)',
           transition: 'opacity 0.2s ease',
+          color: 'var(--vscode-descriptionForeground)',
         }}
         title="Copy message"
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
+
+      {/* Message content */}
+      <div className="markdown-content text-sm leading-relaxed">
+        {renderedMarkdown}
+      </div>
     </div>
   )
 }
@@ -316,11 +310,6 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
   const match = /language-(\w+)/.exec(className || '')
   const code = String(children).replace(/\n$/, '')
 
-  // Mermaid diagram rendering
-  if (match && match[1] === 'mermaid') {
-    return <MermaidBlock code={code} />
-  }
-
   if (match) {
     return (
       <div
@@ -384,74 +373,5 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
     >
       {children}
     </code>
-  )
-}
-
-function MermaidBlock({ code }: { code: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [svg, setSvg] = useState<string>('')
-  const [error, setError] = useState<string>('')
-  const uniqueId = useId().replace(/:/g, '-')
-
-  useEffect(() => {
-    let cancelled = false
-    import('mermaid').then(({ default: mermaid }) => {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: 'dark',
-        securityLevel: 'loose',
-        fontFamily: 'var(--vscode-editor-font-family)',
-      })
-      mermaid.render(`mermaid-${uniqueId}`, code).then(({ svg: renderedSvg }) => {
-        if (!cancelled) setSvg(renderedSvg)
-      }).catch((err) => {
-        if (!cancelled) setError(String(err))
-      })
-    })
-    return () => { cancelled = true }
-  }, [code, uniqueId])
-
-  if (error) {
-    return (
-      <div
-        className="my-2 overflow-hidden"
-        style={{
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '8px',
-          padding: '12px',
-          background: 'var(--vscode-textCodeBlock-background)',
-        }}
-      >
-        <div style={{ fontSize: '11px', color: '#e74c3c', marginBottom: '8px' }}>Mermaid rendering error</div>
-        <pre style={{ fontSize: '11px', opacity: 0.7, whiteSpace: 'pre-wrap', margin: 0 }}>{code}</pre>
-      </div>
-    )
-  }
-
-  if (!svg) {
-    return (
-      <div
-        className="my-2 flex items-center gap-2"
-        style={{ opacity: 0.5, fontSize: '12px', padding: '12px' }}
-      >
-        <div style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite', border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--chatui-accent)', borderRadius: '50%' }} />
-        Rendering diagram...
-      </div>
-    )
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      className="my-2 overflow-x-auto"
-      style={{
-        border: '1px solid rgba(255, 255, 255, 0.06)',
-        borderRadius: '8px',
-        padding: '16px',
-        background: 'var(--vscode-textCodeBlock-background)',
-        textAlign: 'center',
-      }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
   )
 }

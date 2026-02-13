@@ -77,7 +77,7 @@ export function ToolResultBlock({ data }: Props) {
           background: isError ? '#e74c3c' : '#4ade80',
         }} />
         <span style={{ opacity: 0.6 }}>
-          {toolName ? `${toolName} Result` : 'Result'}
+          {toolName ? `${toolName} result` : 'Result'}
         </span>
         {content && (
           <button
