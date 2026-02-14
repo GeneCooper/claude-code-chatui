@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 
 interface Props {
   text: string
 }
 
-export function ThinkingBlock({ text }: Props) {
+export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -27,9 +27,9 @@ export function ThinkingBlock({ text }: Props) {
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
         style={{
-          padding: '8px 12px',
+          padding: '5px 10px',
           background: 'var(--chatui-surface-1)',
-          fontSize: '12px',
+          fontSize: '11px',
           opacity: 0.7,
         }}
       >
@@ -61,4 +61,4 @@ export function ThinkingBlock({ text }: Props) {
       )}
     </div>
   )
-}
+})

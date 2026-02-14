@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 
 interface Props {
   text: string
@@ -8,7 +8,7 @@ interface Props {
   isProcessing?: boolean
 }
 
-export function UserMessage({ text, images, onFork, onRewind, isProcessing }: Props) {
+export const UserMessage = memo(function UserMessage({ text, images, onFork, onRewind, isProcessing }: Props) {
   const [copied, setCopied] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
 
@@ -28,8 +28,8 @@ export function UserMessage({ text, images, onFork, onRewind, isProcessing }: Pr
           className="group relative max-w-[85%]"
           style={{
             background: 'var(--chatui-user-bubble)',
-            borderRadius: '18px',
-            padding: '10px 16px',
+            borderRadius: '16px',
+            padding: '8px 14px',
           }}
         >
           {/* Action bar - appears above bubble on hover */}
@@ -138,4 +138,4 @@ export function UserMessage({ text, images, onFork, onRewind, isProcessing }: Pr
       )}
     </>
   )
-}
+})

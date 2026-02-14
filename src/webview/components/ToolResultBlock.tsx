@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { DiffView } from './DiffView'
@@ -20,7 +20,7 @@ function guessLanguage(toolName?: string, content?: string): string | undefined 
   return undefined
 }
 
-export function ToolResultBlock({ data }: Props) {
+export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const isError = data.isError as boolean
@@ -65,7 +65,7 @@ export function ToolResultBlock({ data }: Props) {
       <div
         className="flex items-center gap-2"
         style={{
-          padding: '6px 12px',
+          padding: '5px 10px',
           background: 'var(--chatui-surface-1)',
         }}
       >
@@ -79,6 +79,14 @@ export function ToolResultBlock({ data }: Props) {
         <span style={{ opacity: 0.6 }}>
           {toolName ? `${toolName} result` : 'Result'}
         </span>
+        {toolName === 'Bash' && (
+          <span style={{
+            fontSize: '9px', fontWeight: 700, opacity: 0.5,
+            padding: '0 3px', borderRadius: '2px',
+            background: 'rgba(255,255,255,0.08)',
+            letterSpacing: '0.5px',
+          }}>OUT</span>
+        )}
         {content && (
           <button
             onClick={handleCopy}
@@ -154,8 +162,8 @@ export function ToolResultBlock({ data }: Props) {
               PreTag="div"
               customStyle={{
                 margin: 0,
-                padding: '8px 12px',
-                paddingLeft: '12px',
+                padding: '6px 10px',
+                paddingLeft: '10px',
                 fontSize: '11px',
                 background: 'transparent',
                 maxHeight: expanded ? 'none' : '200px',
@@ -168,8 +176,8 @@ export function ToolResultBlock({ data }: Props) {
             <pre
               className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0"
               style={{
-                padding: '8px 12px',
-                paddingLeft: '12px',
+                padding: '6px 10px',
+                paddingLeft: '10px',
                 maxHeight: expanded ? 'none' : '200px',
                 overflow: expanded ? 'visible' : 'auto',
               }}
@@ -190,4 +198,4 @@ export function ToolResultBlock({ data }: Props) {
       )}
     </div>
   )
-}
+})

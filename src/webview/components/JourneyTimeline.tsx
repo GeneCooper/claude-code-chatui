@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { useMemo, useState, useCallback, useEffect, useRef, memo } from 'react'
 import type { ChatMessage } from '../store'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
@@ -254,7 +254,7 @@ function LoadingIndicator() {
   )
 }
 
-function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessing }: {
+const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessing }: {
   message: ChatMessage
   userInputIndex?: number
   onFork?: (index: number) => void
@@ -301,9 +301,9 @@ function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessi
     default:
       return null
   }
-}
+})
 
-function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void }) {
+const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void }) {
   const toolData = step.toolUse?.data as Record<string, unknown> | undefined
   const toolName = (toolData?.toolName as string) || 'Tool'
   const hasError = step.toolResult && (step.toolResult.data as Record<string, unknown>)?.isError
@@ -337,9 +337,9 @@ function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isColla
       )}
     </div>
   )
-}
+})
 
-function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onToggleStep }: {
+const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onToggleStep }: {
   plan: PlanGroup; isCollapsed: boolean; collapsedSteps: Set<string>;
   onTogglePlan: (id: string) => void; onToggleStep: (id: string) => void;
 }) {
@@ -393,7 +393,15 @@ function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onTogg
       )}
     </div>
   )
-}
+}, (prev, next) => {
+  if (prev.plan !== next.plan || prev.isCollapsed !== next.isCollapsed
+    || prev.onTogglePlan !== next.onTogglePlan || prev.onToggleStep !== next.onToggleStep) return false
+  // Only re-render if collapse state of THIS plan's steps changed
+  for (const step of prev.plan.steps) {
+    if (prev.collapsedSteps.has(step.id) !== next.collapsedSteps.has(step.id)) return false
+  }
+  return true
+})
 
 // ============================================================================
 // Main Component
@@ -456,7 +464,7 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
   }, [])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {items.map((item) => {
         if (item.kind === 'message') {
           const uiIdx = item.message.type === 'userInput' ? userInputIndexMap.get(item.message.id) : undefined

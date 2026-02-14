@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { useChatStore, type TodoItem } from '../store'
 
-export function TodoDisplay() {
+export const TodoDisplay = memo(function TodoDisplay() {
   const todos = useChatStore((s) => s.todos)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -15,32 +15,30 @@ export function TodoDisplay() {
   return (
     <div
       style={{
-        padding: collapsed ? '4px 12px' : '6px 12px',
+        padding: collapsed ? '3px 10px' : '5px 10px',
         borderTop: '1px solid var(--vscode-panel-border)',
         background: 'rgba(128, 128, 128, 0.04)',
         fontSize: '11px',
         flexShrink: 0,
       }}
     >
-      {/* Header - always visible, clickable to toggle */}
+      {/* Header */}
       <div
-        className="flex items-center gap-2 cursor-pointer select-none"
+        className="flex items-center gap-1.5 cursor-pointer select-none"
         onClick={() => setCollapsed(!collapsed)}
       >
-        <span style={{ opacity: 0.5, fontSize: '10px' }}>{collapsed ? '▶' : '▼'}</span>
-        <span style={{ fontWeight: 600, opacity: 0.7 }}>
-          Tasks ({completed}/{total})
+        <span style={{ opacity: 0.4, fontSize: '9px' }}>{collapsed ? '▶' : '▼'}</span>
+        <span style={{ fontWeight: 600, opacity: 0.7, fontSize: '11px' }}>
+          Tasks {completed}/{total}
         </span>
-        {/* Active task hint when collapsed */}
         {collapsed && activeTask && (
           <span
             className="truncate"
-            style={{ opacity: 0.5, fontSize: '10px', maxWidth: '200px' }}
+            style={{ opacity: 0.45, fontSize: '10px', maxWidth: '200px' }}
           >
             {activeTask.activeForm || activeTask.content}
           </span>
         )}
-        {/* Progress percentage */}
         <span
           className="ml-auto"
           style={{
@@ -54,9 +52,9 @@ export function TodoDisplay() {
         </span>
       </div>
 
-      {/* Todo items - collapsible */}
+      {/* Todo items */}
       {!collapsed && (
-        <div className="space-y-0.5" style={{ marginTop: '4px', maxHeight: '100px', overflowY: 'auto' }}>
+        <div style={{ marginTop: '2px', maxHeight: '100px', overflowY: 'auto' }}>
           {todos.map((todo, idx) => (
             <TodoRow key={idx} todo={todo} />
           ))}
@@ -64,22 +62,63 @@ export function TodoDisplay() {
       )}
     </div>
   )
-}
+})
 
-function TodoRow({ todo }: { todo: TodoItem }) {
-  const icon = todo.status === 'completed' ? '✅' : todo.status === 'in_progress' ? '🔄' : '⏳'
-  const textStyle: React.CSSProperties = todo.status === 'completed'
-    ? { textDecoration: 'line-through', opacity: 0.5 }
-    : todo.status === 'in_progress'
-      ? { fontWeight: 600, color: 'var(--chatui-accent)' }
-      : { opacity: 0.7 }
+const TodoRow = memo(function TodoRow({ todo }: { todo: TodoItem }) {
+  const isCompleted = todo.status === 'completed'
+  const isActive = todo.status === 'in_progress'
 
   return (
-    <div className="flex items-start gap-1.5" style={{ padding: '1px 0', fontSize: '11px' }}>
-      <span style={{ flexShrink: 0, fontSize: '10px', lineHeight: '16px' }}>{icon}</span>
-      <span style={{ ...textStyle, lineHeight: '16px' }}>
-        {todo.status === 'in_progress' && todo.activeForm ? todo.activeForm : todo.content}
+    <div
+      className="flex items-center gap-1.5"
+      style={{ padding: '1px 0', fontSize: '11px' }}
+    >
+      {/* Checkbox */}
+      <span
+        style={{
+          flexShrink: 0,
+          width: '13px',
+          height: '13px',
+          borderRadius: '3px',
+          border: isCompleted
+            ? '1.5px solid #4ade80'
+            : isActive
+              ? '1.5px solid var(--chatui-accent)'
+              : '1.5px solid rgba(128,128,128,0.3)',
+          background: isCompleted ? 'rgba(74, 222, 128, 0.15)' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '8px',
+          lineHeight: 1,
+          color: '#4ade80',
+        }}
+      >
+        {isCompleted && '✓'}
+        {isActive && (
+          <span
+            style={{
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              background: 'var(--chatui-accent)',
+            }}
+          />
+        )}
+      </span>
+      {/* Label */}
+      <span
+        style={{
+          lineHeight: '15px',
+          ...(isCompleted
+            ? { textDecoration: 'line-through', opacity: 0.4 }
+            : isActive
+              ? { fontWeight: 600, color: 'var(--chatui-accent)' }
+              : { opacity: 0.65 }),
+        }}
+      >
+        {isActive && todo.activeForm ? todo.activeForm : todo.content}
       </span>
     </div>
   )
-}
+})

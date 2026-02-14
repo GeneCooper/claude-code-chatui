@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { postMessage } from '../hooks'
 
 const FILE_EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit']
@@ -7,7 +7,7 @@ interface Props {
   data: Record<string, unknown>
 }
 
-export function ToolUseBlock({ data }: Props) {
+export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
   const [showInput, setShowInput] = useState(false)
   const toolName = data.toolName as string
   const rawInput = data.rawInput as Record<string, unknown> | undefined
@@ -52,13 +52,21 @@ export function ToolUseBlock({ data }: Props) {
       <div
         className="flex items-center gap-2 cursor-pointer"
         style={{
-          padding: '8px 12px',
+          padding: '6px 10px',
           borderBottom: showInput ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
         }}
         onClick={() => setShowInput(!showInput)}
       >
         <span style={{ opacity: 0.4, fontSize: '10px' }}>&#9654;</span>
-        <span style={{ fontWeight: 500, fontSize: '13px', opacity: 0.9 }}>{toolName}</span>
+        <span style={{ fontWeight: 500, fontSize: '12px', opacity: 0.9 }}>{toolName}</span>
+        {toolName === 'Bash' && (
+          <span style={{
+            fontSize: '9px', fontWeight: 700, opacity: 0.5,
+            padding: '0 3px', borderRadius: '2px',
+            background: 'rgba(255,255,255,0.08)',
+            letterSpacing: '0.5px',
+          }}>IN</span>
+        )}
         {summary && (
           <span className="opacity-40 truncate flex-1 font-mono text-[11px]">{summary}</span>
         )}
@@ -107,4 +115,4 @@ export function ToolUseBlock({ data }: Props) {
       )}
     </div>
   )
-}
+})

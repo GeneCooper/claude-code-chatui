@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -124,7 +124,7 @@ function useStreamingText(fullText: string, isStreaming: boolean) {
   return displayText
 }
 
-export function AssistantMessage({ text, isStreaming = false }: Props) {
+export const AssistantMessage = memo(function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
   const displayText = useStreamingText(text, isStreaming)
 
@@ -186,7 +186,7 @@ export function AssistantMessage({ text, isStreaming = false }: Props) {
       </div>
     </div>
   )
-}
+})
 
 /** Intercept links - open external in browser, file paths in VS Code */
 function LinkComponent({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
@@ -341,7 +341,7 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
         <div
           className="flex items-center justify-between"
           style={{
-            padding: '8px 12px',
+            padding: '5px 10px',
             background: 'var(--chatui-surface-2)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
             fontSize: '11px',
