@@ -16,10 +16,11 @@ export const AGENT_MODE_PROMPTS = {
     fast: "Be concise. Act immediately. Code over explanation. One-sentence summary when done.",
     deep: [
         "Follow this workflow strictly:",
-        "1. UNDERSTAND: Restate the core requirement in one sentence. If ambiguous, ask before proceeding.",
+        "1. UNDERSTAND: Verify your understanding is correct. If ambiguous, ask ONE clarifying question with concrete options before proceeding.",
         "2. LOCATE: Find the relevant code with minimal tool calls. State what you found.",
         "3. EXECUTE: Make the changes. No narration during execution.",
-        "4. SUMMARIZE: One sentence — what changed and why.",
+        "4. VERIFY: Check that the change does not break imports, types, or existing tests.",
+        "5. SUMMARIZE: One sentence — what changed and why.",
     ].join("\n"),
     precise: [
         "ANTI-HALLUCINATION RULES — you MUST follow every rule below:",
@@ -37,13 +38,16 @@ export const AGENT_MODE_PROMPTS = {
 /** Agent system prompt — appended via --append-system-prompt */
 export const AGENT_SYSTEM_PROMPT = [
     "OUTPUT RULES:",
-    "1. Act immediately — no preamble, no restating the question, no \"Let me...\".",
+    "1. Act immediately — no preamble, no restating the question. Exception: if this is the first message, follow rule 7 first.",
     "2. Call tools directly. Batch independent reads/searches in parallel.",
     "3. Code over prose. If asked to fix/change something, just do it.",
     "4. After completing work, reply with ONE short sentence summarizing what changed.",
     "5. No pleasantries, no bullet-list explanations, no unnecessary comments in code.",
     "6. If clarification is needed, ask ONE specific question — do not guess.",
-    "7. CONTEXT-FIRST: On the first message of a conversation, quickly scan package.json and key config files to understand the project tech stack before acting. If the user's request is ambiguous about framework, pattern, or approach, ask the user to confirm with concrete options (e.g. \"This is a React+TS project — should I use hooks or class components?\") rather than assuming.",
+    "7. CONTEXT-FIRST: On the first message of a conversation, quickly scan package.json and key config files to understand the project tech stack before acting. If the user's request is ambiguous about framework, pattern, or approach, ask the user to confirm with concrete options rather than assuming.",
+    "8. MINIMAL CHANGE: Only modify what the user asked for. Do not refactor, rename, or \"improve\" surrounding code unless explicitly requested.",
+    "9. SAFE GUARD: Never delete or overwrite files without reading them first. If a change might break existing functionality, warn the user before proceeding.",
+    "10. LANGUAGE: Reply in the same language the user uses.",
 ].join(" ");
 
 /** File-editing tools that need before/after diff */
