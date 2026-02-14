@@ -244,21 +244,63 @@ export function InputArea() {
     dragCountRef.current = 0
     setIsDragging(false)
 
-    // Handle URI drops from VS Code explorer (text/uri-list)
+    const toFileUri = (p: string) =>
+      p.startsWith('file://') ? p : `file:///${p.replace(/\\/g, '/')}`
+    const isFilePath = (s: string) =>
+      s.startsWith('file://') || s.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(s)
+
+    // Collect all URIs from every available dataTransfer format (de-duplicated)
+    const seen = new Set<string>()
+    const uris: string[] = []
+    const addUri = (u: string) => {
+      if (!seen.has(u)) { seen.add(u); uris.push(u) }
+    }
+
+    // 1. text/uri-list (standard format, \r\n separated)
     const uriList = e.dataTransfer.getData('text/uri-list')
     if (uriList) {
-      for (const uri of uriList.split('\n').filter(Boolean)) {
-        postMessage({ type: 'resolveDroppedFile', uri: uri.trim() })
+      for (const line of uriList.split(/\r?\n/).filter(Boolean)) {
+        const trimmed = line.trim()
+        if (trimmed && !trimmed.startsWith('#')) addUri(trimmed)
+      }
+    }
+
+    // 2. text/plain — may contain additional file paths not in uri-list
+    const plain = e.dataTransfer.getData('text/plain')
+    if (plain) {
+      for (const line of plain.split(/\r?\n/).filter(Boolean)) {
+        const trimmed = line.trim()
+        if (isFilePath(trimmed)) addUri(toFileUri(trimmed))
+      }
+    }
+
+    // 3. Iterate dataTransfer.items for any remaining string entries
+    for (let i = 0; i < e.dataTransfer.items.length; i++) {
+      const item = e.dataTransfer.items[i]
+      if (item.kind === 'string' && item.type !== 'text/uri-list' && item.type !== 'text/plain') {
+        const raw = e.dataTransfer.getData(item.type)
+        if (raw) {
+          for (const line of raw.split(/\r?\n/).filter(Boolean)) {
+            const trimmed = line.trim()
+            if (isFilePath(trimmed)) addUri(toFileUri(trimmed))
+          }
+        }
+      }
+    }
+
+    // Resolve all collected URIs
+    if (uris.length > 0) {
+      for (const uri of uris) {
+        postMessage({ type: 'resolveDroppedFile', uri })
       }
       return
     }
 
-    // Handle file drops (images from outside VS Code)
+    // 4. Handle file drops (images/files from outside VS Code)
     for (const file of e.dataTransfer.files) {
       if (file.type.startsWith('image/')) {
         addImageFile(file)
       } else if (file.name) {
-        // Non-image file drop — try to resolve as workspace file
         postMessage({ type: 'resolveDroppedFile', uri: `file://${file.name}` })
       }
     }
@@ -535,7 +577,7 @@ export function InputArea() {
             }}
           >
             <span style={{ fontSize: '12px', color: 'var(--chatui-accent)', fontWeight: 500 }}>
-              Drop files to attach
+              Hold Shift + Drop to attach files
             </span>
           </div>
         )}

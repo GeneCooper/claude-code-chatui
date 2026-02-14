@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ClaudeService } from './claude';
 import { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { PermissionService } from './claude';
@@ -253,6 +255,20 @@ export class PanelProvider {
 
   attachFileContext(relativePath: string): void {
     setTimeout(() => {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      const absPath = workspaceRoot ? path.join(workspaceRoot, relativePath) : relativePath;
+      try {
+        if (fs.existsSync(absPath) && fs.statSync(absPath).isDirectory()) {
+          // Expand folder: attach all files inside (1 level deep)
+          const entries = fs.readdirSync(absPath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.name.startsWith('.')) continue;
+            const childRelative = relativePath + '/' + entry.name;
+            this._postMessage({ type: 'attachFileContext', data: { filePath: childRelative } });
+          }
+          return;
+        }
+      } catch { /* fallback to attaching as-is */ }
       this._postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
     }, 100);
   }

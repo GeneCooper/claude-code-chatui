@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import type {
   ClaudeMessage,
   ConversationMessage,
@@ -961,6 +963,17 @@ const handleResolveDroppedFile: MessageHandler = (_msg, ctx) => {
   try {
     const uri = vscode.Uri.parse(uriStr);
     const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const absPath = workspaceRoot ? path.join(workspaceRoot, relativePath) : uri.fsPath;
+    // Expand folders: attach all entries (1 level deep)
+    if (fs.existsSync(absPath) && fs.statSync(absPath).isDirectory()) {
+      const entries = fs.readdirSync(absPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+        ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath + '/' + entry.name } });
+      }
+      return;
+    }
     ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
   } catch { /* ignore invalid URIs */ }
 };

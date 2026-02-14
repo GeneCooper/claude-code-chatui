@@ -56,14 +56,18 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // Register command to open chat with current file/folder context
+  // VS Code explorer passes (clickedUri, allSelectedUris) for multi-select
   const openChatWithFileCmd = vscode.commands.registerCommand(
     'claude-code-chatui.openChatWithFile',
-    (uri?: vscode.Uri) => {
+    (uri?: vscode.Uri, uris?: vscode.Uri[]) => {
       const panel = panelManager.createNewPanel(vscode.ViewColumn.Beside, false);
-      if (uri) {
-        // Called from explorer context menu (file or folder)
-        const relativePath = vscode.workspace.asRelativePath(uri, false);
-        panel.attachFileContext(relativePath);
+      const targets = uris?.length ? uris : uri ? [uri] : [];
+      if (targets.length > 0) {
+        // Called from explorer context menu (files and/or folders)
+        for (const target of targets) {
+          const relativePath = vscode.workspace.asRelativePath(target, false);
+          panel.attachFileContext(relativePath);
+        }
       } else {
         // Called from editor title bar or command palette
         const editor = vscode.window.activeTextEditor;
