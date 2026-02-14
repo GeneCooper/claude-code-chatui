@@ -1,8 +1,8 @@
 # Claude Code ChatUI
 
-A beautiful, stable VS Code GUI for [Claude Code CLI](https://claude.ai/code).
+**A polished VS Code GUI that wraps [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)** — with tuned interactions, streamlined workflows, and a better developer experience.
 
-Claude Code CLI is the fastest and most stable AI coding engine. This extension wraps its input/output in a polished chat interface — the CLI is the engine, we just build the cockpit.
+This extension takes the raw power of the locally installed Claude Code CLI and adds a carefully designed integration layer: automated context assembly, drag-and-drop file handling, visual diff review, permission management, checkpoint/restore, and more. The CLI is the engine — we tune the ride.
 
 ## Prerequisites
 

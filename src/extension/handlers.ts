@@ -1045,6 +1045,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
+  showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

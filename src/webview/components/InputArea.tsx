@@ -68,9 +68,12 @@ export function InputArea() {
 
   // Listen for all custom events from extension in a single effect
   useEffect(() => {
-    const onImagePicked = (e: Event) => {
+    const onImagePicked = async (e: Event) => {
       const detail = (e as CustomEvent).detail as { name: string; dataUrl: string }
-      if (detail) setImages((prev) => [...prev, detail])
+      if (detail) {
+        const dataUrl = await resizeImageIfNeeded(detail.dataUrl, detail.name)
+        setImages((prev) => [...prev, { name: detail.name, dataUrl }])
+      }
     }
     const onClipboard = (e: Event) => {
       const detail = (e as CustomEvent).detail as { text: string }
@@ -324,6 +327,29 @@ export function InputArea() {
   }
 
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+  const MAX_IMAGE_DIMENSION = 8000 // Claude API max pixel limit
+
+  const resizeImageIfNeeded = (dataUrl: string, fileName: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        if (img.width <= MAX_IMAGE_DIMENSION && img.height <= MAX_IMAGE_DIMENSION) {
+          resolve(dataUrl)
+          return
+        }
+        const scale = Math.min(MAX_IMAGE_DIMENSION / img.width, MAX_IMAGE_DIMENSION / img.height)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const resized = canvas.toDataURL('image/png')
+        postMessage({ type: 'showInfo', data: `图片 "${fileName}" 尺寸过大（${img.width}x${img.height}），已自动缩放至 ${canvas.width}x${canvas.height}。` })
+        resolve(resized)
+      }
+      img.src = dataUrl
+    })
+  }
 
   const addImageFile = (file: File) => {
     if (file.size > MAX_IMAGE_SIZE) {
@@ -332,8 +358,9 @@ export function InputArea() {
       return
     }
     const reader = new FileReader()
-    reader.onload = () => {
-      setImages((prev) => [...prev, { name: file.name, dataUrl: reader.result as string }])
+    reader.onload = async () => {
+      const dataUrl = await resizeImageIfNeeded(reader.result as string, file.name)
+      setImages((prev) => [...prev, { name: file.name, dataUrl }])
     }
     reader.readAsDataURL(file)
   }
