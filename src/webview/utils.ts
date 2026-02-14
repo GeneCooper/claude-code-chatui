@@ -19,53 +19,104 @@ interface DiffOptions {
   contextLines?: number;
 }
 
-function computeLcsMatrix<T>(a: T[], b: T[], compare: (x: T, y: T) => boolean): number[][] {
-  const m = a.length;
-  const n = b.length;
-  const matrix: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (compare(a[i - 1], b[j - 1])) {
-        matrix[i][j] = matrix[i - 1][j - 1] + 1;
-      } else {
-        matrix[i][j] = Math.max(matrix[i - 1][j], matrix[i][j - 1]);
-      }
-    }
-  }
-
-  return matrix;
-}
-
-function backtrackDiff<T>(
-  matrix: number[][],
+/**
+ * Myers diff algorithm — O((N+M)*D) where D is the edit distance.
+ * For small edits on large files this is dramatically faster than O(N*M) LCS
+ * and never needs to fall back to "delete-all / insert-all".
+ */
+function myersDiff<T>(
   a: T[],
   b: T[],
   compare: (x: T, y: T) => boolean,
 ): Array<{ type: DiffOperation; value: T; oldIndex?: number; newIndex?: number }> {
-  const result: Array<{ type: DiffOperation; value: T; oldIndex?: number; newIndex?: number }> = [];
-  let i = a.length;
-  let j = b.length;
+  const N = a.length;
+  const M = b.length;
+  const MAX = N + M;
 
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && compare(a[i - 1], b[j - 1])) {
-      result.unshift({ type: 'equal', value: a[i - 1], oldIndex: i, newIndex: j });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || matrix[i][j - 1] >= matrix[i - 1][j])) {
-      result.unshift({ type: 'insert', value: b[j - 1], newIndex: j });
-      j--;
-    } else {
-      result.unshift({ type: 'delete', value: a[i - 1], oldIndex: i });
-      i--;
+  // Fast path: one side empty
+  if (N === 0 && M === 0) return [];
+  if (N === 0) return b.map((v, i) => ({ type: 'insert' as const, value: v, newIndex: i + 1 }));
+  if (M === 0) return a.map((v, i) => ({ type: 'delete' as const, value: v, oldIndex: i + 1 }));
+
+  // V array indexed by k ∈ [-MAX..MAX], stored with offset MAX
+  const size = 2 * MAX + 1;
+  const v = new Int32Array(size);
+  // Store the trace of V snapshots for backtracking
+  const trace: Int32Array[] = [];
+
+  // Forward pass
+  outer:
+  for (let d = 0; d <= MAX; d++) {
+    // Save a copy of v for backtracking
+    trace.push(v.slice());
+
+    for (let k = -d; k <= d; k += 2) {
+      const kOff = k + MAX;
+      let x: number;
+      if (k === -d || (k !== d && v[kOff - 1] < v[kOff + 1])) {
+        x = v[kOff + 1]; // move down
+      } else {
+        x = v[kOff - 1] + 1; // move right
+      }
+      let y = x - k;
+
+      // Follow diagonal (matching lines)
+      while (x < N && y < M && compare(a[x], b[y])) {
+        x++;
+        y++;
+      }
+
+      v[kOff] = x;
+
+      if (x >= N && y >= M) {
+        break outer;
+      }
     }
   }
 
-  return result;
-}
+  // Backtrack to recover the edit script
+  let x = N;
+  let y = M;
+  const edits: Array<{ type: DiffOperation; value: T; oldIndex?: number; newIndex?: number }> = [];
 
-// Guard: skip LCS when the matrix would exceed this many cells (prevents UI freeze)
-const MAX_LCS_CELLS = 500_000; // e.g. 500x1000 or 700x714
+  for (let d = trace.length - 1; d >= 0; d--) {
+    const vPrev = trace[d];
+    const k = x - y;
+    const kOff = k + MAX;
+
+    let prevK: number;
+    if (k === -d || (k !== d && vPrev[kOff - 1] < vPrev[kOff + 1])) {
+      prevK = k + 1; // came from above (insert)
+    } else {
+      prevK = k - 1; // came from left (delete)
+    }
+
+    let prevX = vPrev[prevK + MAX];
+    let prevY = prevX - prevK;
+
+    // Diagonal moves (equal lines)
+    while (x > prevX && y > prevY) {
+      x--;
+      y--;
+      edits.push({ type: 'equal', value: a[x], oldIndex: x + 1, newIndex: y + 1 });
+    }
+
+    if (d > 0) {
+      if (x === prevX) {
+        // Insert
+        y--;
+        edits.push({ type: 'insert', value: b[y], newIndex: y + 1 });
+      } else {
+        // Delete
+        x--;
+        edits.push({ type: 'delete', value: a[x], oldIndex: x + 1 });
+      }
+    }
+  }
+
+  edits.reverse();
+  return edits;
+}
 
 export function computeLineDiff(oldContent: string, newContent: string, options?: DiffOptions): DiffResult {
   const normalize = options?.ignoreWhitespace ? (s: string) => s.trim() : (s: string) => s;
@@ -73,18 +124,8 @@ export function computeLineDiff(oldContent: string, newContent: string, options?
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
 
-  // For very large files, fall back to simple delete-all/insert-all to avoid O(n*m) freeze
-  if (oldLines.length * newLines.length > MAX_LCS_CELLS) {
-    const lines: DiffLine[] = [
-      ...oldLines.map((content, i): DiffLine => ({ type: 'delete', content, oldLineNumber: i + 1 })),
-      ...newLines.map((content, i): DiffLine => ({ type: 'insert', content, newLineNumber: i + 1 })),
-    ];
-    return { lines, additions: newLines.length, deletions: oldLines.length, unchanged: 0 };
-  }
-
   const compare = (a: string, b: string) => normalize(a) === normalize(b);
-  const matrix = computeLcsMatrix(oldLines, newLines, compare);
-  const ops = backtrackDiff(matrix, oldLines, newLines, compare);
+  const ops = myersDiff(oldLines, newLines, compare);
 
   const lines: DiffLine[] = [];
   let additions = 0;
