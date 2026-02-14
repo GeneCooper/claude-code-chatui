@@ -73,7 +73,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
             alignItems: 'center',
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: '14px' }}>Agent Mode</span>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Think Mode</span>
           <div className="flex items-center gap-3">
             <div
               onClick={handleToggle}

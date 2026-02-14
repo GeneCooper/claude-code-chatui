@@ -25,6 +25,7 @@ export function InputArea() {
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
   const [activeFile, setActiveFile] = useState<{ filePath: string; languageId: string } | null>(null)
+  const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showSlashPicker = useUIStore((s) => s.showSlashPicker)
   const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
   const draftText = useUIStore((s) => s.draftText)
@@ -471,13 +472,13 @@ export function InputArea() {
             opacity: thinkingMode ? 1 : 0.7,
             transition: 'all 0.2s ease',
           }}
-          title="Thinking mode"
+          title="Think mode"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4l2 2" />
           </svg>
-          <span>Agent{thinkingMode ? ` · ${useSettingsStore.getState().thinkingIntensity}` : ''}</span>
+          <span>Think{thinkingMode ? ` · ${thinkingIntensity}` : ''}</span>
         </button>
 
         {/* Plan toggle */}

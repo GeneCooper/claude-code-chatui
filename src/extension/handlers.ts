@@ -577,8 +577,9 @@ export class SettingsManager {
     if (typeof settings.thinkingMode === 'boolean') {
       await config.update(CONFIG_KEYS.THINKING_ENABLED, settings.thinkingMode, vscode.ConfigurationTarget.Global);
     }
-    if (typeof settings.thinkingIntensity === 'string') {
-      await config.update(CONFIG_KEYS.THINKING_INTENSITY, settings.thinkingIntensity, vscode.ConfigurationTarget.Global);
+    const intensityValue = settings.thinkingIntensity ?? settings['thinking.intensity'];
+    if (typeof intensityValue === 'string') {
+      await config.update(CONFIG_KEYS.THINKING_INTENSITY, intensityValue, vscode.ConfigurationTarget.Global);
     }
     if (typeof settings.showThinkingProcess === 'boolean') {
       await config.update(CONFIG_KEYS.THINKING_SHOW_PROCESS, settings.showThinkingProcess, vscode.ConfigurationTarget.Global);

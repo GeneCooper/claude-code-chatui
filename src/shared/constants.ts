@@ -3,7 +3,7 @@
 // ============================================================================
 
 /**
- * Agent mode: fast (minimal token) vs deep (thorough analysis)
+ * Think mode: fast (minimal token) vs deep (thorough analysis)
  */
 export enum AgentMode {
     Fast = "fast",
