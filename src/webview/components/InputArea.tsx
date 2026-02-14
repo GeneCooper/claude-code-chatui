@@ -323,7 +323,14 @@ export function InputArea() {
     if (dragCountRef.current === 0) setIsDragging(false)
   }
 
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+
   const addImageFile = (file: File) => {
+    if (file.size > MAX_IMAGE_SIZE) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1)
+      postMessage({ type: 'showWarning', data: `图片 "${file.name}" 太大（${sizeMB}MB），最大支持 5MB。请压缩后重试。` })
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       setImages((prev) => [...prev, { name: file.name, dataUrl: reader.result as string }])

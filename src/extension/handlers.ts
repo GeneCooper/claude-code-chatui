@@ -922,6 +922,8 @@ const handleOpenCCUsageTerminal: MessageHandler = (_msg, ctx) => {
   terminal.show();
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
 const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
   const result = await vscode.window.showOpenDialog({
     canSelectMany: false,
@@ -931,6 +933,11 @@ const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
   if (!result || result.length === 0) return;
   try {
     const data = await vscode.workspace.fs.readFile(result[0]);
+    if (data.byteLength > MAX_IMAGE_SIZE) {
+      const sizeMB = (data.byteLength / 1024 / 1024).toFixed(1);
+      vscode.window.showWarningMessage(`图片太大（${sizeMB}MB），最大支持 5MB。请压缩后重试。`);
+      return;
+    }
     const base64 = Buffer.from(data).toString('base64');
     const ext = result[0].fsPath.split('.').pop()?.toLowerCase() || 'png';
     const mimeMap: Record<string, string> = {
@@ -1037,6 +1044,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   createNewPanel: handleCreateNewPanel,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
+  showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {
