@@ -25,7 +25,10 @@ export function InputArea() {
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
   const [activeFile, setActiveFile] = useState<{ filePath: string; languageId: string } | null>(null)
-  const { showSlashPicker, setShowSlashPicker, draftText, setDraftText } = useUIStore()
+  const showSlashPicker = useUIStore((s) => s.showSlashPicker)
+  const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
+  const draftText = useUIStore((s) => s.draftText)
+  const setDraftText = useUIStore((s) => s.setDraftText)
 
   const [slashFilter, setSlashFilter] = useState('')
 

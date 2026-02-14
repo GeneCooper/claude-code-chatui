@@ -64,11 +64,23 @@ function backtrackDiff<T>(
   return result;
 }
 
+// Guard: skip LCS when the matrix would exceed this many cells (prevents UI freeze)
+const MAX_LCS_CELLS = 500_000; // e.g. 500x1000 or 700x714
+
 export function computeLineDiff(oldContent: string, newContent: string, options?: DiffOptions): DiffResult {
   const normalize = options?.ignoreWhitespace ? (s: string) => s.trim() : (s: string) => s;
 
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
+
+  // For very large files, fall back to simple delete-all/insert-all to avoid O(n*m) freeze
+  if (oldLines.length * newLines.length > MAX_LCS_CELLS) {
+    const lines: DiffLine[] = [
+      ...oldLines.map((content, i): DiffLine => ({ type: 'delete', content, oldLineNumber: i + 1 })),
+      ...newLines.map((content, i): DiffLine => ({ type: 'insert', content, newLineNumber: i + 1 })),
+    ];
+    return { lines, additions: newLines.length, deletions: oldLines.length, unchanged: 0 };
+  }
 
   const compare = (a: string, b: string) => normalize(a) === normalize(b);
   const matrix = computeLcsMatrix(oldLines, newLines, compare);

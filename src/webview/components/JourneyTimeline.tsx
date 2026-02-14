@@ -7,6 +7,7 @@ import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { RestorePoint } from './RestorePoint'
+import { ErrorBoundary } from './ErrorBoundary'
 
 // ============================================================================
 // Constants
@@ -460,25 +461,41 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
         if (item.kind === 'message') {
           const uiIdx = item.message.type === 'userInput' ? userInputIndexMap.get(item.message.id) : undefined
           return (
-            <MessageRenderer
+            <ErrorBoundary
               key={item.message.id}
-              message={item.message}
-              userInputIndex={uiIdx}
-              onFork={onFork}
-              onRewind={onRewind}
-              isProcessing={isProcessing}
-            />
+              fallback={
+                <div className="p-2 text-xs opacity-60" style={{ color: 'var(--vscode-errorForeground)' }}>
+                  [Message render error]
+                </div>
+              }
+            >
+              <MessageRenderer
+                message={item.message}
+                userInputIndex={uiIdx}
+                onFork={onFork}
+                onRewind={onRewind}
+                isProcessing={isProcessing}
+              />
+            </ErrorBoundary>
           )
         }
         return (
-          <PlanGroupCard
+          <ErrorBoundary
             key={item.id}
-            plan={item}
-            isCollapsed={collapsedPlans.has(item.id)}
-            collapsedSteps={collapsedSteps}
-            onTogglePlan={togglePlan}
-            onToggleStep={toggleStep}
-          />
+            fallback={
+              <div className="p-2 text-xs opacity-60" style={{ color: 'var(--vscode-errorForeground)' }}>
+                [Plan render error]
+              </div>
+            }
+          >
+            <PlanGroupCard
+              plan={item}
+              isCollapsed={collapsedPlans.has(item.id)}
+              collapsedSteps={collapsedSteps}
+              onTogglePlan={togglePlan}
+              onToggleStep={toggleStep}
+            />
+          </ErrorBoundary>
         )
       })}
     </div>

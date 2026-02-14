@@ -25,8 +25,11 @@ function LogoIcon({ size = 20 }: { size?: number }) {
 export { LogoIcon }
 
 export function Header() {
-  const { sessionId, isProcessing } = useChatStore()
-  const { activeView, setActiveView, requestStartTime } = useUIStore()
+  const sessionId = useChatStore((s) => s.sessionId)
+  const isProcessing = useChatStore((s) => s.isProcessing)
+  const activeView = useUIStore((s) => s.activeView)
+  const setActiveView = useUIStore((s) => s.setActiveView)
+  const requestStartTime = useUIStore((s) => s.requestStartTime)
 
   return (
     <div
