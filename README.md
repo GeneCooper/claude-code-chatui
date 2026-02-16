@@ -77,7 +77,7 @@ Requires VS Code 1.94+. The extension expects `claude` on your PATH.
 ## Development
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/GeneCooper/claude-code-chatui.git
 cd claude-code-chatui
 npm install
 # Press F5 in VS Code to launch Extension Development Host
