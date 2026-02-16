@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as fsp from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { EventEmitter } from 'events';
@@ -24,21 +25,20 @@ interface CachedRateLimits {
 
 const CACHE_FILE_PATH = path.join(os.homedir(), '.claude', 'rate-limit-cache.json');
 
-function readRateLimitCache(): CachedRateLimits | null {
+async function readRateLimitCache(): Promise<CachedRateLimits | null> {
   try {
-    if (!fs.existsSync(CACHE_FILE_PATH)) return null;
-    const data = JSON.parse(fs.readFileSync(CACHE_FILE_PATH, 'utf-8')) as CachedRateLimits;
+    const raw = await fsp.readFile(CACHE_FILE_PATH, 'utf-8');
+    const data = JSON.parse(raw) as CachedRateLimits;
     if (typeof data.session5h !== 'number' || typeof data.weekly7d !== 'number' || typeof data.timestamp !== 'number') return null;
     return data;
   } catch { return null; }
 }
 
 function writeRateLimitCache(data: Omit<CachedRateLimits, 'timestamp'>): void {
-  try {
-    const claudeDir = path.dirname(CACHE_FILE_PATH);
-    if (!fs.existsSync(claudeDir)) fs.mkdirSync(claudeDir, { recursive: true });
-    fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify({ ...data, timestamp: Date.now() }, null, 2), 'utf-8');
-  } catch { /* silently fail */ }
+  const claudeDir = path.dirname(CACHE_FILE_PATH);
+  void fsp.mkdir(claudeDir, { recursive: true }).then(() =>
+    fsp.writeFile(CACHE_FILE_PATH, JSON.stringify({ ...data, timestamp: Date.now() }, null, 2), 'utf-8'),
+  ).catch(() => { /* silently fail */ });
 }
 
 function getCacheAgeMinutes(cache: CachedRateLimits): number {
@@ -139,7 +139,7 @@ export class ConversationService {
     };
 
     try {
-      fs.writeFileSync(filePath, JSON.stringify(conversationData, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(conversationData, null, 2), 'utf8');
       await this._updateConversationIndex(conversationData);
     } catch (err) { console.error('Failed to save conversation:', err); }
   }
@@ -224,6 +224,13 @@ export class ConversationService {
   getLatestSessionId(): string | undefined {
     const list = this.getConversationList();
     return list.length > 0 ? list[0].sessionId : undefined;
+  }
+
+  findBySessionId(sessionId: string): ConversationData | null {
+    const list = this.getConversationList();
+    const entry = list.find((e) => e.sessionId === sessionId);
+    if (!entry) return null;
+    return this.loadConversation(entry.filename);
   }
 
   getLatestConversation(): ConversationData | null {
@@ -370,11 +377,12 @@ export class UsageService implements vscode.Disposable {
   }
 
   private _loadFromCache(): void {
-    const cache = readRateLimitCache();
-    if (!cache) return;
-    this._log(`Cache found (${getCacheAgeMinutes(cache)} minutes old)`);
-    this._usageData = this._buildUsageDataFromCache(cache);
-    this._dataEmitter.emit('update', this._usageData);
+    void readRateLimitCache().then((cache) => {
+      if (!cache) return;
+      this._log(`Cache found (${getCacheAgeMinutes(cache)} minutes old)`);
+      this._usageData = this._buildUsageDataFromCache(cache);
+      this._dataEmitter.emit('update', this._usageData);
+    });
   }
 
   private _buildUsageDataFromCache(cache: CachedRateLimits): UsageData {
@@ -438,7 +446,7 @@ export class UsageService implements vscode.Disposable {
         this._usageData = usageData;
         this._dataEmitter.emit('update', this._usageData);
       } else {
-        const cache = readRateLimitCache();
+        const cache = await readRateLimitCache();
         if (cache) {
           const cachedData = this._buildUsageDataFromCache(cache);
           this._usageData = cachedData;

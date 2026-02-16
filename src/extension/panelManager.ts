@@ -55,7 +55,7 @@ export class PanelManager {
     panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png');
     panel.webview.html = getWebviewHtml(panel.webview, this._extensionUri);
 
-    provider.bindToWebview(panel.webview);
+    provider.bindToWebview(panel.webview, panel);
 
     // Lock the editor group so the chat panel stays pinned
     void vscode.commands.executeCommand('workbench.action.lockEditorGroup');
@@ -92,6 +92,46 @@ export class PanelManager {
       title,
       initialConversation: data.messages,
     });
+  }
+
+  /** Adopt a panel restored by VS Code's webview serializer on restart */
+  adoptRestoredPanel(panel: vscode.WebviewPanel, sessionId?: string): void {
+    const panelId = `panel-${++this._panelCounter}`;
+    const claudeService = new ClaudeService(this._context);
+
+    const provider = new PanelProvider(
+      this._extensionUri,
+      this._context,
+      claudeService,
+      this._conversationService,
+      this._mcpService,
+      this._backupService,
+      this._usageService,
+      this._permissionService,
+      this,
+    );
+
+    // Restore conversation from saved sessionId if available
+    if (sessionId) {
+      const conversation = this._conversationService.findBySessionId(sessionId);
+      if (conversation) {
+        provider.loadConversationData(
+          conversation.messages,
+          conversation.sessionId,
+          conversation.totalCost,
+        );
+      }
+    }
+
+    provider.bindToWebview(panel.webview, panel);
+
+    this._panels.set(panelId, { provider, claudeService, panel });
+
+    panel.onDidDispose(() => {
+      provider.dispose();
+      claudeService.dispose();
+      this._panels.delete(panelId);
+    }, null, this._disposables);
   }
 
   disposeAll(): void {

@@ -21,6 +21,7 @@ export function InputArea() {
   const dragCountRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
+  const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
@@ -52,8 +53,8 @@ export function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel, planMode, thinkingMode, ctrlEnterSend })
-  }, [text, selectedModel, thinkingMode, ctrlEnterSend])
+    setState({ draft: text, model: selectedModel, planMode, thinkingMode, ctrlEnterSend, sessionId })
+  }, [text, selectedModel, thinkingMode, ctrlEnterSend, sessionId])
 
   useEffect(() => {
     debouncedSave(text)

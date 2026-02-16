@@ -216,6 +216,7 @@ export interface MessagePoster {
 export interface ProcessorCallbacks {
   onSessionIdReceived(sessionId: string): void;
   onProcessingComplete(result: { sessionId?: string; totalCostUsd?: number }): void;
+  onSessionNotFound?(): void;
 }
 
 export class ClaudeMessageProcessor {
@@ -420,9 +421,23 @@ export class ClaudeMessageProcessor {
     const result = msg as {
       subtype: string; session_id?: string; total_cost_usd?: number;
       duration_ms?: number; num_turns?: number; is_error?: boolean; result?: string;
+      errors?: string[];
     };
 
-    if (result.subtype !== 'success') return;
+    // Handle error results (e.g. session not found when using --resume)
+    if (result.subtype !== 'success') {
+      const allErrors = result.errors || (result.result ? [result.result] : []);
+      const sessionNotFound = allErrors.some((e) => e.includes('No conversation found with session ID'));
+      if (sessionNotFound) {
+        this._callbacks.onSessionNotFound?.();
+        this._poster.postMessage({ type: 'error', data: 'Session expired. Send your message again to start a new conversation.' });
+      } else {
+        for (const err of allErrors) {
+          this._poster.postMessage({ type: 'error', data: err });
+        }
+      }
+      return;
+    }
 
     if (result.is_error && result.result?.includes('Invalid API key')) {
       this._poster.postMessage({ type: 'showInstallModal' });

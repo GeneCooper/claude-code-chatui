@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ClaudeService, PermissionService } from './claude';
 import { ConversationService, BackupService, UsageService, MCPService } from './storage';
 import { DiffContentProvider } from './handlers';
-import { PanelProvider, WebviewProvider } from './panel';
+import { PanelProvider, WebviewProvider, getWebviewHtml } from './panel';
 import { PanelManager } from './panelManager';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -86,6 +86,20 @@ export function activate(context: vscode.ExtensionContext): void {
     { webviewOptions: { retainContextWhenHidden: true } },
   );
 
+  // Restore panels that were open when VS Code closed
+  const panelSerializer = vscode.window.registerWebviewPanelSerializer('claudeCodeChatUI', {
+    async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: unknown) {
+      panel.webview.options = {
+        enableScripts: true,
+        localResourceRoots: [context.extensionUri],
+      };
+      panel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'icon.png');
+      panel.webview.html = getWebviewHtml(panel.webview, context.extensionUri);
+      const sessionId = (state as { sessionId?: string } | null)?.sessionId;
+      panelManager.adoptRestoredPanel(panel, sessionId);
+    },
+  });
+
   // Register command to load a specific conversation (creates new panel)
   const loadConvCmd = vscode.commands.registerCommand(
     'claude-code-chatui.loadConversation',
@@ -106,6 +120,7 @@ export function activate(context: vscode.ExtensionContext): void {
     openChatCmd,
     openChatWithFileCmd,
     loadConvCmd,
+    panelSerializer,
     webviewProviderReg,
     diffProvider,
     statusBarItem,

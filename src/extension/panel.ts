@@ -110,6 +110,8 @@ export class PanelProvider {
   private _webviewView: vscode.WebviewView | undefined;
   private _disposables: vscode.Disposable[] = [];
   private _messageHandlerDisposable: vscode.Disposable | undefined;
+  private _isVisible = true;
+  private _selectionDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly _settingsManager = new SettingsManager();
 
@@ -145,6 +147,10 @@ export class PanelProvider {
         this._sessionId = sessionId;
       },
       onProcessingComplete: (result) => { this._saveConversation(result.sessionId); },
+      onSessionNotFound: () => {
+        this._sessionId = undefined;
+        this._claudeService.setSessionId(undefined);
+      },
     });
 
     this._setupClaudeServiceHandlers();
@@ -163,30 +169,35 @@ export class PanelProvider {
     // Real-time rate-limit updates from the main Claude process stderr
     this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
 
-    // Track editor text selection and send to webview
+    // Track editor text selection and send to webview (debounced to avoid lag)
     this._disposables.push(
       vscode.window.onDidChangeTextEditorSelection((e) => {
-        const editor = e.textEditor;
-        const sel = editor.selection;
-        if (sel.isEmpty) {
-          this._postMessage({ type: 'editorSelection', data: null });
-        } else {
-          const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-          this._postMessage({
-            type: 'editorSelection',
-            data: {
-              filePath: relativePath,
-              startLine: sel.start.line + 1,
-              endLine: sel.end.line + 1,
-              text: editor.document.getText(sel),
-            },
-          });
-        }
+        if (!this._isVisible) return;
+        if (this._selectionDebounceTimer) clearTimeout(this._selectionDebounceTimer);
+        this._selectionDebounceTimer = setTimeout(() => {
+          const editor = e.textEditor;
+          const sel = editor.selection;
+          if (sel.isEmpty) {
+            this._postMessage({ type: 'editorSelection', data: null });
+          } else {
+            const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+            this._postMessage({
+              type: 'editorSelection',
+              data: {
+                filePath: relativePath,
+                startLine: sel.start.line + 1,
+                endLine: sel.end.line + 1,
+                text: editor.document.getText(sel),
+              },
+            });
+          }
+        }, 300);
       }),
     );
 
     // Track active file and send to webview
     const sendActiveFile = (editor: vscode.TextEditor | undefined) => {
+      if (!this._isVisible) return;
       if (editor && editor.document.uri.scheme === 'file') {
         const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
         this._postMessage({
@@ -225,6 +236,7 @@ export class PanelProvider {
     this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png');
     this._panel.webview.html = getWebviewHtml(this._panel.webview, this._extensionUri);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    this._panel.onDidChangeViewState((e) => { this._isVisible = e.webviewPanel.visible; }, null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);
 
     // Lock the editor group so the chat panel stays pinned
@@ -241,6 +253,11 @@ export class PanelProvider {
     this._webview = webview;
     this._webviewView = webviewView;
 
+    if (webviewView) {
+      this._isVisible = webviewView.visible;
+      webviewView.onDidChangeVisibility(() => { this._isVisible = webviewView.visible; }, null, this._disposables);
+    }
+
     if (!isSameWebview) {
       this._webview.html = getWebviewHtml(this._webview, this._extensionUri);
       this._setupWebviewMessageHandler(this._webview);
@@ -248,8 +265,12 @@ export class PanelProvider {
   }
 
   /** Bind to an externally-created webview (used by PanelManager) */
-  bindToWebview(webview: vscode.Webview): void {
+  bindToWebview(webview: vscode.Webview, panel?: vscode.WebviewPanel): void {
     this._webview = webview;
+    if (panel) {
+      this._isVisible = panel.visible;
+      panel.onDidChangeViewState((e) => { this._isVisible = e.webviewPanel.visible; }, null, this._disposables);
+    }
     this._setupWebviewMessageHandler(webview);
   }
 
@@ -380,6 +401,7 @@ export class PanelProvider {
       void this._claudeService.stopProcess();
     }
     this._saveConversation(this._sessionId);
+    if (this._selectionDebounceTimer) clearTimeout(this._selectionDebounceTimer);
     this._panel = undefined;
     this._messageHandlerDisposable?.dispose();
     this._messageHandlerDisposable = undefined;

@@ -240,6 +240,7 @@ export class ClaudeService implements vscode.Disposable {
 
     let rawOutput = '';
     let errorOutput = '';
+    let gotResultMessage = false;
 
     claudeProcess.stdout?.on('data', (data: Buffer) => {
       rawOutput += data.toString();
@@ -253,6 +254,7 @@ export class ClaudeService implements vscode.Disposable {
           if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
           if (json.type === 'control_response') { this._handleControlResponse(json); continue; }
           if (json.type === 'result') {
+            gotResultMessage = true;
             if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) claudeProcess.stdin.end();
           }
           this._messageEmitter.emit('message', json as ClaudeMessage);
@@ -287,7 +289,9 @@ export class ClaudeService implements vscode.Disposable {
       this._isStopping = false;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
-      if (code !== 0 && errorOutput.trim() && !wasStopping) this._errorEmitter.emit('error', errorOutput.trim());
+      // Only emit stderr as error if we didn't already get a result message via stdout
+      // (result messages contain structured error info; stderr with --verbose is just debug logs)
+      if (code !== 0 && errorOutput.trim() && !wasStopping && !gotResultMessage) this._errorEmitter.emit('error', errorOutput.trim());
     });
 
     claudeProcess.on('error', (error) => {
@@ -311,15 +315,15 @@ export class ClaudeService implements vscode.Disposable {
       if (proc.stdin && !proc.stdin.destroyed) proc.stdin.end();
       // Kill the process tree
       if (process.platform === 'win32' && pid) {
-        cp.exec(`taskkill /pid ${pid} /T /F`);
+        // On Windows with shell:true, abort() kills cmd.exe but orphans the child
+        // process. Use synchronous taskkill /T to kill the entire tree first.
+        try { cp.execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' }); } catch { /* already dead */ }
       } else if (pid) {
         process.kill(-pid, 'SIGTERM');
+        this._abortController?.abort();
       }
-      // abort() fires error event synchronously, so call it after kill
-      this._abortController?.abort();
     } catch { /* already dead */ }
-    // If the error event fired synchronously from abort(), _process is already cleared.
-    // If not, clean up here. Keep _isStopping=true for the async close event.
+    // Clean up if close/error event hasn't already cleared _process
     if (this._process) {
       this._process = undefined;
       this._cancelPendingPermissions();
