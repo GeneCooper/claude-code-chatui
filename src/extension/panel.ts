@@ -608,17 +608,31 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     private readonly _extensionUri: vscode.Uri,
     private readonly _context: vscode.ExtensionContext,
     private readonly _panelProvider: PanelProvider,
+    private readonly _conversationService: ConversationService,
   ) {}
 
   resolveWebviewView(
     webviewView: vscode.WebviewView,
-    _context: vscode.WebviewViewResolveContext,
+    context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ): void {
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this._extensionUri],
     };
+
+    // Restore sidebar conversation from saved webview state (survives extension host restart)
+    const savedState = context.state as { sessionId?: string } | undefined;
+    if (savedState?.sessionId) {
+      const conversation = this._conversationService.findBySessionId(savedState.sessionId);
+      if (conversation) {
+        this._panelProvider.loadConversationData(
+          conversation.messages,
+          conversation.sessionId,
+          conversation.totalCost,
+        );
+      }
+    }
 
     // Prevent webview destruction when sidebar is hidden
     webviewView.onDidChangeVisibility(() => {

@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // Create sidebar webview provider
-  const webviewProvider = new WebviewProvider(context.extensionUri, context, sidebarProvider);
+  const webviewProvider = new WebviewProvider(context.extensionUri, context, sidebarProvider, conversationService);
 
   // Register command to open chat (creates new panel)
   const openChatCmd = vscode.commands.registerCommand(
