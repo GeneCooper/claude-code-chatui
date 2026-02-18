@@ -836,50 +836,56 @@ export function InputArea() {
               </button>
             )}
 
+            {/* Queue button — always shown when there's content (processing or not) */}
+            {(() => {
+              const hasContent = !!(text.trim() || images.length > 0 || attachedFiles.length > 0)
+              if (!hasContent) return null
+              const handleAddQueue = () => {
+                const trimmed = text.trim()
+                if (!trimmed) return
+                const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
+                const selRef = editorSelection
+                  ? `@${editorSelection.filePath}#${editorSelection.startLine}-${editorSelection.endLine}`
+                  : ''
+                const refs = [fileRefs, selRef].filter(Boolean).join(' ')
+                const prompt = refs ? `${refs} ${trimmed}` : trimmed
+                useQueueStore.getState().addItem({ prompt, planMode, thinkingMode, model: selectedModel !== 'default' ? selectedModel : undefined })
+                setText('')
+                setImages([])
+                setAttachedFiles([])
+                if (textareaRef.current) textareaRef.current.style.height = 'auto'
+              }
+              return (
+                <button
+                  onClick={handleAddQueue}
+                  className="cursor-pointer flex items-center justify-center shrink-0"
+                  style={{
+                    background: 'rgba(237, 110, 29, 0.1)',
+                    border: '1px solid rgba(237, 110, 29, 0.35)',
+                    padding: '0 8px',
+                    height: '28px',
+                    borderRadius: '8px',
+                    color: 'var(--chatui-accent)',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    transition: 'all 0.15s ease',
+                    marginLeft: '2px',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title="Add to task queue (runs after current task)"
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(237, 110, 29, 0.2)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(237, 110, 29, 0.1)' }}
+                >
+                  + Queue
+                </button>
+              )
+            })()}
+
             {/* Send button (only visible when not processing) */}
             {!isProcessing && (() => {
               const hasContent = !!(text.trim() || images.length > 0 || attachedFiles.length > 0)
               return (
                 <>
-                  {/* Queue button — shown in YOLO mode when there's content */}
-                  {yoloMode && hasContent && (
-                    <button
-                      onClick={() => {
-                        const trimmed = text.trim()
-                        if (!trimmed) return
-                        const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
-                        const selRef = editorSelection
-                          ? `@${editorSelection.filePath}#${editorSelection.startLine}-${editorSelection.endLine}`
-                          : ''
-                        const refs = [fileRefs, selRef].filter(Boolean).join(' ')
-                        const prompt = refs ? `${refs} ${trimmed}` : trimmed
-                        useQueueStore.getState().addItem({ prompt, planMode, thinkingMode, model: selectedModel !== 'default' ? selectedModel : undefined })
-                        setText('')
-                        setImages([])
-                        setAttachedFiles([])
-                        if (textareaRef.current) textareaRef.current.style.height = 'auto'
-                      }}
-                      className="cursor-pointer flex items-center justify-center shrink-0"
-                      style={{
-                        background: 'rgba(237, 110, 29, 0.1)',
-                        border: '1px solid rgba(237, 110, 29, 0.35)',
-                        padding: '0 8px',
-                        height: '28px',
-                        borderRadius: '8px',
-                        color: 'var(--chatui-accent)',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        transition: 'all 0.15s ease',
-                        marginLeft: '2px',
-                        whiteSpace: 'nowrap',
-                      }}
-                      title="Add to task queue (runs after current task)"
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(237, 110, 29, 0.2)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(237, 110, 29, 0.1)' }}
-                    >
-                      + Queue
-                    </button>
-                  )}
                   <button
                     onClick={handleSend}
                     disabled={!hasContent}

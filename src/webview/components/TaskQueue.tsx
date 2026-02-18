@@ -116,17 +116,23 @@ export function TaskQueue() {
 
       {/* Items */}
       <div style={{ padding: '4px 8px 6px' }}>
-        {items.map((item, idx) => (
-          <QueueRow
-            key={item.id}
-            item={item}
-            isFirst={idx === 0}
-            isLast={idx === items.length - 1}
-            onRemove={() => removeItem(item.id)}
-            onMoveUp={() => moveUp(item.id)}
-            onMoveDown={() => moveDown(item.id)}
-          />
-        ))}
+        {(() => {
+          const pendingItems = items.filter((i) => i.status === 'pending')
+          return items.map((item) => {
+            const pendingIdx = pendingItems.indexOf(item)
+            return (
+              <QueueRow
+                key={item.id}
+                item={item}
+                isFirst={pendingIdx === 0}
+                isLast={pendingIdx === pendingItems.length - 1}
+                onRemove={() => removeItem(item.id)}
+                onMoveUp={() => moveUp(item.id)}
+                onMoveDown={() => moveDown(item.id)}
+              />
+            )
+          })
+        })()}
       </div>
     </div>
   )
