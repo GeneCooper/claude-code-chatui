@@ -222,6 +222,95 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 }))
 
 // ============================================================================
+// Task Queue Store
+// ============================================================================
+
+export interface QueueItem {
+  id: string
+  prompt: string
+  planMode: boolean
+  thinkingMode: boolean
+  model?: string
+  status: 'pending' | 'running' | 'done' | 'error'
+  addedAt: string
+}
+
+interface QueueState {
+  items: QueueItem[]
+  autoRun: boolean
+  addItem: (item: Omit<QueueItem, 'id' | 'status' | 'addedAt'>) => void
+  removeItem: (id: string) => void
+  clearCompleted: () => void
+  clearAll: () => void
+  nextPending: () => QueueItem | null
+  markRunning: (id: string) => void
+  markDone: (id: string) => void
+  markError: (id: string) => void
+  setAutoRun: (v: boolean) => void
+  moveUp: (id: string) => void
+  moveDown: (id: string) => void
+}
+
+let queueCounter = 0
+
+export const useQueueStore = create<QueueState>((set, get) => ({
+  items: [],
+  autoRun: true,
+
+  addItem: (item) =>
+    set((state) => ({
+      items: [
+        ...state.items,
+        { ...item, id: `q-${++queueCounter}-${Date.now()}`, status: 'pending', addedAt: new Date().toISOString() },
+      ],
+    })),
+
+  removeItem: (id) => set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
+
+  clearCompleted: () =>
+    set((state) => ({ items: state.items.filter((i) => i.status !== 'done' && i.status !== 'error') })),
+
+  clearAll: () => set({ items: [] }),
+
+  nextPending: () => get().items.find((i) => i.status === 'pending') ?? null,
+
+  markRunning: (id) =>
+    set((state) => ({
+      items: state.items.map((i) => (i.id === id ? { ...i, status: 'running' } : i)),
+    })),
+
+  markDone: (id) =>
+    set((state) => ({
+      items: state.items.map((i) => (i.id === id ? { ...i, status: 'done' } : i)),
+    })),
+
+  markError: (id) =>
+    set((state) => ({
+      items: state.items.map((i) => (i.id === id ? { ...i, status: 'error' } : i)),
+    })),
+
+  setAutoRun: (v) => set({ autoRun: v }),
+
+  moveUp: (id) =>
+    set((state) => {
+      const idx = state.items.findIndex((i) => i.id === id)
+      if (idx <= 0) return state
+      const items = [...state.items]
+      ;[items[idx - 1], items[idx]] = [items[idx], items[idx - 1]]
+      return { items }
+    }),
+
+  moveDown: (id) =>
+    set((state) => {
+      const idx = state.items.findIndex((i) => i.id === id)
+      if (idx < 0 || idx >= state.items.length - 1) return state
+      const items = [...state.items]
+      ;[items[idx], items[idx + 1]] = [items[idx + 1], items[idx]]
+      return { items }
+    }),
+}))
+
+// ============================================================================
 // UI Store
 // ============================================================================
 

@@ -1,9 +1,9 @@
 import { postMessage } from '../hooks'
 
 const MODELS = [
-  { value: 'claude-opus-4-6', label: 'Opus', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
-  { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet', desc: 'Fast and balanced', color: '#60a5fa', icon: '◆' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Haiku', desc: 'Lightweight and quick', color: '#4ade80', icon: '●' },
+  { value: 'claude-opus-4-6', label: 'Opus 4.6', desc: 'Most capable, complex tasks', color: '#a78bfa', icon: '★' },
+  { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6', desc: 'Fast and balanced', color: '#60a5fa', icon: '◆' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', desc: 'Lightweight and quick', color: '#4ade80', icon: '●' },
   { value: 'default', label: 'Default', desc: 'User configured model', color: '#9ca3af', icon: '○' },
 ]
 

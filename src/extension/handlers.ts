@@ -529,7 +529,7 @@ const CONFIG_KEYS = {
 } as const;
 
 const DEFAULTS = {
-  CLAUDE_MODEL: 'claude-sonnet-4-5-20250929',
+  CLAUDE_MODEL: 'claude-sonnet-4-6',
   CLAUDE_EXECUTABLE: 'claude',
   THINKING_ENABLED: true,
   THINKING_INTENSITY: 'fast',
@@ -713,7 +713,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
 
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 
   // Replay conversation to restore webview state
   const conversation = ctx.messageProcessor.currentConversation;
@@ -801,7 +801,7 @@ const handleLoadConversation: MessageHandler = (msg, ctx) => { void ctx.loadConv
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {

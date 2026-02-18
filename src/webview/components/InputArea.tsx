@@ -3,6 +3,7 @@ import { postMessage, getState, setState } from '../hooks'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
+import { useQueueStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
@@ -104,18 +105,24 @@ export function InputArea() {
       const detail = (e as CustomEvent).detail as { filePath: string; languageId: string } | null
       setActiveFile(detail)
     }
+    const onModelRestored = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { model: string }
+      if (detail?.model) setSelectedModel(detail.model)
+    }
 
     window.addEventListener('imageFilePicked', onImagePicked)
     window.addEventListener('clipboardContent', onClipboard)
     window.addEventListener('attachFileContext', onAttachFile)
     window.addEventListener('editorSelection', onEditorSelection)
     window.addEventListener('activeFileChanged', onActiveFile)
+    window.addEventListener('modelRestored', onModelRestored)
     return () => {
       window.removeEventListener('imageFilePicked', onImagePicked)
       window.removeEventListener('clipboardContent', onClipboard)
       window.removeEventListener('attachFileContext', onAttachFile)
       window.removeEventListener('editorSelection', onEditorSelection)
       window.removeEventListener('activeFileChanged', onActiveFile)
+      window.removeEventListener('modelRestored', onModelRestored)
     }
   }, [])
 
@@ -806,30 +813,71 @@ export function InputArea() {
             {!isProcessing && (() => {
               const hasContent = !!(text.trim() || images.length > 0 || attachedFiles.length > 0)
               return (
-                <button
-                  onClick={handleSend}
-                  disabled={!hasContent}
-                  className="cursor-pointer flex items-center justify-center shrink-0"
-                  style={{
-                    background: hasContent ? 'var(--chatui-accent)' : 'rgba(255, 255, 255, 0.08)',
-                    border: 'none',
-                    padding: '0',
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '8px',
-                    color: hasContent ? '#fff' : 'rgba(255, 255, 255, 0.3)',
-                    transition: 'all 0.15s ease',
-                    marginLeft: '2px',
-                  }}
-                  title="Send message"
-                  onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 12V4" />
-                    <path d="M4 7l4-4 4 4" />
-                  </svg>
-                </button>
+                <>
+                  {/* Queue button — shown in YOLO mode when there's content */}
+                  {yoloMode && hasContent && (
+                    <button
+                      onClick={() => {
+                        const trimmed = text.trim()
+                        if (!trimmed) return
+                        const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
+                        const selRef = editorSelection
+                          ? `@${editorSelection.filePath}#${editorSelection.startLine}-${editorSelection.endLine}`
+                          : ''
+                        const refs = [fileRefs, selRef].filter(Boolean).join(' ')
+                        const prompt = refs ? `${refs} ${trimmed}` : trimmed
+                        useQueueStore.getState().addItem({ prompt, planMode, thinkingMode, model: selectedModel !== 'default' ? selectedModel : undefined })
+                        setText('')
+                        setImages([])
+                        setAttachedFiles([])
+                        if (textareaRef.current) textareaRef.current.style.height = 'auto'
+                      }}
+                      className="cursor-pointer flex items-center justify-center shrink-0"
+                      style={{
+                        background: 'rgba(237, 110, 29, 0.1)',
+                        border: '1px solid rgba(237, 110, 29, 0.35)',
+                        padding: '0 8px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        color: 'var(--chatui-accent)',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        transition: 'all 0.15s ease',
+                        marginLeft: '2px',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title="Add to task queue (runs after current task)"
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(237, 110, 29, 0.2)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(237, 110, 29, 0.1)' }}
+                    >
+                      + Queue
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSend}
+                    disabled={!hasContent}
+                    className="cursor-pointer flex items-center justify-center shrink-0"
+                    style={{
+                      background: hasContent ? 'var(--chatui-accent)' : 'rgba(255, 255, 255, 0.08)',
+                      border: 'none',
+                      padding: '0',
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '8px',
+                      color: hasContent ? '#fff' : 'rgba(255, 255, 255, 0.3)',
+                      transition: 'all 0.15s ease',
+                      marginLeft: '2px',
+                    }}
+                    title="Send message"
+                    onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 12V4" />
+                      <path d="M4 7l4-4 4 4" />
+                    </svg>
+                  </button>
+                </>
               )
             })()}
           </div>
