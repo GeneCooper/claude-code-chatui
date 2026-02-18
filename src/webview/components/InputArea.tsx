@@ -14,6 +14,7 @@ export function InputArea() {
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
   const [planMode, setPlanMode] = useState(true)
   const [thinkingMode, setThinkingMode] = useState(true)
+  const [continueMode, setContinueMode] = useState(false)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
@@ -194,12 +195,14 @@ export function InputArea() {
       text: userText,
       planMode,
       thinkingMode,
+      continueConversation: continueMode,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
     })
     setText('')
     setImages([])
     setAttachedFiles([])
+    setContinueMode(false) // one-shot: auto-disable after first send
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
@@ -535,6 +538,30 @@ export function InputArea() {
           </svg>
           <span>YOLO</span>
         </button>
+
+        {/* Continue mode — only useful when no active session */}
+        {!sessionId && (
+          <button
+            onClick={() => setContinueMode(!continueMode)}
+            className="flex items-center gap-1 cursor-pointer border-none"
+            style={{
+              padding: '2px 10px',
+              borderRadius: '12px',
+              border: `1px solid ${continueMode ? '#8b5cf6' : 'var(--vscode-panel-border)'}`,
+              background: continueMode ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+              color: continueMode ? '#8b5cf6' : 'inherit',
+              opacity: continueMode ? 1 : 0.7,
+              transition: 'all 0.2s ease',
+            }}
+            title="Continue last conversation — resumes the most recent Claude session"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 .49-3.75" />
+            </svg>
+            <span>Continue</span>
+          </button>
+        )}
       </div>
 
       {/* Attached files & editor selection */}

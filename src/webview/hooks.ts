@@ -284,6 +284,14 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const data = msg.data as { filePath: string; languageId: string } | null
     window.dispatchEvent(new CustomEvent('activeFileChanged', { detail: data }))
   },
+
+  hooksData: (msg) => {
+    window.dispatchEvent(new CustomEvent('hooksData', { detail: msg.data }))
+  },
+
+  hooksSaved: () => {
+    window.dispatchEvent(new CustomEvent('hooksSaved'))
+  },
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {

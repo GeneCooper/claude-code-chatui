@@ -303,14 +303,69 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
   }
 })
 
+// Subagent type badge colors (keep in sync with ToolUseBlock)
+const SUBAGENT_COLORS: Record<string, string> = {
+  Bash: '#f59e0b',
+  Explore: '#3b82f6',
+  Plan: '#8b5cf6',
+  'general-purpose': '#10b981',
+}
+
 const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void }) {
   const toolData = step.toolUse?.data as Record<string, unknown> | undefined
   const toolName = (toolData?.toolName as string) || 'Tool'
+  const rawInput = toolData?.rawInput as Record<string, unknown> | undefined
   const hasError = step.toolResult && (step.toolResult.data as Record<string, unknown>)?.isError
+
+  const isSubagent = toolName === 'Task'
+  const subagentType = isSubagent ? (rawInput?.subagent_type as string) || 'Agent' : ''
+  const subagentDesc = isSubagent ? (rawInput?.description as string) || '' : ''
+  const subagentColor = SUBAGENT_COLORS[subagentType] || '#6366f1'
 
   const indicatorColor = hasError ? STATUS_COLORS.failed : step.toolResult ? STATUS_COLORS.completed : STATUS_COLORS.executing
   const indicator = hasError ? STEP_INDICATORS.error : step.toolResult ? STEP_INDICATORS.done : STEP_INDICATORS.pending
 
+  // Subagent step — special rendering with colored left border
+  if (isSubagent) {
+    return (
+      <div style={{ marginBottom: '4px' }}>
+        <button
+          onClick={() => onToggle(step.id)}
+          className="w-full text-left cursor-pointer border-none text-inherit"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '4px 8px', borderRadius: 'var(--radius-sm)',
+            background: `${subagentColor}08`,
+            borderLeft: `2px solid ${subagentColor}60`,
+            fontSize: '11px', opacity: 0.85,
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
+        >
+          <span style={{ color: indicatorColor, fontSize: '10px' }}>{indicator}</span>
+          {/* Subagent icon */}
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={subagentColor} strokeWidth="2.5" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+          </svg>
+          <span style={{ color: subagentColor, fontWeight: 500 }}>{subagentType}</span>
+          {subagentDesc && (
+            <span className="truncate opacity-50" style={{ fontSize: '10px' }}>{subagentDesc}</span>
+          )}
+          <span style={{ opacity: 0.4, fontSize: '9px' }}>{isCollapsed ? '▸' : '▾'}</span>
+        </button>
+        {!isCollapsed && (
+          <div style={{ paddingLeft: '20px', borderLeft: `2px solid ${subagentColor}20`, marginLeft: '3px' }}>
+            {step.toolUse && <ToolUseBlock data={step.toolUse.data as Record<string, unknown>} />}
+            {step.toolResult && <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Normal tool step
   return (
     <div style={{ marginBottom: '4px' }}>
       <button

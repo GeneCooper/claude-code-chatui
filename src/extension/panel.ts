@@ -442,18 +442,18 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
-        this._handleSendMessage(text, planMode, thinkingMode, images),
+      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], continueConversation?: boolean) =>
+        this._handleSendMessage(text, planMode, thinkingMode, images, continueConversation),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
       forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
     };
   }
 
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
+  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], continueConversation?: boolean): void {
     if (this._stateManager.isProcessing) return;
 
-    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
+    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length, continueConversation });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -485,7 +485,7 @@ export class PanelProvider {
     void this._claudeService.sendMessage(text, {
       cwd, planMode, thinkingMode, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath, images,
+      mcpConfigPath, images, continueConversation,
     });
   }
 

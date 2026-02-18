@@ -677,7 +677,7 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
+  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], continueConversation?: boolean): void;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
   forkFromMessage(userInputIndex: number): void;
@@ -697,6 +697,7 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
     msg.planMode as boolean | undefined,
     msg.thinkingMode as boolean | undefined,
     msg.images as string[] | undefined,
+    msg.continueConversation as boolean | undefined,
   );
 };
 
@@ -1020,6 +1021,64 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
 
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
+// ============================================================================
+// Hooks Management
+// ============================================================================
+
+interface HookEntry {
+  type: 'command';
+  command: string;
+}
+
+interface HookMatcher {
+  matcher: string;
+  hooks: HookEntry[];
+}
+
+type HookEvent = 'PreToolUse' | 'PostToolUse' | 'Notification' | 'Stop';
+
+type HooksConfig = Partial<Record<HookEvent, HookMatcher[]>>;
+
+function getClaudeSettingsPath(): string {
+  const os = require('os') as typeof import('os');
+  return path.join(os.homedir(), '.claude', 'settings.json');
+}
+
+function readClaudeSettings(): Record<string, unknown> {
+  const settingsPath = getClaudeSettingsPath();
+  try {
+    if (fs.existsSync(settingsPath)) {
+      return JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
+    }
+  } catch { /* corrupt or missing */ }
+  return {};
+}
+
+function writeClaudeSettings(settings: Record<string, unknown>): void {
+  const settingsPath = getClaudeSettingsPath();
+  const dir = path.dirname(settingsPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+}
+
+const handleLoadHooks: MessageHandler = (_msg, ctx) => {
+  const settings = readClaudeSettings();
+  const hooks = (settings.hooks || {}) as HooksConfig;
+  ctx.postMessage({ type: 'hooksData', data: hooks });
+};
+
+const handleSaveHooks: MessageHandler = (msg, ctx) => {
+  try {
+    const hooks = msg.hooks as HooksConfig;
+    const settings = readClaudeSettings();
+    settings.hooks = hooks;
+    writeClaudeSettings(settings);
+    ctx.postMessage({ type: 'hooksSaved' });
+  } catch {
+    ctx.postMessage({ type: 'error', data: 'Failed to save hooks configuration' });
+  }
+};
+
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
   newSession: handleNewSession,
@@ -1058,6 +1117,8 @@ const messageHandlers: Record<string, MessageHandler> = {
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
   createNewPanel: handleCreateNewPanel,
+  loadHooks: handleLoadHooks,
+  saveHooks: handleSaveHooks,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
