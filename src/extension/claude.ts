@@ -143,6 +143,8 @@ export class ClaudeService implements vscode.Disposable {
   private _permissionRequestEmitter = new EventEmitter();
   private _rateLimitEmitter = new EventEmitter();
   private _accountInfoEmitter = new EventEmitter();
+  private _processStatusEmitter = new EventEmitter();
+  private _stderrDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly _context: vscode.ExtensionContext) {
     this._subscriptionType = _context.globalState.get<'pro' | 'max' | undefined>('claude.subscriptionType');
@@ -156,6 +158,7 @@ export class ClaudeService implements vscode.Disposable {
   onError(cb: (err: string) => void): void { this._errorEmitter.on('error', cb); }
   onPermissionRequest(cb: (req: PermissionRequest) => void): void { this._permissionRequestEmitter.on('request', cb); }
   onRateLimitUpdate(cb: (data: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number }) => void): void { this._rateLimitEmitter.on('ratelimit', cb); }
+  onProcessStatus(cb: (data: { status: string; detail?: string }) => void): void { this._processStatusEmitter.on('status', cb); }
 
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
@@ -202,6 +205,10 @@ export class ClaudeService implements vscode.Disposable {
     });
 
     this._process = claudeProcess;
+
+    if (claudeProcess.pid) {
+      this._processStatusEmitter.emit('status', { status: 'started', detail: `PID: ${claudeProcess.pid}` });
+    }
 
     if (claudeProcess.stdin) {
       const contentBlocks: unknown[] = [{ type: 'text', text: actualMessage }];
@@ -272,6 +279,12 @@ export class ClaudeService implements vscode.Disposable {
     claudeProcess.stderr?.on('data', (data: Buffer) => {
       const chunk = data.toString();
       errorOutput += chunk;
+      // Debounced stderr activity → process is alive
+      if (!this._stderrDebounceTimer) {
+        this._processStatusEmitter.emit('status', { status: 'active' });
+      }
+      clearTimeout(this._stderrDebounceTimer);
+      this._stderrDebounceTimer = setTimeout(() => { this._stderrDebounceTimer = undefined; }, 500);
       // Parse rate-limit headers from debug output in real-time
       if (chunk.includes('ratelimit') || chunk.includes('utilization')) {
         const rl: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number } = {};
@@ -294,6 +307,8 @@ export class ClaudeService implements vscode.Disposable {
       const wasStopping = this._isStopping;
       this._process = undefined;
       this._isStopping = false;
+      clearTimeout(this._stderrDebounceTimer);
+      this._stderrDebounceTimer = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
       // Only emit stderr as error if we didn't already get a result message via stdout
@@ -306,6 +321,8 @@ export class ClaudeService implements vscode.Disposable {
       const wasStopping = this._isStopping;
       this._process = undefined;
       this._isStopping = false;
+      clearTimeout(this._stderrDebounceTimer);
+      this._stderrDebounceTimer = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
       if (!wasStopping) this._errorEmitter.emit('error', `Error running Claude: ${error.message}`);
@@ -513,10 +530,12 @@ export class ClaudeService implements vscode.Disposable {
 
   dispose(): void {
     void this.stopProcess();
+    clearTimeout(this._stderrDebounceTimer);
     this._messageEmitter.removeAllListeners();
     this._processEndEmitter.removeAllListeners();
     this._errorEmitter.removeAllListeners();
     this._permissionRequestEmitter.removeAllListeners();
     this._rateLimitEmitter.removeAllListeners();
+    this._processStatusEmitter.removeAllListeners();
   }
 }
