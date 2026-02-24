@@ -3,12 +3,11 @@ import { useState, memo } from 'react'
 interface Props {
   text: string
   images?: string[]
-  onFork?: () => void
   onRewind?: () => void
   isProcessing?: boolean
 }
 
-export const UserMessage = memo(function UserMessage({ text, images, onFork, onRewind, isProcessing }: Props) {
+export const UserMessage = memo(function UserMessage({ text, images, onRewind, isProcessing }: Props) {
   const [copied, setCopied] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
 
@@ -40,20 +39,6 @@ export const UserMessage = memo(function UserMessage({ text, images, onFork, onR
               pointerEvents: 'auto',
             }}
           >
-            {onFork && !isProcessing && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onFork() }}
-                className="checkpoint-action-btn"
-                title="Fork from here"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="6" y1="3" x2="6" y2="15" />
-                  <circle cx="18" cy="6" r="3" />
-                  <circle cx="6" cy="18" r="3" />
-                  <path d="M18 9a9 9 0 0 1-9 9" />
-                </svg>
-              </button>
-            )}
             {onRewind && !isProcessing && (
               <button
                 onClick={(e) => { e.stopPropagation(); onRewind() }}

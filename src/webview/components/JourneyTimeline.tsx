@@ -254,10 +254,9 @@ function LoadingIndicator() {
   )
 }
 
-const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex, onFork, onRewind, isProcessing }: {
+const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex, onRewind, isProcessing }: {
   message: ChatMessage
   userInputIndex?: number
-  onFork?: (index: number) => void
   onRewind?: (index: number) => void
   isProcessing?: boolean
 }) {
@@ -270,7 +269,6 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
         <UserMessage
           text={uText}
           images={uImages}
-          onFork={userInputIndex !== undefined && onFork ? () => onFork(userInputIndex) : undefined}
           onRewind={userInputIndex !== undefined && onRewind ? () => onRewind(userInputIndex) : undefined}
           isProcessing={isProcessing}
         />
@@ -465,11 +463,10 @@ const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, collapsed
 interface Props {
   messages: ChatMessage[]
   isProcessing: boolean
-  onFork?: (userInputIndex: number) => void
   onRewind?: (userInputIndex: number) => void
 }
 
-export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Props) {
+export function JourneyTimeline({ messages, isProcessing, onRewind }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
   const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
 
@@ -535,7 +532,6 @@ export function JourneyTimeline({ messages, isProcessing, onFork, onRewind }: Pr
               <MessageRenderer
                 message={item.message}
                 userInputIndex={uiIdx}
-                onFork={onFork}
                 onRewind={onRewind}
                 isProcessing={isProcessing}
               />

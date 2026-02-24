@@ -160,8 +160,8 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
         {renderedMarkdown}
       </div>
 
-      {/* Copy button - appears at top-right on hover, overlaid */}
-      <div className="absolute top-1 right-0 opacity-0 group-hover:opacity-100" style={{ transition: 'opacity 0.2s ease' }}>
+      {/* Copy button - appears above message on hover, does not overlap content */}
+      <div className="absolute -top-7 right-0 opacity-0 group-hover:opacity-100" style={{ transition: 'opacity 0.2s ease' }}>
         <button
           onClick={handleCopyMessage}
           className="cursor-pointer bg-transparent border-none flex items-center gap-1"

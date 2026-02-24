@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState, type RefObject } from 'react'
-import { useChatStore, type ChatMessage, type TodoItem, useQueueStore } from './store'
+import { useChatStore, type ChatMessage, type TodoItem } from './store'
 import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
@@ -138,10 +138,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     } else {
       useChatStore.getState().addMessage({ type: 'error', data: msg.data })
     }
-    // Mark any running queue item as error
-    const { items, markError } = useQueueStore.getState()
-    const running = items.find((i) => i.status === 'running')
-    if (running) markError(running.id)
   },
 
   setProcessing: (msg) => {
