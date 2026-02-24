@@ -101,7 +101,7 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
         {/* Expanded: show prompt */}
         {showInput && rawInput && (
           <div className="px-3 py-2 max-h-60 overflow-y-auto" style={{ paddingLeft: '12px' }}>
-            {rawInput.prompt && (
+            {!!rawInput.prompt && (
               <div style={{ marginBottom: '6px' }}>
                 <div className="text-[10px] opacity-40 mb-1">Prompt</div>
                 <pre className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0" style={{ maxHeight: '200px', overflow: 'auto' }}>
@@ -109,7 +109,7 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
                 </pre>
               </div>
             )}
-            {rawInput.model && (
+            {!!rawInput.model && (
               <div className="text-[10px] opacity-40 mt-1">
                 Model: <span className="font-mono">{String(rawInput.model)}</span>
               </div>

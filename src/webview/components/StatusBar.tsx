@@ -13,8 +13,8 @@ const STATUS_PHRASES = [
 function useProcessingText(isProcessing: boolean) {
   const [index, setIndex] = useState(0)
   const [dotCount, setDotCount] = useState(1)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>()
-  const dotRef = useRef<ReturnType<typeof setInterval>>()
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
+  const dotRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   useEffect(() => {
     if (isProcessing) {
