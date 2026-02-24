@@ -111,7 +111,6 @@ export class PanelProvider {
   private _disposables: vscode.Disposable[] = [];
   private _messageHandlerDisposable: vscode.Disposable | undefined;
   private _isVisible = true;
-  private _selectionDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly _settingsManager = new SettingsManager();
 
@@ -168,32 +167,6 @@ export class PanelProvider {
 
     // Real-time rate-limit updates from the main Claude process stderr
     this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
-
-    // Track editor text selection and send to webview (debounced to avoid lag)
-    this._disposables.push(
-      vscode.window.onDidChangeTextEditorSelection((e) => {
-        if (!this._isVisible) return;
-        if (this._selectionDebounceTimer) clearTimeout(this._selectionDebounceTimer);
-        this._selectionDebounceTimer = setTimeout(() => {
-          const editor = e.textEditor;
-          const sel = editor.selection;
-          if (sel.isEmpty) {
-            this._postMessage({ type: 'editorSelection', data: null });
-          } else {
-            const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-            this._postMessage({
-              type: 'editorSelection',
-              data: {
-                filePath: relativePath,
-                startLine: sel.start.line + 1,
-                endLine: sel.end.line + 1,
-                text: editor.document.getText(sel),
-              },
-            });
-          }
-        }, 300);
-      }),
-    );
 
     // Track active file and send to webview
     const sendActiveFile = (editor: vscode.TextEditor | undefined) => {
@@ -401,7 +374,6 @@ export class PanelProvider {
       void this._claudeService.stopProcess();
     }
     this._saveConversation(this._sessionId);
-    if (this._selectionDebounceTimer) clearTimeout(this._selectionDebounceTimer);
     this._panel = undefined;
     this._messageHandlerDisposable?.dispose();
     this._messageHandlerDisposable = undefined;

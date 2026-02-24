@@ -14,7 +14,6 @@ export function InputArea() {
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
   const [planMode, setPlanMode] = useState(true)
   const [thinkingMode, setThinkingMode] = useState(true)
-  const [continueMode, setContinueMode] = useState(false)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
@@ -26,7 +25,6 @@ export function InputArea() {
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
-  const [editorSelection, setEditorSelection] = useState<{ filePath: string; startLine: number; endLine: number; text: string } | null>(null)
   const [activeFile, setActiveFile] = useState<{ filePath: string; languageId: string } | null>(null)
   const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showSlashPicker = useUIStore((s) => s.showSlashPicker)
@@ -98,10 +96,6 @@ export function InputArea() {
         textareaRef.current?.focus()
       }
     }
-    const onEditorSelection = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { filePath: string; startLine: number; endLine: number; text: string } | null
-      setEditorSelection(detail)
-    }
     const onActiveFile = (e: Event) => {
       const detail = (e as CustomEvent).detail as { filePath: string; languageId: string } | null
       setActiveFile(detail)
@@ -114,14 +108,12 @@ export function InputArea() {
     window.addEventListener('imageFilePicked', onImagePicked)
     window.addEventListener('clipboardContent', onClipboard)
     window.addEventListener('attachFileContext', onAttachFile)
-    window.addEventListener('editorSelection', onEditorSelection)
     window.addEventListener('activeFileChanged', onActiveFile)
     window.addEventListener('modelRestored', onModelRestored)
     return () => {
       window.removeEventListener('imageFilePicked', onImagePicked)
       window.removeEventListener('clipboardContent', onClipboard)
       window.removeEventListener('attachFileContext', onAttachFile)
-      window.removeEventListener('editorSelection', onEditorSelection)
       window.removeEventListener('activeFileChanged', onActiveFile)
       window.removeEventListener('modelRestored', onModelRestored)
     }
@@ -171,12 +163,7 @@ export function InputArea() {
 
     // Prepend attached file paths as @references
     const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
-    // Include editor selection context if present
-    const selRef = editorSelection
-      ? `@${editorSelection.filePath}#${editorSelection.startLine}-${editorSelection.endLine}`
-      : ''
-    const refs = [fileRefs, selRef].filter(Boolean).join(' ')
-    const userText = refs ? `${refs} ${trimmed}` : trimmed
+    const userText = fileRefs ? `${fileRefs} ${trimmed}` : trimmed
 
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
@@ -195,14 +182,12 @@ export function InputArea() {
       text: userText,
       planMode,
       thinkingMode,
-      continueConversation: continueMode,
       model: selectedModel !== 'default' ? selectedModel : undefined,
       images: imageData,
     })
     setText('')
     setImages([])
     setAttachedFiles([])
-    setContinueMode(false) // one-shot: auto-disable after first send
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
@@ -538,57 +523,11 @@ export function InputArea() {
           </svg>
           <span>YOLO</span>
         </button>
-
-        {/* Continue mode — only useful when no active session */}
-        {!sessionId && (
-          <button
-            onClick={() => setContinueMode(!continueMode)}
-            className="flex items-center gap-1 cursor-pointer border-none"
-            style={{
-              padding: '2px 10px',
-              borderRadius: '12px',
-              border: `1px solid ${continueMode ? '#8b5cf6' : 'var(--vscode-panel-border)'}`,
-              background: continueMode ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
-              color: continueMode ? '#8b5cf6' : 'inherit',
-              opacity: continueMode ? 1 : 0.7,
-              transition: 'all 0.2s ease',
-            }}
-            title="Continue last conversation — resumes the most recent Claude session"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="1 4 1 10 7 10" />
-              <path d="M3.51 15a9 9 0 1 0 .49-3.75" />
-            </svg>
-            <span>Continue</span>
-          </button>
-        )}
       </div>
 
-      {/* Attached files & editor selection */}
-      {(attachedFiles.length > 0 || editorSelection) && (
+      {/* Attached files */}
+      {attachedFiles.length > 0 && (
         <div className="flex gap-1.5 pb-2 flex-wrap">
-          {/* Editor selection chip */}
-          {editorSelection && (
-            <span
-              className="flex items-center gap-1"
-              style={{
-                padding: '2px 6px 2px 8px',
-                fontSize: '11px',
-                borderRadius: '4px',
-                background: 'rgba(100, 149, 237, 0.1)',
-                color: 'var(--vscode-textLink-foreground)',
-                border: '1px solid rgba(100, 149, 237, 0.2)',
-              }}
-            >
-              <span className="truncate" style={{ maxWidth: '220px' }}>
-                {editorSelection.filePath}#{editorSelection.startLine}-{editorSelection.endLine}
-              </span>
-              <span style={{ opacity: 0.6, fontSize: '10px' }}>
-                ({editorSelection.endLine - editorSelection.startLine + 1} lines)
-              </span>
-            </span>
-          )}
-
           {/* Attached file chips */}
           {attachedFiles.map((file) => (
             <span
@@ -844,11 +783,7 @@ export function InputArea() {
                 const trimmed = text.trim()
                 if (!trimmed) return
                 const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
-                const selRef = editorSelection
-                  ? `@${editorSelection.filePath}#${editorSelection.startLine}-${editorSelection.endLine}`
-                  : ''
-                const refs = [fileRefs, selRef].filter(Boolean).join(' ')
-                const prompt = refs ? `${refs} ${trimmed}` : trimmed
+                const prompt = fileRefs ? `${fileRefs} ${trimmed}` : trimmed
                 useQueueStore.getState().addItem({ prompt, planMode, thinkingMode, model: selectedModel !== 'default' ? selectedModel : undefined })
                 setText('')
                 setImages([])
