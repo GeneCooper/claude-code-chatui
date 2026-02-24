@@ -19,11 +19,11 @@ export function InputArea() {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const dragCountRef = useRef(0)
+  const recentAttachRef = useRef(new Set<string>())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
-  const [attachedFiles, setAttachedFiles] = useState<string[]>([])
   const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showSlashPicker = useUIStore((s) => s.showSlashPicker)
   const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
@@ -99,9 +99,26 @@ export function InputArea() {
     const onAttachFile = (e: Event) => {
       const detail = (e as CustomEvent).detail as { filePath: string }
       if (detail?.filePath) {
-        setAttachedFiles((prev) =>
-          prev.includes(detail.filePath) ? prev : [...prev, detail.filePath]
-        )
+        // Deduplicate rapid duplicate events for the same path (e.g. from multiple dataTransfer formats)
+        const key = detail.filePath.toLowerCase()
+        if (recentAttachRef.current.has(key)) return
+        recentAttachRef.current.add(key)
+        setTimeout(() => recentAttachRef.current.delete(key), 200)
+
+        const ref = `@${detail.filePath} `
+        setText((prev) => {
+          const ta = textareaRef.current
+          if (ta && ta.selectionStart !== undefined) {
+            const start = ta.selectionStart
+            const end = ta.selectionEnd
+            const next = prev.slice(0, start) + ref + prev.slice(end)
+            requestAnimationFrame(() => {
+              ta.selectionStart = ta.selectionEnd = start + ref.length
+            })
+            return next
+          }
+          return prev ? `${prev} ${ref}` : ref
+        })
         textareaRef.current?.focus()
       }
     }
@@ -153,8 +170,7 @@ export function InputArea() {
 
   const handleSend = () => {
     const trimmed = text.trim()
-    const hasFiles = attachedFiles.length > 0
-    if ((!trimmed && images.length === 0 && !hasFiles) || isProcessing) return
+    if ((!trimmed && images.length === 0) || isProcessing) return
 
     if (trimmed.startsWith('/')) {
       const cmd = trimmed.substring(1).split(/\s+/)[0]
@@ -163,10 +179,6 @@ export function InputArea() {
       if (textareaRef.current) textareaRef.current.style.height = 'auto'
       return
     }
-
-    // Prepend attached file paths as @references
-    const fileRefs = attachedFiles.map((f) => `@${f}`).join(' ')
-    const userText = fileRefs ? `${fileRefs} ${trimmed}` : trimmed
 
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
@@ -177,7 +189,7 @@ export function InputArea() {
       postMessage({ type: 'rewindToMessage', userInputIndex: currentEditingContext.userInputIndex })
       postMessage({
         type: 'sendMessage',
-        text: userText,
+        text: trimmed,
         planMode,
         thinkingMode,
         model: selectedModel !== 'default' ? selectedModel : undefined,
@@ -188,14 +200,14 @@ export function InputArea() {
       // Normal mode: optimistic update for instant feedback
       const store = useChatStore.getState()
       markOptimisticUserInput()
-      store.addMessage({ type: 'userInput', data: { text: userText, images: imageData } })
+      store.addMessage({ type: 'userInput', data: { text: trimmed, images: imageData } })
       store.setProcessing(true)
       store.addMessage({ type: 'loading', data: 'Claude is working...' })
       useUIStore.getState().setRequestStartTime(Date.now())
 
       postMessage({
         type: 'sendMessage',
-        text: userText,
+        text: trimmed,
         planMode,
         thinkingMode,
         model: selectedModel !== 'default' ? selectedModel : undefined,
@@ -204,7 +216,6 @@ export function InputArea() {
     }
     setText('')
     setImages([])
-    setAttachedFiles([])
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
@@ -269,11 +280,12 @@ export function InputArea() {
     const isFilePath = (s: string) =>
       s.startsWith('file://') || s.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(s)
 
-    // Collect all URIs from every available dataTransfer format (de-duplicated)
+    // Collect all URIs from every available dataTransfer format (de-duplicated, case-insensitive)
     const seen = new Set<string>()
     const uris: string[] = []
     const addUri = (u: string) => {
-      if (!seen.has(u)) { seen.add(u); uris.push(u) }
+      const key = u.toLowerCase()
+      if (!seen.has(key)) { seen.add(key); uris.push(u) }
     }
 
     // 1. text/uri-list (standard format, \r\n separated)
@@ -567,44 +579,6 @@ export function InputArea() {
         </button>
       </div>
 
-      {/* Attached files */}
-      {attachedFiles.length > 0 && (
-        <div className="flex gap-1.5 pb-2 flex-wrap">
-          {/* Attached file chips */}
-          {attachedFiles.map((file) => (
-            <span
-              key={file}
-              className="flex items-center gap-1"
-              style={{
-                padding: '2px 6px 2px 8px',
-                fontSize: '11px',
-                borderRadius: '4px',
-                background: 'rgba(237, 110, 29, 0.1)',
-                color: 'var(--chatui-accent)',
-                border: '1px solid rgba(237, 110, 29, 0.2)',
-              }}
-            >
-              <span className="truncate" style={{ maxWidth: '200px' }}>{file}</span>
-              <button
-                onClick={() => setAttachedFiles((prev) => prev.filter((f) => f !== file))}
-                className="cursor-pointer border-none bg-transparent flex items-center justify-center"
-                style={{
-                  color: 'inherit',
-                  opacity: 0.6,
-                  padding: '0 2px',
-                  fontSize: '13px',
-                  lineHeight: 1,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* Textarea container */}
       <div
         className="textarea-glow"
@@ -635,6 +609,7 @@ export function InputArea() {
             </span>
           </div>
         )}
+
         <textarea
           ref={textareaRef}
           autoFocus
@@ -819,7 +794,7 @@ export function InputArea() {
 
             {/* Send button (only visible when not processing) */}
             {!isProcessing && (() => {
-              const hasContent = !!(text.trim() || images.length > 0 || attachedFiles.length > 0)
+              const hasContent = !!(text.trim() || images.length > 0)
               return (
                 <button
                   onClick={handleSend}
