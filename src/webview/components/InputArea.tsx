@@ -29,6 +29,8 @@ export function InputArea() {
   const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
   const draftText = useUIStore((s) => s.draftText)
   const setDraftText = useUIStore((s) => s.setDraftText)
+  const editingContext = useUIStore((s) => s.editingContext)
+  const setEditingContext = useUIStore((s) => s.setEditingContext)
 
   const [slashFilter, setSlashFilter] = useState('')
 
@@ -67,6 +69,15 @@ export function InputArea() {
       textareaRef.current?.focus()
     }
   }, [draftText, setDraftText])
+
+  // When an edit is triggered, restore images from the original message
+  useEffect(() => {
+    if (!editingContext) return
+    if (editingContext.images.length > 0) {
+      setImages(editingContext.images.map((dataUrl, i) => ({ name: `image-${i + 1}`, dataUrl })))
+    }
+    textareaRef.current?.focus()
+  }, [editingContext])
 
 
   // Listen for all custom events from extension in a single effect
@@ -159,24 +170,38 @@ export function InputArea() {
 
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
-    // Optimistic update: immediately show message + processing state
-    // This eliminates the IPC round-trip delay before the user sees their message
-    const store = useChatStore.getState()
-    markOptimisticUserInput()
-    store.addMessage({ type: 'userInput', data: { text: userText, images: imageData } })
-    store.setProcessing(true)
-    store.addMessage({ type: 'loading', data: 'Claude is working...' })
-    useUIStore.getState().setRequestStartTime(Date.now())
+    const currentEditingContext = useUIStore.getState().editingContext
 
-    // Then tell extension to process
-    postMessage({
-      type: 'sendMessage',
-      text: userText,
-      planMode,
-      thinkingMode,
-      model: selectedModel !== 'default' ? selectedModel : undefined,
-      images: imageData,
-    })
+    if (currentEditingContext) {
+      // Edit mode: rewind conversation to that point, then send the edited message
+      postMessage({ type: 'rewindToMessage', userInputIndex: currentEditingContext.userInputIndex })
+      postMessage({
+        type: 'sendMessage',
+        text: userText,
+        planMode,
+        thinkingMode,
+        model: selectedModel !== 'default' ? selectedModel : undefined,
+        images: imageData,
+      })
+      setEditingContext(null)
+    } else {
+      // Normal mode: optimistic update for instant feedback
+      const store = useChatStore.getState()
+      markOptimisticUserInput()
+      store.addMessage({ type: 'userInput', data: { text: userText, images: imageData } })
+      store.setProcessing(true)
+      store.addMessage({ type: 'loading', data: 'Claude is working...' })
+      useUIStore.getState().setRequestStartTime(Date.now())
+
+      postMessage({
+        type: 'sendMessage',
+        text: userText,
+        planMode,
+        thinkingMode,
+        model: selectedModel !== 'default' ? selectedModel : undefined,
+        images: imageData,
+      })
+    }
     setText('')
     setImages([])
     setAttachedFiles([])
@@ -398,6 +423,31 @@ export function InputArea() {
         onSelect={handleModelChange}
         onClose={() => setShowModelPicker(false)}
       />
+
+      {/* Editing indicator */}
+      {editingContext && (
+        <div
+          className="flex items-center justify-between"
+          style={{
+            marginBottom: '6px',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            background: 'rgba(237, 110, 29, 0.08)',
+            border: '1px solid rgba(237, 110, 29, 0.25)',
+            fontSize: '11px',
+            color: 'var(--chatui-accent)',
+          }}
+        >
+          <span style={{ opacity: 0.8 }}>编辑消息</span>
+          <button
+            onClick={() => { setEditingContext(null); setText(''); setImages([]) }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6, padding: '0 2px', fontSize: '13px', lineHeight: 1 }}
+            title="取消编辑"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Image previews */}
       {images.length > 0 && (

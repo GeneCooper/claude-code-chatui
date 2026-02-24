@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { useChatStore } from '../store'
-import { useAutoScroll, postMessage } from '../hooks'
+import { useChatStore, useUIStore } from '../store'
+import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
 
@@ -17,8 +17,9 @@ export function ChatView({ onHintClick }: ChatViewProps) {
     behavior: isProcessing ? 'instant' : 'smooth',
   })
 
-  const handleRewind = useCallback((userInputIndex: number) => {
-    postMessage({ type: 'rewindToMessage', userInputIndex })
+  const handleEdit = useCallback((userInputIndex: number, text: string, images: string[] | undefined) => {
+    useUIStore.getState().setDraftText(text)
+    useUIStore.getState().setEditingContext({ userInputIndex, images: images ?? [] })
   }, [])
 
   return (
@@ -34,7 +35,7 @@ export function ChatView({ onHintClick }: ChatViewProps) {
         <JourneyTimeline
           messages={messages}
           isProcessing={isProcessing}
-          onRewind={handleRewind}
+          onEdit={handleEdit}
         />
       )}
     </div>

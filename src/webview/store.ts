@@ -246,6 +246,7 @@ interface UIState {
   showLoginModal: boolean
   loginErrorMessage: string
   draftText: string
+  editingContext: { userInputIndex: number; images: string[] } | null
   requestStartTime: number | null
   usageData: UsageData | null
   accountType: 'pro' | 'max' | undefined
@@ -261,6 +262,7 @@ interface UIState {
   setShowLoginModal: (show: boolean) => void
   setLoginErrorMessage: (msg: string) => void
   setDraftText: (text: string) => void
+  setEditingContext: (ctx: { userInputIndex: number; images: string[] } | null) => void
   setRequestStartTime: (time: number | null) => void
   setUsageData: (data: UsageData | null) => void
   setAccountType: (type: 'pro' | 'max' | undefined) => void
@@ -281,6 +283,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   showLoginModal: false,
   loginErrorMessage: '',
   draftText: '',
+  editingContext: null,
   requestStartTime: null,
   usageData: null,
   accountType: undefined,
@@ -296,6 +299,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setShowLoginModal: (show) => set({ showLoginModal: show }),
   setLoginErrorMessage: (msg) => set({ loginErrorMessage: msg }),
   setDraftText: (text) => set({ draftText: text }),
+  setEditingContext: (ctx) => set({ editingContext: ctx }),
   setRequestStartTime: (time) => set({ requestStartTime: time }),
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),

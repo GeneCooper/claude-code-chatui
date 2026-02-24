@@ -254,10 +254,10 @@ function LoadingIndicator() {
   )
 }
 
-const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex, onRewind, isProcessing }: {
+const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex, onEdit, isProcessing }: {
   message: ChatMessage
   userInputIndex?: number
-  onRewind?: (index: number) => void
+  onEdit?: (index: number, text: string, images: string[] | undefined) => void
   isProcessing?: boolean
 }) {
   switch (message.type) {
@@ -269,7 +269,7 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
         <UserMessage
           text={uText}
           images={uImages}
-          onRewind={userInputIndex !== undefined && onRewind ? () => onRewind(userInputIndex) : undefined}
+          onEdit={userInputIndex !== undefined && onEdit ? () => onEdit(userInputIndex, uText, uImages) : undefined}
           isProcessing={isProcessing}
         />
       )
@@ -463,10 +463,10 @@ const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, collapsed
 interface Props {
   messages: ChatMessage[]
   isProcessing: boolean
-  onRewind?: (userInputIndex: number) => void
+  onEdit?: (userInputIndex: number, text: string, images: string[] | undefined) => void
 }
 
-export function JourneyTimeline({ messages, isProcessing, onRewind }: Props) {
+export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
   const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
 
@@ -532,7 +532,7 @@ export function JourneyTimeline({ messages, isProcessing, onRewind }: Props) {
               <MessageRenderer
                 message={item.message}
                 userInputIndex={uiIdx}
-                onRewind={onRewind}
+                onEdit={onEdit}
                 isProcessing={isProcessing}
               />
             </ErrorBoundary>
