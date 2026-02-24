@@ -222,7 +222,16 @@ export class ClaudeService implements vscode.Disposable {
         message: { role: 'user', content: contentBlocks },
         parent_tool_use_id: null,
       };
-      claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n');
+      // Suppress EPIPE on stdin; cleanup is handled by the process close/error events
+      claudeProcess.stdin.on('error', () => {});
+      claudeProcess.stdin.write(JSON.stringify(userMsg) + '\n', (writeErr) => {
+        if (writeErr && this._process === claudeProcess) {
+          this._process = undefined;
+          this._cancelPendingPermissions();
+          this._processEndEmitter.emit('end');
+          this._errorEmitter.emit('error', `消息发送失败，请重试。(${writeErr.message})`);
+        }
+      });
 
       // Send initialize control_request to detect account/subscription type
       if (!this._accountInfoFetched) {
