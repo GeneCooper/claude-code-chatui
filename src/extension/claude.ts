@@ -118,7 +118,6 @@ interface SendMessageOptions {
   images?: string[];
   allowedTools?: string[];
   disallowedTools?: string[];
-  continueConversation?: boolean;
 }
 
 interface PendingPermission {
@@ -189,7 +188,6 @@ export class ClaudeService implements vscode.Disposable {
     }
     const maxTurns = vscode.workspace.getConfiguration('claudeCodeChatUI').get<number>('maxTurns', 0);
     if (maxTurns > 0) args.push('--max-turns', String(maxTurns));
-    if (options.continueConversation) args.push('--continue');
     if (this._sessionId) args.push('--resume', this._sessionId);
 
     this._abortController = new AbortController();

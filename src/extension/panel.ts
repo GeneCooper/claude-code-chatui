@@ -168,23 +168,6 @@ export class PanelProvider {
     // Real-time rate-limit updates from the main Claude process stderr
     this._claudeService.onRateLimitUpdate((data) => { this._usageService.updateFromRateLimits(data); });
 
-    // Track active file and send to webview
-    const sendActiveFile = (editor: vscode.TextEditor | undefined) => {
-      if (!this._isVisible) return;
-      if (editor && editor.document.uri.scheme === 'file') {
-        const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-        this._postMessage({
-          type: 'activeFileChanged',
-          data: { filePath: relativePath, languageId: editor.document.languageId },
-        });
-      } else {
-        this._postMessage({ type: 'activeFileChanged', data: null });
-      }
-    };
-    sendActiveFile(vscode.window.activeTextEditor);
-    this._disposables.push(
-      vscode.window.onDidChangeActiveTextEditor(sendActiveFile),
-    );
   }
 
   // ==================== Public API ====================
@@ -414,18 +397,18 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], continueConversation?: boolean) =>
-        this._handleSendMessage(text, planMode, thinkingMode, images, continueConversation),
+      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
+        this._handleSendMessage(text, planMode, thinkingMode, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
       forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
     };
   }
 
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], continueConversation?: boolean): void {
+  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
     if (this._stateManager.isProcessing) return;
 
-    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length, continueConversation });
+    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -457,7 +440,7 @@ export class PanelProvider {
     void this._claudeService.sendMessage(text, {
       cwd, planMode, thinkingMode, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath, images, continueConversation,
+      mcpConfigPath, images,
     });
   }
 

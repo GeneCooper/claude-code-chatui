@@ -25,7 +25,6 @@ export function InputArea() {
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const [attachedFiles, setAttachedFiles] = useState<string[]>([])
-  const [activeFile, setActiveFile] = useState<{ filePath: string; languageId: string } | null>(null)
   const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showSlashPicker = useUIStore((s) => s.showSlashPicker)
   const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
@@ -54,7 +53,7 @@ export function InputArea() {
 
   useEffect(() => {
     setState({ draft: text, model: selectedModel, planMode, thinkingMode, ctrlEnterSend, sessionId })
-  }, [text, selectedModel, thinkingMode, ctrlEnterSend, sessionId])
+  }, [text, selectedModel, planMode, thinkingMode, ctrlEnterSend, sessionId])
 
   useEffect(() => {
     debouncedSave(text)
@@ -96,10 +95,6 @@ export function InputArea() {
         textareaRef.current?.focus()
       }
     }
-    const onActiveFile = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { filePath: string; languageId: string } | null
-      setActiveFile(detail)
-    }
     const onModelRestored = (e: Event) => {
       const detail = (e as CustomEvent).detail as { model: string }
       if (detail?.model) setSelectedModel(detail.model)
@@ -108,13 +103,11 @@ export function InputArea() {
     window.addEventListener('imageFilePicked', onImagePicked)
     window.addEventListener('clipboardContent', onClipboard)
     window.addEventListener('attachFileContext', onAttachFile)
-    window.addEventListener('activeFileChanged', onActiveFile)
     window.addEventListener('modelRestored', onModelRestored)
     return () => {
       window.removeEventListener('imageFilePicked', onImagePicked)
       window.removeEventListener('clipboardContent', onClipboard)
       window.removeEventListener('attachFileContext', onAttachFile)
-      window.removeEventListener('activeFileChanged', onActiveFile)
       window.removeEventListener('modelRestored', onModelRestored)
     }
   }, [])
@@ -589,7 +582,7 @@ export function InputArea() {
             }}
           >
             <span style={{ fontSize: '12px', color: 'var(--chatui-accent)', fontWeight: 500 }}>
-              Hold Shift + Drop to attach files
+              Drop files to attach
             </span>
           </div>
         )}
@@ -820,60 +813,36 @@ export function InputArea() {
             {!isProcessing && (() => {
               const hasContent = !!(text.trim() || images.length > 0 || attachedFiles.length > 0)
               return (
-                <>
-                  <button
-                    onClick={handleSend}
-                    disabled={!hasContent}
-                    className="cursor-pointer flex items-center justify-center shrink-0"
-                    style={{
-                      background: hasContent ? 'var(--chatui-accent)' : 'rgba(255, 255, 255, 0.08)',
-                      border: 'none',
-                      padding: '0',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '8px',
-                      color: hasContent ? '#fff' : 'rgba(255, 255, 255, 0.3)',
-                      transition: 'all 0.15s ease',
-                      marginLeft: '2px',
-                    }}
-                    title="Send message"
-                    onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 12V4" />
-                      <path d="M4 7l4-4 4 4" />
-                    </svg>
-                  </button>
-                </>
+                <button
+                  onClick={handleSend}
+                  disabled={!hasContent}
+                  className="cursor-pointer flex items-center justify-center shrink-0"
+                  style={{
+                    background: hasContent ? 'var(--chatui-accent)' : 'rgba(255, 255, 255, 0.08)',
+                    border: 'none',
+                    padding: '0',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '8px',
+                    color: hasContent ? '#fff' : 'rgba(255, 255, 255, 0.3)',
+                    transition: 'all 0.15s ease',
+                    marginLeft: '2px',
+                  }}
+                  title="Send message"
+                  onMouseEnter={(e) => { if (hasContent) e.currentTarget.style.opacity = '0.85' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 12V4" />
+                    <path d="M4 7l4-4 4 4" />
+                  </svg>
+                </button>
               )
             })()}
           </div>
         </div>
       </div>
 
-      {/* Bottom status bar: permission mode + active file */}
-      <div
-        className="flex items-center gap-2"
-        style={{
-          fontSize: '11px',
-          opacity: 0.6,
-          padding: '4px 2px 0',
-          minHeight: '20px',
-        }}
-      >
-        {activeFile && (
-          <>
-            <span style={{ opacity: 0.4 }}>·</span>
-            <span className="flex items-center gap-1">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M13.85 4.44l-3.28-3.3A.5.5 0 0 0 10.21 1H3.5A1.5 1.5 0 0 0 2 2.5v11A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V4.8a.5.5 0 0 0-.15-.36zM10 2l3 3h-2.5a.5.5 0 0 1-.5-.5V2z" />
-              </svg>
-              <span className="truncate" style={{ maxWidth: '200px' }}>{activeFile.filePath}</span>
-            </span>
-          </>
-        )}
-      </div>
     </div>
   )
 }

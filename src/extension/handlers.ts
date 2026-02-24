@@ -677,7 +677,7 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[], continueConversation?: boolean): void;
+  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
   forkFromMessage(userInputIndex: number): void;
@@ -697,7 +697,6 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
     msg.planMode as boolean | undefined,
     msg.thinkingMode as boolean | undefined,
     msg.images as string[] | undefined,
-    msg.continueConversation as boolean | undefined,
   );
 };
 
