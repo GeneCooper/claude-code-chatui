@@ -1,7 +1,6 @@
 import { useState, memo } from 'react'
 import { postMessage } from '../hooks'
-
-const FILE_EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit']
+import { FILE_EDIT_TOOLS } from '../../shared/constants'
 
 // Subagent type badge colors
 const SUBAGENT_COLORS: Record<string, string> = {

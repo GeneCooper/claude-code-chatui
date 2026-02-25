@@ -317,22 +317,6 @@ export class PanelProvider {
     // Replay will happen when webview sends 'ready'
   }
 
-  /** Get conversation up to a specific user input index (for fork) */
-  getConversationUpTo(userInputIndex: number): { messages: ConversationMessage[]; title: string } | null {
-    const conversation = this._messageProcessor.currentConversation;
-    const pos = this._findUserInputPosition(conversation, userInputIndex);
-    if (pos === -1) return null;
-
-    const messages = conversation.slice(0, pos + 1);
-    const targetMsg = messages[pos];
-    const text = typeof targetMsg.data === 'string'
-      ? targetMsg.data
-      : ((targetMsg.data as Record<string, unknown>)?.text as string || 'Fork');
-    const title = text.substring(0, 25) + (text.length > 25 ? '...' : '');
-
-    return { messages, title };
-  }
-
   rewindToMessage(userInputIndex: number): void {
     if (this._stateManager.isProcessing) return;
 
@@ -343,12 +327,6 @@ export class PanelProvider {
     this._messageProcessor.truncateConversation(pos);
     this._sessionId = undefined;
     this._replayConversation();
-  }
-
-  forkFromMessage(userInputIndex: number): void {
-    if (this._panelManager) {
-      this._panelManager.createForkPanel(this, userInputIndex);
-    }
   }
 
   dispose(): void {
@@ -401,7 +379,6 @@ export class PanelProvider {
         this._handleSendMessage(text, planMode, thinkingMode, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
-      forkFromMessage: (userInputIndex: number) => this.forkFromMessage(userInputIndex),
     };
   }
 

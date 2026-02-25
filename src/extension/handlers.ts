@@ -680,7 +680,6 @@ export interface MessageHandlerContext {
   handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
-  forkFromMessage(userInputIndex: number): void;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -1119,7 +1118,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   loadHooks: handleLoadHooks,
   saveHooks: handleSaveHooks,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
-  forkFromMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.forkFromMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
 };

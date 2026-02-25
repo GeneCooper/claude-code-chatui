@@ -51,7 +51,7 @@ export const AGENT_SYSTEM_PROMPT = [
 ].join(" ");
 
 /** File-editing tools that need before/after diff */
-export const FILE_EDIT_TOOLS: string[] = ["Edit", "MultiEdit", "Write"];
+export const FILE_EDIT_TOOLS: string[] = ["Edit", "MultiEdit", "Write", "NotebookEdit"];
 
 /** Tools whose results are hidden by default (unless error) */
 export const HIDDEN_RESULT_TOOLS: string[] = ["Read", "TodoWrite"];

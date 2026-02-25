@@ -80,20 +80,6 @@ export class PanelManager {
     return provider;
   }
 
-  createForkPanel(
-    sourceProvider: PanelProvider,
-    userInputIndex: number,
-  ): void {
-    const data = sourceProvider.getConversationUpTo(userInputIndex);
-    if (!data) return;
-
-    const title = data.title + ' (fork)';
-    this.createNewPanel(vscode.ViewColumn.Beside, false, {
-      title,
-      initialConversation: data.messages,
-    });
-  }
-
   /** Adopt a panel restored by VS Code's webview serializer on restart */
   adoptRestoredPanel(panel: vscode.WebviewPanel, sessionId?: string): void {
     const panelId = `panel-${++this._panelCounter}`;

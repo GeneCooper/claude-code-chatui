@@ -231,7 +231,7 @@ export type WebviewToExtensionMessage =
   | { type: 'newSession' }
   | { type: 'createNewPanel' }
   | { type: 'rewindToMessage'; userInputIndex: number }
-  | { type: 'forkFromMessage'; userInputIndex: number }
+
   | { type: 'stopRequest' }
   | { type: 'ready' }
   | { type: 'permissionResponse'; id: string; approved: boolean; alwaysAllow?: boolean }
@@ -260,76 +260,6 @@ export type WebviewToExtensionMessage =
   | { type: 'getClipboardText' }
   | { type: 'resolveDroppedFile'; uri: string };
 
-/** Messages from Extension to Webview */
-type ExtensionToWebviewMessage =
-  | { type: 'ready'; data: string }
-  | { type: 'userInput'; data: { text: string; images?: string[] } }
-  | { type: 'output'; data: string }
-  | { type: 'thinking'; data: string }
-  | { type: 'loading'; data: string }
-  | { type: 'clearLoading' }
-  | { type: 'error'; data: string }
-  | { type: 'setProcessing'; data: { isProcessing: boolean } }
-  | { type: 'sessionCleared' }
-  | { type: 'sessionInfo'; data: { sessionId: string; tools: unknown[]; mcpServers?: unknown[] } }
-  | { type: 'updateTotals'; data: TotalsData }
-  | { type: 'updateTokens'; data: TokensData }
-  | { type: 'toolUse'; data: ToolUseData }
-  | { type: 'toolResult'; data: ToolResultData }
-  | { type: 'permissionRequest'; data: PermissionRequestData }
-  | { type: 'updatePermissionStatus'; data: { id: string; status: string } }
-  | { type: 'compacting'; data: { isCompacting: boolean } }
-  | { type: 'compactBoundary'; data: { trigger?: string; preTokens?: number } }
-  | { type: 'showInstallModal' }
-  | { type: 'restoreState'; state: unknown }
-  | { type: 'conversationList'; data: ConversationIndexEntry[] }
-  | { type: 'settingsData'; data: SettingsData }
-  | { type: 'workspaceFiles'; data: WorkspaceFile[] }
-  | { type: 'mcpServers'; data: Record<string, MCPServerConfig> }
-  | { type: 'mcpServerSaved'; data: { name: string } }
-  | { type: 'mcpServerDeleted'; data: { name: string } }
-  | { type: 'mcpServerError'; data: { error: string } }
-  | { type: 'restorePoint'; data: BackupCommit }
-  | { type: 'slashCommands'; data: SlashCommand[] }
-  | { type: 'showLoginRequired'; data: { message: string } }
-  | { type: 'usageUpdate'; data: UsageData }
-  | { type: 'usageError'; data: string }
-  | { type: 'todosUpdate'; data: { todos: TodoItem[] } }
-  | { type: 'installComplete'; data: { success: boolean; error?: string } }
-  | { type: 'accountInfo'; data: { subscriptionType: 'pro' | 'max' | undefined } }
-  | { type: 'platformInfo'; data: { platform: string; isWindows: boolean } }
-  | { type: 'imageFilePicked'; data: { name: string; dataUrl: string } }
-  | { type: 'clipboardContent'; data: { text: string } }
-  | { type: 'attachFileContext'; data: { filePath: string } }
-  | { type: 'fileDropped'; data: { filePath: string } }
-  | { type: 'editorSelection'; data: { filePath: string; startLine: number; endLine: number; text: string } | null }
-  | { type: 'activeFileChanged'; data: { filePath: string; languageId: string } | null }
-  | { type: 'batchReplay'; data: { messages: Array<{ type: string; data: unknown }>; sessionId?: string; totalCost?: number; isProcessing?: boolean } };
-
-interface SettingsData {
-  thinkingIntensity: string;
-  yoloMode: boolean;
-}
-
-interface TotalsData {
-  totalCost: number;
-  totalTokensInput: number;
-  totalTokensOutput: number;
-  requestCount: number;
-  currentCost?: number;
-  currentDuration?: number;
-  currentTurns?: number;
-}
-
-interface TokensData {
-  totalTokensInput: number;
-  totalTokensOutput: number;
-  currentInputTokens: number;
-  currentOutputTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-}
-
 export interface ToolUseData {
   toolInfo: string;
   toolInput: string;
@@ -340,26 +270,3 @@ export interface ToolUseData {
   startLines?: number[];
 }
 
-interface ToolResultData {
-  content: string;
-  isError: boolean;
-  toolUseId?: string;
-  toolName?: string;
-  rawInput?: Record<string, unknown>;
-  fileContentBefore?: string;
-  fileContentAfter?: string;
-  startLine?: number;
-  startLines?: number[];
-  hidden?: boolean;
-}
-
-interface PermissionRequestData {
-  id: string;
-  tool: string;
-  input: Record<string, unknown>;
-  pattern?: string;
-  suggestions?: PermissionSuggestion[];
-  decisionReason?: string;
-  blockedPath?: string;
-  status: 'pending' | 'approved' | 'denied';
-}

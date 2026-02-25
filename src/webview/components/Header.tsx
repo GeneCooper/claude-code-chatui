@@ -22,8 +22,6 @@ function LogoIcon({ size = 20 }: { size?: number }) {
   )
 }
 
-export { LogoIcon }
-
 export function Header() {
   const sessionId = useChatStore((s) => s.sessionId)
   const isProcessing = useChatStore((s) => s.isProcessing)
