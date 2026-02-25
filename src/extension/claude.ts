@@ -258,6 +258,10 @@ export class ClaudeService implements vscode.Disposable {
 
     claudeProcess.stdout?.on('data', (data: Buffer) => {
       rawOutput += data.toString();
+      // stdout activity also proves the process is alive — emit heartbeat
+      if (!this._stderrDebounceTimer) {
+        this._processStatusEmitter.emit('status', { status: 'active' });
+      }
       const lines = rawOutput.split('\n');
       rawOutput = lines.pop() || '';
 

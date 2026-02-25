@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useRef, memo } from 'react'
+import { useMemo, useState, useCallback, useEffect, useRef, memo, type MutableRefObject } from 'react'
 import { useChatStore, type ChatMessage } from '../store'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
@@ -193,13 +193,16 @@ function LoadingIndicator() {
   const [elapsed, setElapsed] = useState(0)
   const [phraseIndex, setPhraseIndex] = useState(0)
   const [fadeClass, setFadeClass] = useState(true)
-  const [lastActivityAt, setLastActivityAt] = useState(Date.now())
   const [secondsSinceActivity, setSecondsSinceActivity] = useState(0)
+  const lastActivityAtRef = useRef(Date.now()) as MutableRefObject<number>
   const processStatus = useChatStore((s) => s.processStatus)
 
-  // Track when processStatus changes (heartbeat)
+  // Track when processStatus changes (heartbeat) — use ref to avoid stale closure
   useEffect(() => {
-    if (processStatus) setLastActivityAt(Date.now())
+    if (processStatus) {
+      lastActivityAtRef.current = Date.now()
+      setSecondsSinceActivity(0)
+    }
   }, [processStatus])
 
   useEffect(() => {
@@ -207,7 +210,7 @@ function LoadingIndicator() {
     const id = setInterval(() => {
       tick++
       setElapsed(tick)
-      setSecondsSinceActivity(Math.floor((Date.now() - lastActivityAt) / 1000))
+      setSecondsSinceActivity(Math.floor((Date.now() - lastActivityAtRef.current) / 1000))
       // Rotate phrase every 3 seconds
       if (tick % 3 === 0) {
         setFadeClass(false)
@@ -218,13 +221,7 @@ function LoadingIndicator() {
       }
     }, 1000)
     return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Update secondsSinceActivity when lastActivityAt changes
-  useEffect(() => {
-    setSecondsSinceActivity(Math.floor((Date.now() - lastActivityAt) / 1000))
-  }, [lastActivityAt])
 
   const formatTime = (s: number) => {
     if (s < 60) return `${s}s`
