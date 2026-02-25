@@ -405,14 +405,65 @@ export class PanelProvider {
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
     const yoloMode = this._settingsManager.isYoloModeEnabled();
+    const disallowedTools = this._settingsManager.getDisallowedTools();
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
-    void this._claudeService.sendMessage(text, {
+    const contextPrefix = this._gatherIDEContext();
+    const enrichedText = contextPrefix ? contextPrefix + '\n\n' + text : text;
+
+    void this._claudeService.sendMessage(enrichedText, {
       cwd, planMode, thinkingMode, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images,
+      disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
     });
+  }
+
+  /**
+   * Gather IDE context (active file, selection, diagnostics) to prepend to user messages.
+   * Respects the `context.includeFileContext` setting.
+   */
+  private _gatherIDEContext(): string {
+    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+    if (!config.get<boolean>('context.includeFileContext', true)) return '';
+
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return '';
+
+    const parts: string[] = [];
+    const doc = editor.document;
+    const relativePath = vscode.workspace.asRelativePath(doc.uri, false);
+
+    // Active file info
+    parts.push(`Active file: ${relativePath} (${doc.languageId})`);
+
+    // Selection (cap at 200 lines)
+    const selection = editor.selection;
+    if (!selection.isEmpty) {
+      const selectedText = doc.getText(selection);
+      const lines = selectedText.split('\n');
+      const capped = lines.length > 200 ? lines.slice(0, 200).join('\n') + '\n... (truncated)' : selectedText;
+      parts.push(`Selected text (lines ${selection.start.line + 1}-${selection.end.line + 1}):\n\`\`\`\n${capped}\n\`\`\``);
+    }
+
+    // Diagnostics — errors and warnings in current file (cap at 20)
+    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
+    const problems = diagnostics
+      .filter(d => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning)
+      .slice(0, 20);
+    if (problems.length > 0) {
+      const label = problems.length === 1 ? '1 problem' : `${problems.length} problems`;
+      const items = problems.map(d => {
+        const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'Error' : 'Warning';
+        const src = d.source ? ` [${d.source}]` : '';
+        return `- Line ${d.range.start.line + 1}: ${sev}: ${d.message}${src}`;
+      });
+      parts.push(`Diagnostics (${label}):\n${items.join('\n')}`);
+    }
+
+    if (parts.length === 0) return '';
+    return `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]`;
   }
 
   private _setupClaudeServiceHandlers(): void {

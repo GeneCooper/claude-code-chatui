@@ -130,6 +130,12 @@
           "maximum": 100,
           "description": "Maximum number of agentic turns per request (0 = unlimited). Helps control token usage."
         },
+        "claudeCodeChatUI.disallowedTools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "List of tool names to block (e.g. Bash, Write). Passed as --disallowedTools to CLI."
+        },
         "claudeCodeChatUI.projectProfile.enabled": {
           "type": "boolean",
           "default": true,

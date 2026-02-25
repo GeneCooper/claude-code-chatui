@@ -214,7 +214,7 @@ function HooksEditor() {
 // ============================================================================
 
 export function SettingsPanel() {
-  const { thinkingIntensity, yoloMode, maxTurns, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
+  const { thinkingIntensity, yoloMode, maxTurns, disallowedTools, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
 
   // Snippet form
@@ -322,6 +322,36 @@ export function SettingsPanel() {
           <p className="text-[10px] opacity-50 mt-1">
             Limit agentic tool-use loops per request. 0 = unlimited. Prevents runaway loops and controls token usage.
           </p>
+        </div>
+
+        {/* Blocked Tools */}
+        <div>
+          <label className="text-xs font-medium block mb-1.5">Blocked Tools</label>
+          <p className="text-[10px] opacity-40 mb-2">
+            Prevent Claude from using specific tools. Passed as --disallowedTools to CLI.
+          </p>
+          <div className="space-y-1">
+            {['Bash', 'Edit', 'MultiEdit', 'Write', 'WebFetch', 'NotebookEdit'].map((tool) => {
+              const blocked = disallowedTools.includes(tool)
+              return (
+                <label key={tool} className="flex items-center gap-2 cursor-pointer py-0.5">
+                  <input
+                    type="checkbox"
+                    checked={blocked}
+                    onChange={() => {
+                      const next = blocked
+                        ? disallowedTools.filter((t) => t !== tool)
+                        : [...disallowedTools, tool]
+                      useSettingsStore.getState().updateSettings({ disallowedTools: next })
+                      updateSetting('disallowedTools', next)
+                    }}
+                    className="accent-(--vscode-focusBorder)"
+                  />
+                  <span className="text-xs font-mono opacity-80">{tool}</span>
+                </label>
+              )
+            })}
+          </div>
         </div>
 
         {/* Hooks Configuration */}

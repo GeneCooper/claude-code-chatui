@@ -206,8 +206,9 @@ interface SettingsState {
   thinkingIntensity: string
   yoloMode: boolean
   maxTurns: number
+  disallowedTools: string[]
   customSnippets: CustomSnippet[]
-  updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean; maxTurns: number }>) => void
+  updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean; maxTurns: number; disallowedTools: string[] }>) => void
   setCustomSnippets: (snippets: CustomSnippet[]) => void
   addCustomSnippet: (snippet: CustomSnippet) => void
   removeCustomSnippet: (command: string) => void
@@ -217,6 +218,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   thinkingIntensity: 'fast',
   yoloMode: true,
   maxTurns: 0,
+  disallowedTools: [],
   customSnippets: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
   setCustomSnippets: (snippets) => set({ customSnippets: snippets }),
