@@ -67,6 +67,7 @@ export class MCPService {
     'fetch': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
     'filesystem': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
     'puppeteer': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] },
+    'playwright': { type: 'stdio', command: 'npx', args: ['-y', '@anthropic-ai/mcp-server-playwright', '--headless'] },
   };
 
   private _ensureConfigDir(): void {
@@ -74,7 +75,25 @@ export class MCPService {
     if (!fs.existsSync(this._configPath)) {
       const config: MCPConfig = { mcpServers: { ...MCPService.DEFAULT_SERVERS } };
       fs.writeFileSync(this._configPath, JSON.stringify(config, null, 2), 'utf8');
+    } else {
+      this._migrateDefaults();
     }
+  }
+
+  private _migrateDefaults(): void {
+    try {
+      const config = JSON.parse(fs.readFileSync(this._configPath, 'utf8')) as MCPConfig;
+      let changed = false;
+      for (const [name, serverConfig] of Object.entries(MCPService.DEFAULT_SERVERS)) {
+        if (!(name in config.mcpServers)) {
+          config.mcpServers[name] = serverConfig;
+          changed = true;
+        }
+      }
+      if (changed) {
+        fs.writeFileSync(this._configPath, JSON.stringify(config, null, 2), 'utf8');
+      }
+    } catch { /* ignore corrupted config */ }
   }
 
   loadServers(): Record<string, MCPServerConfig> {
