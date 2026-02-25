@@ -628,6 +628,8 @@ export function InputArea() {
             fontSize: '13px',
             minHeight: '68px',
             lineHeight: 1.4,
+            outline: 'none',
+            boxShadow: 'none',
           }}
         />
 
