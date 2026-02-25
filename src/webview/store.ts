@@ -41,6 +41,7 @@ interface ChatState {
   tokens: TokenState
   totals: TotalsState
   todos: TodoItem[]
+  processStatus: { status: string; detail?: string } | null
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
@@ -48,6 +49,7 @@ interface ChatState {
   removeLoading: () => void
   setProcessing: (isProcessing: boolean) => void
   setSessionId: (id: string | null) => void
+  setProcessStatus: (status: { status: string; detail?: string } | null) => void
   updateTokens: (tokens: Partial<TokenState>) => void
   updateTotals: (totals: Partial<TotalsState>) => void
   updatePermissionStatus: (id: string, status: string) => void
@@ -62,6 +64,7 @@ export const useChatStore = create<ChatState>((set) => ({
   isProcessing: false,
   sessionId: null,
   todos: [],
+  processStatus: null,
   tokens: {
     totalTokensInput: 0, totalTokensOutput: 0,
     currentInputTokens: 0, currentOutputTokens: 0,
@@ -93,13 +96,14 @@ export const useChatStore = create<ChatState>((set) => ({
     return false
   },
 
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => set({ messages: [], processStatus: null }),
 
   removeLoading: () =>
-    set((state) => ({ messages: state.messages.filter((m) => m.type !== 'loading') })),
+    set((state) => ({ messages: state.messages.filter((m) => m.type !== 'loading'), processStatus: null })),
 
   setProcessing: (isProcessing) => set({ isProcessing }),
   setSessionId: (sessionId) => set({ sessionId }),
+  setProcessStatus: (processStatus) => set({ processStatus }),
 
   updateTokens: (tokens) =>
     set((state) => ({ tokens: { ...state.tokens, ...tokens } })),

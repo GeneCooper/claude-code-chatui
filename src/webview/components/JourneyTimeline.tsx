@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, useRef, memo } from 'react'
-import type { ChatMessage } from '../store'
+import { useChatStore, type ChatMessage } from '../store'
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
 import { ThinkingBlock } from './ThinkingBlock'
@@ -195,12 +195,21 @@ function LoadingIndicator() {
   const [elapsed, setElapsed] = useState(0)
   const [phraseIndex, setPhraseIndex] = useState(0)
   const [fadeClass, setFadeClass] = useState(true)
+  const [lastActivityAt, setLastActivityAt] = useState(Date.now())
+  const [secondsSinceActivity, setSecondsSinceActivity] = useState(0)
+  const processStatus = useChatStore((s) => s.processStatus)
+
+  // Track when processStatus changes (heartbeat)
+  useEffect(() => {
+    if (processStatus) setLastActivityAt(Date.now())
+  }, [processStatus])
 
   useEffect(() => {
     let tick = 0
     const id = setInterval(() => {
       tick++
       setElapsed(tick)
+      setSecondsSinceActivity(Math.floor((Date.now() - lastActivityAt) / 1000))
       // Rotate phrase every 3 seconds
       if (tick % 3 === 0) {
         setFadeClass(false)
@@ -211,45 +220,95 @@ function LoadingIndicator() {
       }
     }, 1000)
     return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Update secondsSinceActivity when lastActivityAt changes
+  useEffect(() => {
+    setSecondsSinceActivity(Math.floor((Date.now() - lastActivityAt) / 1000))
+  }, [lastActivityAt])
 
   const formatTime = (s: number) => {
     if (s < 60) return `${s}s`
     return `${Math.floor(s / 60)}m ${s % 60}s`
   }
 
+  const hasStarted = processStatus?.status === 'started' || processStatus?.status === 'active'
+  const isActive = processStatus?.status === 'active'
+  const isStale = secondsSinceActivity > 30
+
+  // Determine status label
+  let statusLabel: string
+  if (!processStatus) {
+    statusLabel = 'Starting...'
+  } else if (isStale) {
+    statusLabel = 'Waiting for response...'
+  } else if (isActive) {
+    statusLabel = LOADING_PHRASES[phraseIndex] + '...'
+  } else if (hasStarted) {
+    statusLabel = 'Connecting...'
+  } else {
+    statusLabel = LOADING_PHRASES[phraseIndex] + '...'
+  }
+
   return (
-    <div
-      className="flex items-center gap-3 px-3 py-2 text-xs"
-      style={{ opacity: 0.8 }}
-    >
-      {/* Animated sparkle spinner */}
-      <div
-        style={{
-          width: '16px',
-          height: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          animation: 'loadingSpin 2s linear infinite',
-          color: 'var(--chatui-accent)',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
-        </svg>
+    <div className="px-3 py-2 text-xs" style={{ opacity: 0.8 }}>
+      <div className="flex items-center gap-3">
+        {/* Animated sparkle spinner — pulse faster when active */}
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: isActive ? 'loadingSpin 1s linear infinite' : 'loadingSpin 2s linear infinite',
+            color: isStale ? 'var(--vscode-editorWarning-foreground, #cca700)' : 'var(--chatui-accent)',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
+          </svg>
+        </div>
+        <span
+          style={{
+            minWidth: '100px',
+            transition: 'opacity 0.2s ease',
+            opacity: fadeClass ? 1 : 0,
+            fontWeight: 500,
+          }}
+        >
+          {statusLabel}
+        </span>
+        <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}>{formatTime(elapsed)}</span>
+        {/* Activity dot — pulses green when stderr heartbeat is recent */}
+        {hasStarted && (
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: isStale ? '#cca700' : '#3fb950',
+              animation: isActive ? 'pulse 1s ease infinite' : 'none',
+              opacity: isStale ? 0.6 : 0.8,
+            }}
+          />
+        )}
       </div>
-      <span
-        style={{
-          minWidth: '100px',
-          transition: 'opacity 0.2s ease',
-          opacity: fadeClass ? 1 : 0,
-          fontWeight: 500,
-        }}
-      >
-        {LOADING_PHRASES[phraseIndex]}...
-      </span>
-      <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}>{formatTime(elapsed)}</span>
+      {/* Warning when no activity for 30+ seconds */}
+      {isStale && (
+        <div
+          style={{
+            marginTop: '4px',
+            marginLeft: '28px',
+            fontSize: '10px',
+            opacity: 0.5,
+            color: 'var(--vscode-editorWarning-foreground, #cca700)',
+          }}
+        >
+          No activity for {formatTime(secondsSinceActivity)} — process may be starting up
+        </div>
+      )}
     </div>
   )
 }

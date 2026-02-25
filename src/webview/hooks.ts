@@ -129,6 +129,10 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
   clearLoading: () => { useChatStore.getState().removeLoading() },
 
+  processStatus: (msg) => {
+    useChatStore.getState().setProcessStatus(msg.data as { status: string; detail?: string } | null)
+  },
+
   error: (msg) => {
     useChatStore.getState().removeLoading()
     const text = typeof msg.data === 'string' ? msg.data : ''

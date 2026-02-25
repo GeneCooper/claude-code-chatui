@@ -426,8 +426,13 @@ export class PanelProvider {
       void this._messageProcessor.processMessage(message);
     });
 
+    this._claudeService.onProcessStatus((data) => {
+      this._postMessage({ type: 'processStatus', data });
+    });
+
     this._claudeService.onProcessEnd(() => {
       this._stateManager.isProcessing = false;
+      this._postMessage({ type: 'processStatus', data: null });
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
@@ -436,6 +441,7 @@ export class PanelProvider {
     this._claudeService.onError((error) => {
       log.error('Claude service error', { message: error });
       this._stateManager.isProcessing = false;
+      this._postMessage({ type: 'processStatus', data: null });
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
 
