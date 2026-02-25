@@ -126,6 +126,31 @@ function useStreamingText(fullText: string, isStreaming: boolean) {
   return displayText
 }
 
+/**
+ * Detect tree-like structures (using box-drawing chars or ASCII pipes with ├──/└──)
+ * that remarkGfm would misinterpret as tables, and wrap them in fenced code blocks.
+ */
+function escapeTreeStructures(md: string): string {
+  // Split into code-fenced vs non-code sections to avoid double-wrapping
+  const parts = md.split(/(```[\s\S]*?```)/g)
+  return parts.map((part) => {
+    if (part.startsWith('```')) return part // already a code block
+    // Match consecutive lines that look like tree output:
+    // lines containing box-drawing chars (│├└─┌┐┘┤┬┴┼) or ASCII tree patterns (|  ├── etc.)
+    return part.replace(
+      /(?:^|\n)((?:[ \t]*[│├└┌┐┘┤┬┴┼─|].*\n?){2,})/g,
+      (match, treeBlock: string) => {
+        // Only wrap if the block contains actual tree connectors (├── or └──)
+        if (/[├└┌┐┘┤┬┴┼]/.test(treeBlock) || /\|[\s]*[├└]/.test(treeBlock)) {
+          const trimmed = treeBlock.replace(/\n$/, '')
+          return match.replace(treeBlock, `\`\`\`\n${trimmed}\n\`\`\`\n`)
+        }
+        return match
+      },
+    )
+  }).join('')
+}
+
 export const AssistantMessage = memo(function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
   const displayText = useStreamingText(text, isStreaming)
@@ -148,7 +173,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
   // Memoize markdown rendering — only re-parse when displayText actually changes
   const renderedMarkdown = useMemo(() => (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-      {displayText}
+      {escapeTreeStructures(displayText)}
     </ReactMarkdown>
   ), [displayText])
 
