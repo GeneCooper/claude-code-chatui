@@ -205,8 +205,9 @@ export interface CustomSnippet {
 interface SettingsState {
   thinkingIntensity: string
   yoloMode: boolean
+  maxTurns: number
   customSnippets: CustomSnippet[]
-  updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean }>) => void
+  updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean; maxTurns: number }>) => void
   setCustomSnippets: (snippets: CustomSnippet[]) => void
   addCustomSnippet: (snippet: CustomSnippet) => void
   removeCustomSnippet: (command: string) => void
@@ -215,6 +216,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set) => ({
   thinkingIntensity: 'fast',
   yoloMode: true,
+  maxTurns: 0,
   customSnippets: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
   setCustomSnippets: (snippets) => set({ customSnippets: snippets }),

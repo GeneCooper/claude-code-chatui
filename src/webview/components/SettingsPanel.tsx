@@ -214,7 +214,7 @@ function HooksEditor() {
 // ============================================================================
 
 export function SettingsPanel() {
-  const { thinkingIntensity, yoloMode, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
+  const { thinkingIntensity, yoloMode, maxTurns, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
 
   // Snippet form
@@ -297,6 +297,30 @@ export function SettingsPanel() {
           </label>
           <p className="text-[10px] opacity-50 mt-1">
             Skip all permission prompts. Use with caution — Claude will execute tools without asking.
+          </p>
+        </div>
+
+        {/* Max Turns */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium">Max Turns</label>
+            <span className="text-xs font-mono opacity-60">{maxTurns === 0 ? '∞' : maxTurns}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={50}
+            step={1}
+            value={maxTurns}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10)
+              useSettingsStore.getState().updateSettings({ maxTurns: v })
+              updateSetting('maxTurns', v)
+            }}
+            className="w-full accent-(--vscode-focusBorder)"
+          />
+          <p className="text-[10px] opacity-50 mt-1">
+            Limit agentic tool-use loops per request. 0 = unlimited. Prevents runaway loops and controls token usage.
           </p>
         </div>
 

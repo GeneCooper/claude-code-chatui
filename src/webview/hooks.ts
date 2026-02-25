@@ -208,7 +208,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   settingsData: (msg) => {
-    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; selectedModel?: string }
+    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; selectedModel?: string }
     const validModes = ['fast', 'deep']
     if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'fast'
     useSettingsStore.getState().updateSettings(data)

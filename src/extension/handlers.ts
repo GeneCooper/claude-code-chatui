@@ -506,6 +506,7 @@ interface WebviewSettings {
   includeFileContext: boolean;
   includeWorkspaceInfo: boolean;
   maxContextLines: number;
+  maxTurns: number;
 }
 
 const CONFIG_KEYS = {
@@ -526,6 +527,7 @@ const CONFIG_KEYS = {
   CONTEXT_INCLUDE_FILE: 'context.includeFileContext',
   CONTEXT_INCLUDE_WORKSPACE: 'context.includeWorkspaceInfo',
   CONTEXT_MAX_LINES: 'context.maxContextLines',
+  MAX_TURNS: 'maxTurns',
 } as const;
 
 const DEFAULTS = {
@@ -546,6 +548,7 @@ const DEFAULTS = {
   INCLUDE_FILE_CONTEXT: true,
   INCLUDE_WORKSPACE_INFO: true,
   MAX_CONTEXT_LINES: 500,
+  MAX_TURNS: 0,
 } as const;
 
 export class SettingsManager {
@@ -577,6 +580,7 @@ export class SettingsManager {
       includeFileContext: config.get<boolean>(CONFIG_KEYS.CONTEXT_INCLUDE_FILE, DEFAULTS.INCLUDE_FILE_CONTEXT),
       includeWorkspaceInfo: config.get<boolean>(CONFIG_KEYS.CONTEXT_INCLUDE_WORKSPACE, DEFAULTS.INCLUDE_WORKSPACE_INFO),
       maxContextLines: config.get<number>(CONFIG_KEYS.CONTEXT_MAX_LINES, DEFAULTS.MAX_CONTEXT_LINES),
+      maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
     };
   }
 
@@ -647,6 +651,11 @@ export class SettingsManager {
     }
     if (typeof settings.maxContextLines === 'number') {
       await config.update(CONFIG_KEYS.CONTEXT_MAX_LINES, settings.maxContextLines, vscode.ConfigurationTarget.Global);
+    }
+
+    // Max turns
+    if (typeof settings.maxTurns === 'number') {
+      await config.update(CONFIG_KEYS.MAX_TURNS, settings.maxTurns, vscode.ConfigurationTarget.Global);
     }
   }
 
@@ -799,7 +808,7 @@ const handleLoadConversation: MessageHandler = (msg, ctx) => { void ctx.loadConv
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, selectedModel: ctx.stateManager.selectedModel } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {
