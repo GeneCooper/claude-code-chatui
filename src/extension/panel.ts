@@ -427,49 +427,92 @@ export class PanelProvider {
   }
 
   /**
-   * Gather IDE context (active file, selection, diagnostics) to prepend to user messages.
-   * Respects the `context.includeFileContext` setting.
+   * Gather IDE context (workspace, git, active file, open files, selection, diagnostics)
+   * to prepend to user messages. Respects the `context.includeFileContext` setting.
    */
   private _gatherIDEContext(): string {
     const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
     if (!config.get<boolean>('context.includeFileContext', true)) return '';
 
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return '';
-
     const parts: string[] = [];
-    const doc = editor.document;
-    const relativePath = vscode.workspace.asRelativePath(doc.uri, false);
 
-    // Active file info
-    parts.push(`Active file: ${relativePath} (${doc.languageId})`);
-
-    // Selection (cap at 200 lines)
-    const selection = editor.selection;
-    if (!selection.isEmpty) {
-      const selectedText = doc.getText(selection);
-      const lines = selectedText.split('\n');
-      const capped = lines.length > 200 ? lines.slice(0, 200).join('\n') + '\n... (truncated)' : selectedText;
-      parts.push(`Selected text (lines ${selection.start.line + 1}-${selection.end.line + 1}):\n\`\`\`\n${capped}\n\`\`\``);
+    // --- Layer 1: Workspace & Environment ---
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      parts.push(`Workspace: ${workspaceFolder.uri.fsPath}`);
     }
 
-    // Diagnostics — errors and warnings in current file (cap at 20)
-    const diagnostics = vscode.languages.getDiagnostics(doc.uri);
-    const problems = diagnostics
-      .filter(d => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning)
-      .slice(0, 20);
-    if (problems.length > 0) {
-      const label = problems.length === 1 ? '1 problem' : `${problems.length} problems`;
-      const items = problems.map(d => {
-        const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'Error' : 'Warning';
-        const src = d.source ? ` [${d.source}]` : '';
-        return `- Line ${d.range.start.line + 1}: ${sev}: ${d.message}${src}`;
-      });
-      parts.push(`Diagnostics (${label}):\n${items.join('\n')}`);
+    // Git status (branch + dirty files) — lightweight, no spawn
+    this._appendGitContext(parts, workspaceFolder);
+
+    // --- Layer 2: Open files list (cap at 10) ---
+    const openTabs = vscode.window.tabGroups.all
+      .flatMap(g => g.tabs)
+      .filter(t => t.input && (t.input as { uri?: vscode.Uri }).uri)
+      .map(t => vscode.workspace.asRelativePath((t.input as { uri: vscode.Uri }).uri, false))
+      .slice(0, 10);
+    if (openTabs.length > 0) {
+      parts.push(`Open files: ${openTabs.join(', ')}`);
+    }
+
+    // --- Layer 3: Active file details ---
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      const doc = editor.document;
+      const relativePath = vscode.workspace.asRelativePath(doc.uri, false);
+
+      // Active file info
+      parts.push(`Active file: ${relativePath} (${doc.languageId})`);
+
+      // Selection (cap at 200 lines)
+      const selection = editor.selection;
+      if (!selection.isEmpty) {
+        const selectedText = doc.getText(selection);
+        const lines = selectedText.split('\n');
+        const capped = lines.length > 200 ? lines.slice(0, 200).join('\n') + '\n... (truncated)' : selectedText;
+        parts.push(`Selected text (lines ${selection.start.line + 1}-${selection.end.line + 1}):\n\`\`\`\n${capped}\n\`\`\``);
+      }
+
+      // Diagnostics — errors and warnings in current file (cap at 20)
+      const diagnostics = vscode.languages.getDiagnostics(doc.uri);
+      const problems = diagnostics
+        .filter(d => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning)
+        .slice(0, 20);
+      if (problems.length > 0) {
+        const label = problems.length === 1 ? '1 problem' : `${problems.length} problems`;
+        const items = problems.map(d => {
+          const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'Error' : 'Warning';
+          const src = d.source ? ` [${d.source}]` : '';
+          return `- Line ${d.range.start.line + 1}: ${sev}: ${d.message}${src}`;
+        });
+        parts.push(`Diagnostics (${label}):\n${items.join('\n')}`);
+      }
     }
 
     if (parts.length === 0) return '';
     return `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]`;
+  }
+
+  /**
+   * Append git branch and dirty-file info by reading .git files directly (no child process).
+   */
+  private _appendGitContext(parts: string[], workspaceFolder?: vscode.WorkspaceFolder): void {
+    if (!workspaceFolder) return;
+
+    const gitDir = path.join(workspaceFolder.uri.fsPath, '.git');
+    try {
+      if (!fs.existsSync(gitDir)) return;
+
+      // Read current branch from .git/HEAD
+      const headContent = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf-8').trim();
+      const branch = headContent.startsWith('ref: refs/heads/')
+        ? headContent.replace('ref: refs/heads/', '')
+        : headContent.slice(0, 8); // detached HEAD — show short hash
+
+      parts.push(`Git branch: ${branch}`);
+    } catch {
+      // .git read failed — skip silently
+    }
   }
 
   private _setupClaudeServiceHandlers(): void {
