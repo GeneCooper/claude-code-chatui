@@ -818,7 +818,25 @@ const handleGetConversationList: MessageHandler = (_msg, ctx) => {
   ctx.postMessage({ type: 'conversationList', data: ctx.conversationService.getConversationList() });
 };
 
-const handleLoadConversation: MessageHandler = (msg, ctx) => { void ctx.loadConversation(msg.filename as string); };
+const handleLoadConversation: MessageHandler = (msg, ctx) => {
+  const filename = msg.filename as string;
+  const conversation = ctx.conversationService.loadConversation(filename);
+  if (!conversation) {
+    ctx.postMessage({ type: 'error', data: 'Failed to load conversation' });
+    return;
+  }
+  ctx.panelManager?.createNewPanel(undefined, false, {
+    title: (() => {
+      const first = conversation.messages.find(m => m.messageType === 'userInput');
+      if (!first) return 'Claude Code ChatUI';
+      const text = typeof first.data === 'string' ? first.data : (first.data && typeof first.data === 'object' && 'text' in first.data ? String((first.data as Record<string, unknown>).text) : '');
+      return text.slice(0, 40) || 'Claude Code ChatUI';
+    })(),
+    initialConversation: conversation.messages,
+    sessionId: conversation.sessionId,
+    totalCost: conversation.totalCost,
+  });
+};
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);

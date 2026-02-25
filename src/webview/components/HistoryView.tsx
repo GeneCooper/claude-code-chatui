@@ -188,7 +188,6 @@ export function HistoryView() {
                     key={conv.filename}
                     onClick={() => {
                       postMessage({ type: 'loadConversation', filename: conv.filename })
-                      setActiveView('chat')
                     }}
                     className="w-full text-left cursor-pointer border-none text-inherit"
                     style={{
