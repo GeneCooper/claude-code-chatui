@@ -62,12 +62,11 @@ export class MCPService {
 
   private static readonly DEFAULT_SERVERS: Record<string, MCPServerConfig> = {
     'context7': { type: 'http', url: 'https://context7.liam.sh/mcp' },
-    'sequential-thinking': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
     'memory': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
     'fetch': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
-    'filesystem': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
-    'puppeteer': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] },
     'playwright': { type: 'stdio', command: 'npx', args: ['-y', '@anthropic-ai/mcp-server-playwright', '--headless'] },
+    'magicui': { type: 'stdio', command: 'npx', args: ['-y', '@magicuidesign/mcp@latest'] },
+    'shadcn': { type: 'stdio', command: 'npx', args: ['shadcn@latest', 'mcp'] },
   };
 
   private _ensureConfigDir(): void {

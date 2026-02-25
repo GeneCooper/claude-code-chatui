@@ -3,6 +3,15 @@ import { postMessage } from '../hooks'
 import { useMCPStore } from '../store'
 import { useUIStore } from '../store'
 
+const SERVER_DESCRIPTIONS: Record<string, string> = {
+  'context7': 'Up-to-date library docs',
+  'memory': 'Persistent memory/knowledge',
+  'fetch': 'HTTP fetch requests',
+  'playwright': 'Browser automation & testing',
+  'magicui': '150+ modern React/Tailwind components',
+  'shadcn': 'Clean Tailwind UI components',
+}
+
 const POPULAR_SERVERS = [
   {
     name: 'context7',
@@ -10,14 +19,6 @@ const POPULAR_SERVERS = [
     type: 'http' as const,
     url: 'https://context7.liam.sh/mcp',
     icon: '📚',
-  },
-  {
-    name: 'sequential-thinking',
-    description: 'Step-by-step reasoning',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
-    icon: '🧠',
   },
   {
     name: 'memory',
@@ -28,28 +29,12 @@ const POPULAR_SERVERS = [
     icon: '💾',
   },
   {
-    name: 'puppeteer',
-    description: 'Browser automation',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-puppeteer'],
-    icon: '🎭',
-  },
-  {
     name: 'fetch',
     description: 'HTTP fetch requests',
     type: 'stdio' as const,
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-fetch'],
     icon: '🌐',
-  },
-  {
-    name: 'filesystem',
-    description: 'Read/write local files',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
-    icon: '📁',
   },
 ]
 
@@ -232,9 +217,14 @@ export function MCPPanel() {
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: SERVER_DESCRIPTIONS[sName] ? '2px' : '4px' }}>
                       {sName}
                     </div>
+                    {SERVER_DESCRIPTIONS[sName] && (
+                      <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', opacity: 0.8, marginBottom: '4px' }}>
+                        {SERVER_DESCRIPTIONS[sName]}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <span
                         style={{
