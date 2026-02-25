@@ -26,7 +26,8 @@ const markdownComponents = {
       <table
         {...props}
         style={{
-          width: '100%',
+          minWidth: '100%',
+          width: 'max-content',
           borderCollapse: 'collapse',
           fontSize: '12px',
           border: '1px solid var(--vscode-panel-border)',
@@ -58,6 +59,7 @@ const markdownComponents = {
       style={{
         padding: '5px 10px',
         borderBottom: '1px solid rgba(128, 128, 128, 0.1)',
+        whiteSpace: 'nowrap',
       }}
     >
       {children}
