@@ -38,7 +38,8 @@ export function ClaudeMdBanner() {
 
   const handleGenerate = () => {
     useUIStore.getState().setShowClaudeMdBanner(false)
-    postMessage({ type: 'dismissClaudeMdBanner' })
+    // Don't permanently dismiss — if generation fails, the banner should reappear next session.
+    // Only the explicit "×" dismiss button should persist the dismissal.
 
     const store = useChatStore.getState()
     markOptimisticUserInput()

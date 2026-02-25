@@ -1026,9 +1026,6 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
 }
 
 function checkClaudeMdExists(ctx: MessageHandlerContext): void {
-  const dismissed = ctx.extensionContext.workspaceState.get<boolean>('claude.claudeMdBannerDismissed', false);
-  if (dismissed) return;
-
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) return;
 
@@ -1038,9 +1035,16 @@ function checkClaudeMdExists(ctx: MessageHandlerContext): void {
     path.join(root, '.claude', 'CLAUDE.md'),
   ].some((p) => fs.existsSync(p));
 
-  if (!exists) {
-    ctx.postMessage({ type: 'showClaudeMdBanner' });
+  if (exists) {
+    // File now exists — clear any previous dismissal so future deletions are detected
+    void ctx.extensionContext.workspaceState.update('claude.claudeMdBannerDismissed', false);
+    return;
   }
+
+  const dismissed = ctx.extensionContext.workspaceState.get<boolean>('claude.claudeMdBannerDismissed', false);
+  if (dismissed) return;
+
+  ctx.postMessage({ type: 'showClaudeMdBanner' });
 }
 
 const handleDismissClaudeMdBanner: MessageHandler = (_msg, ctx) => {
