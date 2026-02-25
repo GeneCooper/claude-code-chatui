@@ -11,7 +11,7 @@ import type { PanelManager } from './panelManager';
 import { FILE_EDIT_TOOLS, FILE_SEARCH_EXCLUDES, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import type { ConversationService, UsageService, MCPService } from './storage';
 
 // ============================================================================
 // DiffContentProvider
@@ -667,7 +667,6 @@ export interface MessageHandlerContext {
   claudeService: ClaudeService;
   conversationService: ConversationService;
   mcpService: MCPService;
-  backupService: BackupService;
   usageService: UsageService;
   permissionService: PermissionService;
   stateManager: SessionStateManager;
@@ -860,20 +859,6 @@ const handleDeleteMCPServer: MessageHandler = (msg, ctx) => {
     ctx.postMessage({ type: 'mcpServerDeleted', data: { name: msg.name } });
   } else {
     ctx.postMessage({ type: 'mcpServerError', data: { error: `Server "${msg.name}" not found` } });
-  }
-};
-
-const handleCreateBackup: MessageHandler = async (msg, ctx) => {
-  const commit = await ctx.backupService.createCheckpoint(msg.message as string);
-  if (commit) ctx.postMessage({ type: 'restorePoint', data: commit });
-};
-
-const handleRestoreBackup: MessageHandler = async (msg, ctx) => {
-  const success = await ctx.backupService.restoreToCommit(msg.commitSha as string);
-  if (success) {
-    ctx.postMessage({ type: 'output', data: 'Workspace restored to checkpoint successfully.' });
-  } else {
-    ctx.postMessage({ type: 'error', data: 'Failed to restore checkpoint.' });
   }
 };
 
@@ -1099,8 +1084,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   loadMCPServers: handleLoadMCPServers,
   saveMCPServer: handleSaveMCPServer,
   deleteMCPServer: handleDeleteMCPServer,
-  createBackup: handleCreateBackup,
-  restoreBackup: handleRestoreBackup,
   refreshUsage: handleRefreshUsage,
   deleteConversation: handleDeleteConversation,
   searchConversations: handleSearchConversations,

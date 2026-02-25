@@ -172,17 +172,6 @@ export interface MCPConfig {
 }
 
 // ============================================================================
-// Backup types
-// ============================================================================
-
-export interface BackupCommit {
-  id: string;
-  sha: string;
-  message: string;
-  timestamp: string;
-}
-
-// ============================================================================
 // File picker types
 // ============================================================================
 
@@ -251,8 +240,6 @@ export type WebviewToExtensionMessage =
   | { type: 'loadMCPServers' }
   | { type: 'saveMCPServer'; name: string; config: MCPServerConfig }
   | { type: 'deleteMCPServer'; name: string }
-  | { type: 'createBackup'; message: string }
-  | { type: 'restoreBackup'; commitSha: string }
   | { type: 'refreshUsage' }
   | { type: 'openCCUsageTerminal' }
   | { type: 'pickImageFile' }

@@ -13,7 +13,7 @@ export interface TodoItem {
 
 export interface ChatMessage {
   id: string
-  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'restorePoint' | 'todosUpdate'
+  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'todosUpdate'
   data: unknown
   timestamp: string
 }

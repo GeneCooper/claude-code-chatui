@@ -6,7 +6,6 @@ import { ThinkingBlock } from './ThinkingBlock'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
-import { RestorePoint } from './RestorePoint'
 import { ErrorBoundary } from './ErrorBoundary'
 
 // ============================================================================
@@ -120,7 +119,6 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
       case 'userInput':
       case 'error':
       case 'permissionRequest':
-      case 'restorePoint':
       case 'compactBoundary':
       case 'compacting':
       case 'loading': {
@@ -361,8 +359,6 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
     }
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
-    case 'restorePoint':
-      return <RestorePoint data={message.data as { sha: string; message: string; timestamp: string }} />
     default:
       return null
   }

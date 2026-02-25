@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ClaudeService } from './claude';
-import { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import { ConversationService, UsageService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
@@ -125,7 +125,6 @@ export class PanelProvider {
     private readonly _claudeService: ClaudeService,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
-    private readonly _backupService: BackupService,
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
@@ -365,7 +364,6 @@ export class PanelProvider {
       claudeService: this._claudeService,
       conversationService: this._conversationService,
       mcpService: this._mcpService,
-      backupService: this._backupService,
       usageService: this._usageService,
       permissionService: this._permissionService,
       stateManager: this._stateManager,
@@ -394,10 +392,6 @@ export class PanelProvider {
     this._stateManager.draftMessage = '';
 
     this._claudeService.setSessionId(this._sessionId);
-
-    void this._backupService.createCheckpoint(text).then((commit) => {
-      if (commit) this._postMessage({ type: 'restorePoint', data: commit });
-    });
 
     // Save userInput to conversation
     const userInputData = { text, images };

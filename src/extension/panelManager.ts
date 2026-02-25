@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, BackupService, UsageService, MCPService } from './storage';
+import type { ConversationService, UsageService, MCPService } from './storage';
 import { PanelProvider, getWebviewHtml } from './panel';
 import type { ConversationMessage } from '../shared/types';
 
@@ -15,7 +15,6 @@ export class PanelManager {
     private readonly _context: vscode.ExtensionContext,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
-    private readonly _backupService: BackupService,
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
   ) {}
@@ -39,7 +38,6 @@ export class PanelManager {
       claudeService,
       this._conversationService,
       this._mcpService,
-      this._backupService,
       this._usageService,
       this._permissionService,
       this,
@@ -91,7 +89,6 @@ export class PanelManager {
       claudeService,
       this._conversationService,
       this._mcpService,
-      this._backupService,
       this._usageService,
       this._permissionService,
       this,

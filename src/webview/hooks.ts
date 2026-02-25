@@ -70,7 +70,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const chatMessages = data.messages
       .filter((m) => {
         // Only include message types that go into the messages array
-        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest', 'restorePoint']
+        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest']
         return validTypes.includes(m.type)
       })
       .map((m) => ({
@@ -237,8 +237,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   mcpServerError: (msg) => {
     useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
   },
-
-  restorePoint: (msg) => { useChatStore.getState().addMessage({ type: 'restorePoint', data: msg.data }) },
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
   usageError: () => {},
