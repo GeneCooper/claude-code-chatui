@@ -194,6 +194,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   showInstallModal: () => { useUIStore.getState().setShowInstallModal(true) },
+  showClaudeMdBanner: () => { useUIStore.getState().setShowClaudeMdBanner(true) },
 
   showLoginRequired: (msg) => {
     const loginData = msg.data as { message: string }

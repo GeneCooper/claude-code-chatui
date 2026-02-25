@@ -3,6 +3,7 @@ import { useChatStore, useUIStore } from '../store'
 import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
+import { ClaudeMdBanner } from './ClaudeMdBanner'
 
 interface ChatViewProps {
   onHintClick?: (text: string) => void
@@ -28,7 +29,10 @@ export function ChatView({ onHintClick }: ChatViewProps) {
       className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 min-h-0"
     >
       {messages.length === 0 && (
-        <WelcomeScreen onHintClick={onHintClick || (() => {})} />
+        <>
+          <ClaudeMdBanner />
+          <WelcomeScreen onHintClick={onHintClick || (() => {})} />
+        </>
       )}
 
       {messages.length > 0 && (

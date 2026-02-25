@@ -730,6 +730,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     data: { platform: process.platform, isWindows: process.platform === 'win32' },
   });
   checkCliAvailable(ctx);
+  checkClaudeMdExists(ctx);
 
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
@@ -1024,6 +1025,28 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
   });
 }
 
+function checkClaudeMdExists(ctx: MessageHandlerContext): void {
+  const dismissed = ctx.extensionContext.workspaceState.get<boolean>('claude.claudeMdBannerDismissed', false);
+  if (dismissed) return;
+
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) return;
+
+  const root = workspaceFolder.uri.fsPath;
+  const exists = [
+    path.join(root, 'CLAUDE.md'),
+    path.join(root, '.claude', 'CLAUDE.md'),
+  ].some((p) => fs.existsSync(p));
+
+  if (!exists) {
+    ctx.postMessage({ type: 'showClaudeMdBanner' });
+  }
+}
+
+const handleDismissClaudeMdBanner: MessageHandler = (_msg, ctx) => {
+  void ctx.extensionContext.workspaceState.update('claude.claudeMdBannerDismissed', true);
+};
+
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
 // ============================================================================
@@ -1125,6 +1148,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
+  dismissClaudeMdBanner: handleDismissClaudeMdBanner,
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

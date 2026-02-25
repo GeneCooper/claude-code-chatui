@@ -262,6 +262,7 @@ interface UIState {
   usageData: UsageData | null
   accountType: 'pro' | 'max' | undefined
   platformInfo: { platform: string; isWindows: boolean } | null
+  showClaudeMdBanner: boolean
   notifications: Notification[]
 
   setActiveView: (view: ActiveView) => void
@@ -278,6 +279,7 @@ interface UIState {
   setUsageData: (data: UsageData | null) => void
   setAccountType: (type: 'pro' | 'max' | undefined) => void
   setPlatformInfo: (info: { platform: string; isWindows: boolean } | null) => void
+  setShowClaudeMdBanner: (show: boolean) => void
   showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
   dismissNotification: (id: string) => void
 }
@@ -299,6 +301,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   usageData: null,
   accountType: undefined,
   platformInfo: null,
+  showClaudeMdBanner: false,
   notifications: [],
 
   setActiveView: (view) => set({ activeView: view }),
@@ -315,6 +318,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
+  setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
 
   showNotification: (type, title, message, timeout = 5000) => {
     const id = `notif-${++notifCounter}`
