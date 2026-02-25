@@ -345,12 +345,20 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
       return (message.data as { isCompacting: boolean }).isCompacting ? (
         <div className="text-center text-xs opacity-50 py-1">Compacting conversation...</div>
       ) : null
-    case 'compactBoundary':
+    case 'compactBoundary': {
+      const compactData = message.data as { trigger?: string; preTokens?: number }
+      const preTokens = compactData?.preTokens
+      const trigger = compactData?.trigger
       return (
-        <div className="text-center text-xs opacity-40 py-1 border-t border-dashed border-(--vscode-panel-border)">
-          Conversation compacted
+        <div className="text-center text-xs py-2 border-t border-dashed border-(--vscode-panel-border)" style={{ opacity: 0.5 }}>
+          <span style={{ color: 'var(--chatui-accent, #7c6fe0)' }}>Context compacted</span>
+          {preTokens != null && preTokens > 0 && (
+            <span style={{ opacity: 0.7 }}>{' · '}{preTokens >= 1000 ? `${(preTokens / 1000).toFixed(1)}K` : preTokens} tokens compressed</span>
+          )}
+          {trigger && <span style={{ opacity: 0.5 }}>{' · '}{trigger}</span>}
         </div>
       )
+    }
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
     case 'restorePoint':

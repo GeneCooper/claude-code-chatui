@@ -32,6 +32,9 @@ interface TotalsState {
   totalTokensInput: number
   totalTokensOutput: number
   requestCount: number
+  currentCost?: number
+  currentDuration?: number
+  currentTurns?: number
 }
 
 interface ChatState {
