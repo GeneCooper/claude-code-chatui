@@ -2,7 +2,7 @@ import { postMessage } from '../hooks'
 import { useChatStore, useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 
-const GENERATE_PROMPT = `请深入分析当前项目的代码，然后在项目根目录创建 CLAUDE.md 文件。
+export const GENERATE_CLAUDE_MD_PROMPT = `请深入分析当前项目的代码，然后在项目根目录创建 CLAUDE.md 文件。
 
 CLAUDE.md 应包含以下内容：
 
@@ -43,12 +43,12 @@ export function ClaudeMdBanner() {
 
     const store = useChatStore.getState()
     markOptimisticUserInput()
-    store.addMessage({ type: 'userInput', data: { text: GENERATE_PROMPT } })
+    store.addMessage({ type: 'userInput', data: { text: GENERATE_CLAUDE_MD_PROMPT } })
     store.setProcessing(true)
     store.addMessage({ type: 'loading', data: 'Claude is working...' })
     useUIStore.getState().setRequestStartTime(Date.now())
 
-    postMessage({ type: 'sendMessage', text: GENERATE_PROMPT })
+    postMessage({ type: 'sendMessage', text: GENERATE_CLAUDE_MD_PROMPT })
   }
 
   const handleDismiss = () => {

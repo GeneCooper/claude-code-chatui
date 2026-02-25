@@ -4,6 +4,7 @@ import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
+import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
 import { SlashCommandPicker } from './SlashCommandPicker'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
@@ -25,6 +26,7 @@ export function InputArea() {
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
+  const showClaudeMdBanner = useUIStore((s) => s.showClaudeMdBanner)
   const showSlashPicker = useUIStore((s) => s.showSlashPicker)
   const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
   const draftText = useUIStore((s) => s.draftText)
@@ -577,6 +579,43 @@ export function InputArea() {
           </svg>
           <span>YOLO</span>
         </button>
+
+        {/* CLAUDE.md generate button — shown only when no CLAUDE.md detected */}
+        {showClaudeMdBanner && (
+          <button
+            onClick={() => {
+              useUIStore.getState().setShowClaudeMdBanner(false)
+              const store = useChatStore.getState()
+              markOptimisticUserInput()
+              store.addMessage({ type: 'userInput', data: { text: GENERATE_CLAUDE_MD_PROMPT } })
+              store.setProcessing(true)
+              store.addMessage({ type: 'loading', data: 'Claude is working...' })
+              useUIStore.getState().setRequestStartTime(Date.now())
+              postMessage({ type: 'sendMessage', text: GENERATE_CLAUDE_MD_PROMPT })
+            }}
+            disabled={isProcessing}
+            className="flex items-center gap-1 cursor-pointer border-none"
+            style={{
+              padding: '2px 10px',
+              borderRadius: '12px',
+              border: '1px solid #10b981',
+              background: 'rgba(16, 185, 129, 0.1)',
+              color: '#10b981',
+              opacity: isProcessing ? 0.4 : 1,
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            title="No CLAUDE.md detected — click to generate one"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            <span>CLAUDE.md</span>
+          </button>
+        )}
       </div>
 
       {/* Textarea container */}
