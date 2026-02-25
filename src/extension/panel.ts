@@ -405,7 +405,13 @@ export class PanelProvider {
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
 
     const yoloMode = this._settingsManager.isYoloModeEnabled();
-    const disallowedTools = this._settingsManager.getDisallowedTools();
+    const disallowedTools = [...this._settingsManager.getDisallowedTools()];
+    // In YOLO mode, disallow AskUserQuestion — the CLI can't get real user input
+    // in stream-json mode with --dangerously-skip-permissions, so the tool returns
+    // a useless result and truncates the conversation.
+    if (yoloMode && !disallowedTools.includes('AskUserQuestion')) {
+      disallowedTools.push('AskUserQuestion');
+    }
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
