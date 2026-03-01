@@ -172,7 +172,7 @@ export class ClaudeService implements vscode.Disposable {
       actualMessage = `${prompt}\n\n${actualMessage}`;
     }
 
-    const args = ['--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
+    const args = ['-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
     args.push('--append-system-prompt', AGENT_SYSTEM_PROMPT);
 
     if (options.yoloMode) {
