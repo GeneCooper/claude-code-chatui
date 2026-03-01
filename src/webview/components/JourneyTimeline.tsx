@@ -113,10 +113,8 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
     if (currentPlan) {
       if (currentPlan.steps.some((s) => s.toolResult && (s.toolResult.data as Record<string, unknown>)?.isError)) {
         currentPlan.status = 'failed'
-      } else if (currentPlan.steps.every((s) => s.toolResult)) {
-        currentPlan.status = 'completed'
       } else {
-        currentPlan.status = 'executing'
+        currentPlan.status = 'completed'
       }
       timeline.push(currentPlan)
       currentPlan = null
