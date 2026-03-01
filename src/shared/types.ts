@@ -235,15 +235,12 @@ export type WebviewToExtensionMessage =
   | { type: 'openModelTerminal' }
   | { type: 'runInstallCommand' }
   | { type: 'saveInputText'; text: string }
-  | { type: 'executeSlashCommand'; command: string }
-  | { type: 'getWorkspaceFiles'; searchTerm?: string }
+  | { type: 'openLoginTerminal' }
   | { type: 'loadMCPServers' }
   | { type: 'saveMCPServer'; name: string; config: MCPServerConfig }
   | { type: 'deleteMCPServer'; name: string }
   | { type: 'refreshUsage' }
   | { type: 'openCCUsageTerminal' }
-  | { type: 'pickImageFile' }
-  | { type: 'pickWorkspaceFile' }
   | { type: 'getClipboardText' }
   | { type: 'resolveDroppedFile'; uri: string };
 

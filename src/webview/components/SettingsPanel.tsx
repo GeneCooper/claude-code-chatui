@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { postMessage } from '../hooks'
-import { useSettingsStore, type CustomSnippet } from '../store'
+import { useSettingsStore } from '../store'
 import { useUIStore } from '../store'
 
 // ============================================================================
@@ -214,14 +214,8 @@ function HooksEditor() {
 // ============================================================================
 
 export function SettingsPanel() {
-  const { thinkingIntensity, yoloMode, maxTurns, disallowedTools, customSnippets, addCustomSnippet, removeCustomSnippet } = useSettingsStore()
+  const { thinkingIntensity, yoloMode, maxTurns, disallowedTools } = useSettingsStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
-
-  // Snippet form
-  const [showSnippetForm, setShowSnippetForm] = useState(false)
-  const [snippetCmd, setSnippetCmd] = useState('')
-  const [snippetDesc, setSnippetDesc] = useState('')
-  const [snippetPrompt, setSnippetPrompt] = useState('')
 
   useEffect(() => {
     postMessage({ type: 'getSettings' })
@@ -234,26 +228,6 @@ export function SettingsPanel() {
     } else if (key === 'yoloMode') {
       useSettingsStore.getState().updateSettings({ yoloMode: value as boolean })
     }
-  }
-
-  const handleSaveSnippet = () => {
-    if (!snippetCmd.trim() || !snippetPrompt.trim()) return
-    const snippet: CustomSnippet = {
-      command: snippetCmd.trim().replace(/\s+/g, '-').toLowerCase(),
-      description: snippetDesc.trim() || snippetCmd.trim(),
-      prompt: snippetPrompt.trim(),
-    }
-    addCustomSnippet(snippet)
-    postMessage({ type: 'updateSettings', settings: { 'customSnippets': [...customSnippets.filter(s => s.command !== snippet.command), snippet] } })
-    setSnippetCmd('')
-    setSnippetDesc('')
-    setSnippetPrompt('')
-    setShowSnippetForm(false)
-  }
-
-  const handleDeleteSnippet = (command: string) => {
-    removeCustomSnippet(command)
-    postMessage({ type: 'updateSettings', settings: { 'customSnippets': customSnippets.filter(s => s.command !== command) } })
   }
 
   return (
@@ -357,74 +331,6 @@ export function SettingsPanel() {
         {/* Hooks Configuration */}
         <div className="border-t border-(--vscode-panel-border) pt-3">
           <HooksEditor />
-        </div>
-
-        {/* Custom Prompt Snippets */}
-        <div className="border-t border-(--vscode-panel-border) pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium">Custom Prompt Snippets</label>
-            <button
-              onClick={() => setShowSnippetForm(!showSnippetForm)}
-              className="text-[10px] px-2 py-0.5 rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none"
-            >
-              {showSnippetForm ? 'Cancel' : '+ Add'}
-            </button>
-          </div>
-
-          {showSnippetForm && (
-            <div className="space-y-2 mb-3 p-2 rounded border border-(--vscode-panel-border)">
-              <input
-                value={snippetCmd}
-                onChange={(e) => setSnippetCmd(e.target.value)}
-                placeholder="Command name (e.g. my-review)"
-                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
-              />
-              <input
-                value={snippetDesc}
-                onChange={(e) => setSnippetDesc(e.target.value)}
-                placeholder="Description (optional)"
-                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
-              />
-              <textarea
-                value={snippetPrompt}
-                onChange={(e) => setSnippetPrompt(e.target.value)}
-                placeholder="Prompt template..."
-                rows={3}
-                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded resize-none"
-              />
-              <button
-                onClick={handleSaveSnippet}
-                disabled={!snippetCmd.trim() || !snippetPrompt.trim()}
-                className="px-3 py-1 text-xs rounded bg-(--vscode-button-background) text-(--vscode-button-foreground) cursor-pointer border-none disabled:opacity-50"
-              >
-                Save Snippet
-              </button>
-            </div>
-          )}
-
-          {customSnippets.length > 0 ? (
-            <div className="space-y-1">
-              {customSnippets.map((snippet) => (
-                <div
-                  key={snippet.command}
-                  className="flex items-center justify-between px-2 py-1.5 rounded border border-(--vscode-panel-border) text-xs"
-                >
-                  <div className="truncate flex-1">
-                    <span className="font-mono opacity-60">/{snippet.command}</span>
-                    <span className="opacity-40 ml-2">{snippet.description}</span>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteSnippet(snippet.command)}
-                    className="px-1.5 py-0.5 text-[10px] opacity-50 hover:opacity-100 cursor-pointer bg-transparent border-none text-(--vscode-errorForeground)"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[10px] opacity-40">No custom snippets. Add one to use as /command.</p>
-          )}
         </div>
 
         {/* Navigation shortcuts */}

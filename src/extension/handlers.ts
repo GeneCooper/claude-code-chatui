@@ -8,7 +8,7 @@ import type {
   MCPServerConfig,
 } from '../shared/types';
 import type { PanelManager } from './panelManager';
-import { FILE_EDIT_TOOLS, FILE_SEARCH_EXCLUDES, HIDDEN_RESULT_TOOLS } from '../shared/constants';
+import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
 import type { ConversationService, UsageService, MCPService } from './storage';
@@ -875,39 +875,10 @@ const handleUpdateSettings: MessageHandler = (msg, ctx) => {
   void ctx.settingsManager.updateSettings(msg.settings as Record<string, unknown>);
 };
 
-const handleExecuteSlashCommand: MessageHandler = (msg, ctx) => {
-  const command = msg.command as string;
-  if (command === 'compact') { ctx.handleSendMessage('/compact'); return; }
-  if (command === 'clear') { void ctx.newSession(); return; }
-
-  const sessionId = ctx.claudeService.sessionId;
-  const args = sessionId ? `/${command} --resume ${sessionId}` : `/${command}`;
-  const terminal = vscode.window.createTerminal({ name: `Claude: /${command}` });
-  terminal.sendText(`claude ${args}`);
+const handleOpenLoginTerminal: MessageHandler = () => {
+  const terminal = vscode.window.createTerminal({ name: 'Claude: Login' });
+  terminal.sendText('claude /login');
   terminal.show();
-};
-
-const handleGetWorkspaceFiles: MessageHandler = async (msg, ctx) => {
-  const searchTerm = msg.searchTerm as string | undefined;
-  try {
-    const uris = await vscode.workspace.findFiles('**/*', FILE_SEARCH_EXCLUDES, 500);
-    let files = uris.map((uri) => {
-      const relativePath = vscode.workspace.asRelativePath(uri, false);
-      const name = relativePath.split(/[\\/]/).pop() || '';
-      return { name, path: relativePath, fsPath: uri.fsPath };
-    });
-
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      files = files.filter((f) => f.name.toLowerCase().includes(lower) || f.path.toLowerCase().includes(lower));
-    }
-
-    files.sort((a, b) => a.path.localeCompare(b.path));
-    files = files.slice(0, 50);
-    ctx.postMessage({ type: 'workspaceFiles', data: files });
-  } catch {
-    ctx.postMessage({ type: 'workspaceFiles', data: [] });
-  }
 };
 
 const handleLoadMCPServers: MessageHandler = (_msg, ctx) => {
@@ -989,48 +960,6 @@ const handleOpenCCUsageTerminal: MessageHandler = (_msg, ctx) => {
   const terminal = vscode.window.createTerminal({ name: 'ccusage' });
   terminal.sendText(command);
   terminal.show();
-};
-
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-
-const handlePickImageFile: MessageHandler = async (_msg, ctx) => {
-  const result = await vscode.window.showOpenDialog({
-    canSelectMany: false,
-    openLabel: 'Select Image',
-    filters: { Images: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] },
-  });
-  if (!result || result.length === 0) return;
-  try {
-    const data = await vscode.workspace.fs.readFile(result[0]);
-    if (data.byteLength > MAX_IMAGE_SIZE) {
-      const sizeMB = (data.byteLength / 1024 / 1024).toFixed(1);
-      vscode.window.showWarningMessage(`图片太大（${sizeMB}MB），最大支持 5MB。请压缩后重试。`);
-      return;
-    }
-    const base64 = Buffer.from(data).toString('base64');
-    const ext = result[0].fsPath.split('.').pop()?.toLowerCase() || 'png';
-    const mimeMap: Record<string, string> = {
-      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
-    };
-    const name = result[0].fsPath.split(/[\\/]/).pop() || 'image';
-    ctx.postMessage({ type: 'imageFilePicked', data: { name, dataUrl: `data:${mimeMap[ext] || 'image/png'};base64,${base64}` } });
-  } catch {
-    ctx.postMessage({ type: 'error', data: 'Failed to read image file' });
-  }
-};
-
-const handlePickWorkspaceFile: MessageHandler = async (_msg, ctx) => {
-  const result = await vscode.window.showOpenDialog({
-    canSelectMany: true,
-    openLabel: 'Attach File',
-    defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
-  });
-  if (!result || result.length === 0) return;
-  for (const uri of result) {
-    const relativePath = vscode.workspace.asRelativePath(uri, false);
-    ctx.postMessage({ type: 'attachFileContext', data: { filePath: relativePath } });
-  }
 };
 
 const handleResolveDroppedFile: MessageHandler = (_msg, ctx) => {
@@ -1167,8 +1096,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   loadConversation: handleLoadConversation,
   getSettings: handleGetSettings,
   updateSettings: handleUpdateSettings,
-  executeSlashCommand: handleExecuteSlashCommand,
-  getWorkspaceFiles: handleGetWorkspaceFiles,
+  openLoginTerminal: handleOpenLoginTerminal,
   loadMCPServers: handleLoadMCPServers,
   saveMCPServer: handleSaveMCPServer,
   deleteMCPServer: handleDeleteMCPServer,
@@ -1181,8 +1109,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   removePermission: handleRemovePermission,
   revertFile: handleRevertFile,
   openCCUsageTerminal: handleOpenCCUsageTerminal,
-  pickImageFile: handlePickImageFile,
-  pickWorkspaceFile: handlePickWorkspaceFile,
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
   createNewPanel: handleCreateNewPanel,

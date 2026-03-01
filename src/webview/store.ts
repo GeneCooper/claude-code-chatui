@@ -222,22 +222,12 @@ export const useMCPStore = create<MCPState>((set) => ({
 // Settings Store
 // ============================================================================
 
-export interface CustomSnippet {
-  command: string
-  description: string
-  prompt: string
-}
-
 interface SettingsState {
   thinkingIntensity: string
   yoloMode: boolean
   maxTurns: number
   disallowedTools: string[]
-  customSnippets: CustomSnippet[]
   updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean; maxTurns: number; disallowedTools: string[] }>) => void
-  setCustomSnippets: (snippets: CustomSnippet[]) => void
-  addCustomSnippet: (snippet: CustomSnippet) => void
-  removeCustomSnippet: (command: string) => void
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -245,17 +235,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   yoloMode: true,
   maxTurns: 0,
   disallowedTools: [],
-  customSnippets: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
-  setCustomSnippets: (snippets) => set({ customSnippets: snippets }),
-  addCustomSnippet: (snippet) =>
-    set((state) => ({
-      customSnippets: [...state.customSnippets.filter((s) => s.command !== snippet.command), snippet],
-    })),
-  removeCustomSnippet: (command) =>
-    set((state) => ({
-      customSnippets: state.customSnippets.filter((s) => s.command !== command),
-    })),
 }))
 
 // ============================================================================
@@ -275,8 +255,6 @@ interface Notification {
 
 interface UIState {
   activeView: ActiveView
-  showSlashPicker: boolean
-
   showIntensityModal: boolean
   showMCPModal: boolean
   showInstallModal: boolean
@@ -292,8 +270,6 @@ interface UIState {
   notifications: Notification[]
 
   setActiveView: (view: ActiveView) => void
-  setShowSlashPicker: (show: boolean) => void
-
   setShowIntensityModal: (show: boolean) => void
   setShowMCPModal: (show: boolean) => void
   setShowInstallModal: (show: boolean) => void
@@ -314,8 +290,6 @@ let notifCounter = 0
 
 export const useUIStore = create<UIState>((set, get) => ({
   activeView: 'chat',
-  showSlashPicker: false,
-
   showIntensityModal: false,
   showMCPModal: false,
   showInstallModal: false,
@@ -331,8 +305,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   notifications: [],
 
   setActiveView: (view) => set({ activeView: view }),
-  setShowSlashPicker: (show) => set({ showSlashPicker: show }),
-
   setShowIntensityModal: (show) => set({ showIntensityModal: show }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
   setShowInstallModal: (show) => set({ showInstallModal: show }),

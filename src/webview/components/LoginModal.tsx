@@ -9,7 +9,7 @@ export function LoginModal() {
   if (!show) return null
 
   const handleOpenTerminal = () => {
-    postMessage({ type: 'executeSlashCommand', command: 'login' })
+    postMessage({ type: 'openLoginTerminal' })
     setShow(false)
   }
 

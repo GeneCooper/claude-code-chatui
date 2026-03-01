@@ -5,7 +5,7 @@ import { useUIStore } from '../store'
 import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
-import { SlashCommandPicker } from './SlashCommandPicker'
+
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
@@ -27,14 +27,11 @@ export function InputArea() {
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showClaudeMdBanner = useUIStore((s) => s.showClaudeMdBanner)
-  const showSlashPicker = useUIStore((s) => s.showSlashPicker)
-  const setShowSlashPicker = useUIStore((s) => s.setShowSlashPicker)
   const draftText = useUIStore((s) => s.draftText)
   const setDraftText = useUIStore((s) => s.setDraftText)
   const editingContext = useUIStore((s) => s.editingContext)
   const setEditingContext = useUIStore((s) => s.setEditingContext)
 
-  const [slashFilter, setSlashFilter] = useState('')
 
   useEffect(() => {
     const saved = getState<{ draft?: string; model?: string; planMode?: boolean; thinkingMode?: boolean; ctrlEnterSend?: boolean }>()
@@ -174,14 +171,6 @@ export function InputArea() {
     const trimmed = text.trim()
     if ((!trimmed && images.length === 0) || isProcessing) return
 
-    if (trimmed.startsWith('/')) {
-      const cmd = trimmed.substring(1).split(/\s+/)[0]
-      postMessage({ type: 'executeSlashCommand', command: cmd })
-      setText('')
-      if (textareaRef.current) textareaRef.current.style.height = 'auto'
-      return
-    }
-
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
     const currentEditingContext = useUIStore.getState().editingContext
@@ -224,7 +213,6 @@ export function InputArea() {
   const handleStop = () => { postMessage({ type: 'stopRequest' }) }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (showSlashPicker) return
     if (e.key === 'Enter') {
       if (ctrlEnterSend) {
         // Ctrl+Enter mode: send on Ctrl/Cmd+Enter, newline on plain Enter
@@ -243,15 +231,7 @@ export function InputArea() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value
-    setText(value)
-
-    if (value === '/' || (value.startsWith('/') && !value.includes(' '))) {
-      setSlashFilter(value.substring(1))
-      setShowSlashPicker(true)
-    } else if (!value.startsWith('/')) {
-      setShowSlashPicker(false)
-    }
+    setText(e.target.value)
   }
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -397,17 +377,6 @@ export function InputArea() {
   }
 
 
-  const handleSlashSelect = (command: string, category: 'snippet' | 'native') => {
-    if (category === 'native') {
-      postMessage({ type: 'executeSlashCommand', command })
-      setText('')
-    } else {
-      setText(`/${command} `)
-    }
-    setShowSlashPicker(false)
-    textareaRef.current?.focus()
-  }
-
   const handleModelChange = (model: string) => {
     setSelectedModel(model)
     postMessage({ type: 'selectModel', model })
@@ -428,8 +397,7 @@ export function InputArea() {
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
     >
-      {/* Pickers & Modals */}
-      <SlashCommandPicker filter={slashFilter} onSelect={handleSlashSelect} />
+      {/* Modals */}
       <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
       <ModelSelectorModal
         show={showModelPicker}
@@ -748,65 +716,6 @@ export function InputArea() {
 
           {/* Right controls */}
           <div className="flex items-center gap-1">
-            {/* Attach file button */}
-            <button
-              onClick={() => postMessage({ type: 'pickWorkspaceFile' })}
-              className="cursor-pointer flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
-                padding: '0',
-                width: '24px',
-                height: '24px',
-                borderRadius: 'var(--radius-md)',
-                color: 'inherit',
-                opacity: 0.7,
-                transition: 'all 0.15s ease',
-              }}
-              title="Attach workspace file"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                e.currentTarget.style.opacity = '1'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.opacity = '0.7'
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
-
-            {/* Slash command button */}
-            <button
-              onClick={() => { setShowSlashPicker(true); setSlashFilter('') }}
-              className="cursor-pointer flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--vscode-panel-border, rgba(255,255,255,0.15))',
-                padding: '0 8px',
-                height: '24px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: 'inherit',
-                opacity: 0.7,
-                transition: 'all 0.15s ease',
-              }}
-              title="Slash commands"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'
-                e.currentTarget.style.opacity = '1'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.opacity = '0.7'
-              }}
-            >
-              /
-            </button>
-
             {/* Stop button (only visible when processing) */}
             {isProcessing && (
               <button
