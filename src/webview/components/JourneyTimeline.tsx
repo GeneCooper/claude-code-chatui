@@ -30,6 +30,51 @@ const STEP_INDICATORS = {
   pending: '○',
 } as const
 
+// Tool verb mappings for compact Cursor-style display
+interface ToolVerbMapping {
+  active: string   // Present participle: "Reading", "Editing"
+  done: string     // Past tense: "Read", "Edited"
+  getDetail: (input: Record<string, unknown>) => string
+}
+
+const fileName = (fp: string) => fp.split(/[\\/]/).pop() || fp
+
+const TOOL_VERBS: Record<string, ToolVerbMapping> = {
+  Read: { active: 'Reading', done: 'Read', getDetail: (i) => fileName(String(i.file_path || '')) },
+  Edit: { active: 'Editing', done: 'Edited', getDetail: (i) => fileName(String(i.file_path || '')) },
+  MultiEdit: { active: 'Editing', done: 'Edited', getDetail: (i) => fileName(String(i.file_path || '')) },
+  Write: { active: 'Writing', done: 'Wrote', getDetail: (i) => fileName(String(i.file_path || '')) },
+  NotebookEdit: { active: 'Editing notebook', done: 'Edited notebook', getDetail: (i) => fileName(String(i.notebook_path || '')) },
+  Bash: {
+    active: 'Running', done: 'Ran',
+    getDetail: (i) => { const c = String(i.command || ''); return c.length > 50 ? c.substring(0, 50) + '…' : c },
+  },
+  Grep: { active: 'Searching', done: 'Searched', getDetail: (i) => i.pattern ? `"${i.pattern}"` : 'files' },
+  Glob: { active: 'Finding files', done: 'Found files', getDetail: (i) => i.pattern ? `"${i.pattern}"` : '' },
+  WebFetch: {
+    active: 'Fetching', done: 'Fetched',
+    getDetail: (i) => { try { return new URL(String(i.url)).hostname } catch { return String(i.url || '').substring(0, 30) } },
+  },
+  WebSearch: { active: 'Searching web', done: 'Searched web', getDetail: (i) => i.query ? `"${i.query}"` : '' },
+  TodoWrite: { active: 'Updating todos', done: 'Updated todos', getDetail: () => '' },
+}
+
+function getToolDisplay(toolName: string, rawInput: Record<string, unknown> | undefined, hasResult: boolean, hasError: boolean) {
+  const mapping = TOOL_VERBS[toolName]
+  const detail = rawInput && mapping ? mapping.getDetail(rawInput) : ''
+
+  if (hasError) {
+    const verb = mapping ? mapping.done : toolName
+    return { icon: '✗', label: detail ? `${verb} ${detail}` : verb, color: STATUS_COLORS.failed }
+  }
+  if (hasResult) {
+    const verb = mapping ? mapping.done : toolName
+    return { icon: '✓', label: detail ? `${verb} ${detail}` : verb, color: STATUS_COLORS.completed }
+  }
+  const verb = mapping ? mapping.active : toolName
+  return { icon: '⟳', label: detail ? `${verb} ${detail}…` : `${verb}…`, color: STATUS_COLORS.executing }
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -380,11 +425,12 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }:
   const subagentDesc = isSubagent ? (rawInput?.description as string) || '' : ''
   const subagentColor = SUBAGENT_COLORS[subagentType] || '#6366f1'
 
-  const indicatorColor = hasError ? STATUS_COLORS.failed : step.toolResult ? STATUS_COLORS.completed : STATUS_COLORS.executing
-  const indicator = hasError ? STEP_INDICATORS.error : step.toolResult ? STEP_INDICATORS.done : STEP_INDICATORS.pending
+  const hasResult = !!step.toolResult
 
   // Subagent step — special rendering with colored left border
   if (isSubagent) {
+    const indicatorColor = hasError ? STATUS_COLORS.failed : hasResult ? STATUS_COLORS.completed : STATUS_COLORS.executing
+    const indicator = hasError ? STEP_INDICATORS.error : hasResult ? STEP_INDICATORS.done : STEP_INDICATORS.pending
     return (
       <div style={{ marginBottom: '4px' }}>
         <button
@@ -402,7 +448,6 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }:
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
         >
           <span style={{ color: indicatorColor, fontSize: '10px' }}>{indicator}</span>
-          {/* Subagent icon */}
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={subagentColor} strokeWidth="2.5" style={{ flexShrink: 0 }}>
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
@@ -423,24 +468,42 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }:
     )
   }
 
-  // Normal tool step
+  // Normal tool step — compact Cursor-style display
+  const display = getToolDisplay(toolName, rawInput, hasResult, !!hasError)
+  const isExecuting = !hasResult
+
   return (
-    <div style={{ marginBottom: '4px' }}>
+    <div style={{ marginBottom: '2px' }}>
       <button
         onClick={() => onToggle(step.id)}
         className="w-full text-left cursor-pointer border-none text-inherit"
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '4px 8px', borderRadius: 'var(--radius-sm)',
-          background: 'transparent', fontSize: '11px', opacity: 0.7,
+          padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+          background: 'transparent', fontSize: '11px',
+          opacity: hasError ? 0.9 : 0.6,
           transition: 'all 0.15s ease',
         }}
         onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = hasError ? '0.9' : '0.6' }}
       >
-        <span style={{ color: indicatorColor, fontSize: '10px' }}>{indicator}</span>
-        <span className="truncate">{toolName}</span>
-        <span style={{ opacity: 0.4, fontSize: '9px' }}>{isCollapsed ? '▸' : '▾'}</span>
+        <span style={{
+          color: display.color,
+          fontSize: '10px',
+          display: 'inline-block',
+          animation: isExecuting ? 'spin 1.5s linear infinite' : 'none',
+        }}>
+          {display.icon}
+        </span>
+        <span className="truncate" style={{
+          fontWeight: isExecuting ? 500 : 400,
+          color: hasError ? STATUS_COLORS.failed : 'inherit',
+        }}>
+          {display.label}
+        </span>
+        <span style={{ opacity: 0.3, fontSize: '9px', marginLeft: 'auto' }}>
+          {isCollapsed ? '▸' : '▾'}
+        </span>
       </button>
       {!isCollapsed && (
         <div style={{ paddingLeft: '20px' }}>
@@ -452,8 +515,8 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }:
   )
 })
 
-const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, collapsedSteps, onTogglePlan, onToggleStep }: {
-  plan: PlanGroup; isCollapsed: boolean; collapsedSteps: Set<string>;
+const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, expandedSteps, onTogglePlan, onToggleStep }: {
+  plan: PlanGroup; isCollapsed: boolean; expandedSteps: Set<string>;
   onTogglePlan: (id: string) => void; onToggleStep: (id: string) => void;
 }) {
   const summaryText = getPlanSummary(plan)
@@ -498,7 +561,7 @@ const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, collapsed
             <ToolStepItem
               key={step.id}
               step={step}
-              isCollapsed={collapsedSteps.has(step.id)}
+              isCollapsed={!expandedSteps.has(step.id)}
               onToggle={onToggleStep}
             />
           ))}
@@ -509,9 +572,9 @@ const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, collapsed
 }, (prev, next) => {
   if (prev.plan !== next.plan || prev.isCollapsed !== next.isCollapsed
     || prev.onTogglePlan !== next.onTogglePlan || prev.onToggleStep !== next.onToggleStep) return false
-  // Only re-render if collapse state of THIS plan's steps changed
+  // Only re-render if expand state of THIS plan's steps changed
   for (const step of prev.plan.steps) {
-    if (prev.collapsedSteps.has(step.id) !== next.collapsedSteps.has(step.id)) return false
+    if (prev.expandedSteps.has(step.id) !== next.expandedSteps.has(step.id)) return false
   }
   return true
 })
@@ -528,7 +591,7 @@ interface Props {
 
 export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
-  const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
 
   const items = useMemo(() => buildTimelineItems(messages, isProcessing), [messages, isProcessing])
 
@@ -568,7 +631,7 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   }, [])
 
   const toggleStep = useCallback((id: string) => {
-    setCollapsedSteps((prev) => {
+    setExpandedSteps((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id); else next.add(id)
       return next
@@ -610,7 +673,7 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
             <PlanGroupCard
               plan={item}
               isCollapsed={collapsedPlans.has(item.id)}
-              collapsedSteps={collapsedSteps}
+              expandedSteps={expandedSteps}
               onTogglePlan={togglePlan}
               onToggleStep={toggleStep}
             />

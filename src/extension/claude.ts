@@ -172,8 +172,12 @@ export class ClaudeService implements vscode.Disposable {
       actualMessage = `${prompt}\n\n${actualMessage}`;
     }
 
-    const args = ['-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose'];
-    args.push('--append-system-prompt', AGENT_SYSTEM_PROMPT);
+    const args = ['-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose', '--include-partial-messages'];
+    // System prompt is prepended to the user message instead of using
+    // --append-system-prompt, because on Windows with shell:true cmd.exe
+    // interprets >, <, |, & inside CLI arguments as shell operators, which
+    // silently redirects stdout to rogue files (e.g. ">8" creates file "8").
+    actualMessage = `${AGENT_SYSTEM_PROMPT}\n\n${actualMessage}`;
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');

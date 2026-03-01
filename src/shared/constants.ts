@@ -19,7 +19,7 @@ export const AGENT_MODE_PROMPTS = {
         "PHASE 1 — RESEARCH:",
         "  1. UNDERSTAND: Verify your understanding is correct. If ambiguous, ask ONE clarifying question with concrete options.",
         "  2. LOCATE: Find the relevant code. Batch independent searches in parallel. State what you found.",
-        "  3. ASSESS: Gauge complexity. Simple (≤3 files, clear change) → proceed. Complex (>3 files or architectural) → outline your plan in 3-5 bullet points before executing.",
+        "  3. ASSESS: Gauge complexity. Simple (≤3 files, clear change) → proceed. Complex (3+ files or architectural) → outline your plan in 3-5 bullet points before executing.",
         "PHASE 2 — IMPLEMENT:",
         "  4. EXECUTE: Make the changes. No narration during execution.",
         "  5. VERIFY: Check that the change does not break imports, types, or existing tests.",
@@ -66,7 +66,7 @@ export const AGENT_SYSTEM_PROMPT = [
     "TASK COMPLEXITY:",
     "17. SIMPLE (≤3 steps, single-file): Execute immediately, no planning needed.",
     "18. MODERATE (3-8 steps, 2-5 files): State a brief plan (3-5 bullets) before executing.",
-    "19. COMPLEX (>8 steps or architectural): Outline the approach, get user confirmation, then execute in phases with intermediate summaries.",
+    "19. COMPLEX (8+ steps or architectural): Outline the approach, get user confirmation, then execute in phases with intermediate summaries.",
     "20. AUTONOMOUS COMPLETION: Keep working until the task is fully resolved. Do not stop to ask \"should I continue?\" unless you hit genuine ambiguity. When done, summarize in one sentence — do not ask for confirmation of completion.",
 ].join(" ");
 

@@ -221,6 +221,8 @@ export interface ProcessorCallbacks {
 
 export class ClaudeMessageProcessor {
   private _currentConversation: ConversationMessage[] = [];
+  private _partialText: string | null = null;
+  private _hasPartialOutput = false;
 
   constructor(
     private readonly _poster: MessagePoster,
@@ -230,7 +232,11 @@ export class ClaudeMessageProcessor {
 
   get currentConversation(): ConversationMessage[] { return this._currentConversation; }
 
-  resetSession(): void { this._currentConversation = []; }
+  resetSession(): void {
+    this._currentConversation = [];
+    this._partialText = null;
+    this._hasPartialOutput = false;
+  }
 
   truncateConversation(endIndex: number): void {
     if (endIndex >= 0 && endIndex < this._currentConversation.length) {
@@ -277,6 +283,20 @@ export class ClaudeMessageProcessor {
     }
   }
 
+  /** Flush accumulated partial text into conversation history as a final output message. */
+  private _flushPartialOutput(): void {
+    if (this._hasPartialOutput && this._partialText !== null) {
+      // Save final text to conversation history only — webview already has it displayed
+      this._currentConversation.push({
+        timestamp: new Date().toISOString(),
+        messageType: 'output',
+        data: this._partialText,
+      });
+    }
+    this._partialText = null;
+    this._hasPartialOutput = false;
+  }
+
   private async _handleAssistantMessage(msg: ClaudeMessage): Promise<void> {
     const assistant = msg as { message?: { content: Array<Record<string, unknown>>; usage?: Record<string, number> } };
     if (!assistant.message?.content) return;
@@ -305,10 +325,16 @@ export class ClaudeMessageProcessor {
 
     for (const content of assistant.message.content) {
       if (content.type === 'text' && (content.text as string)?.trim()) {
-        this._sendAndSave({ type: 'output', data: (content.text as string).trim() });
+        const text = (content.text as string).trim();
+        // Stream partial text to webview for real-time display (not saved to history yet)
+        this._partialText = text;
+        this._hasPartialOutput = true;
+        this._poster.postMessage({ type: 'output', data: text, partial: true });
       } else if (content.type === 'thinking' && (content.thinking as string)?.trim()) {
+        this._flushPartialOutput();
         this._sendAndSave({ type: 'thinking', data: (content.thinking as string).trim() });
       } else if (content.type === 'tool_use') {
+        this._flushPartialOutput();
         await this._handleToolUse(content as Record<string, unknown>);
       }
     }
@@ -374,6 +400,7 @@ export class ClaudeMessageProcessor {
   }
 
   private async _handleUserMessage(msg: ClaudeMessage): Promise<void> {
+    this._flushPartialOutput();
     const user = msg as { message?: { content: Array<Record<string, unknown>> } };
     if (!user.message?.content) return;
 
@@ -418,6 +445,7 @@ export class ClaudeMessageProcessor {
   }
 
   private _handleResultMessage(msg: ClaudeMessage): void {
+    this._flushPartialOutput();
     const result = msg as {
       subtype: string; session_id?: string; total_cost_usd?: number;
       duration_ms?: number; num_turns?: number; is_error?: boolean; result?: string;

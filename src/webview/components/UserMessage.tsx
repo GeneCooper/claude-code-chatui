@@ -20,14 +20,14 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
   return (
     <>
       <div
-        className="flex justify-end"
+        className="flex"
         style={{ animation: 'fadeIn 0.15s ease' }}
       >
         <div
-          className="group relative max-w-[85%]"
+          className="group relative w-full"
           style={{
             background: 'var(--chatui-user-bubble)',
-            borderRadius: '16px',
+            borderRadius: '10px',
             padding: '8px 14px',
           }}
         >

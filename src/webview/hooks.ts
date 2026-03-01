@@ -110,10 +110,15 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   output: (msg) => {
     const store = useChatStore.getState()
     store.removeLoading()
-    // Try to merge with last output message (consecutive output chunks from same response)
-    const merged = store.appendToLastOutput(String(msg.data))
-    if (!merged) {
-      store.addMessage({ type: 'output', data: msg.data })
+    if (msg.partial) {
+      // Partial streaming update — replace the last output with cumulative text
+      store.updateLastOutput(String(msg.data))
+    } else {
+      // Final/complete message — use existing merge logic
+      const merged = store.appendToLastOutput(String(msg.data))
+      if (!merged) {
+        store.addMessage({ type: 'output', data: msg.data })
+      }
     }
   },
 

@@ -48,6 +48,7 @@ interface ChatState {
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   appendToLastOutput: (text: string) => boolean
+  updateLastOutput: (text: string) => void
   clearMessages: () => void
   removeLoading: () => void
   setProcessing: (isProcessing: boolean) => void
@@ -97,6 +98,31 @@ export const useChatStore = create<ChatState>((set) => ({
       break // Stop if we hit any non-loading, non-output message
     }
     return false
+  },
+
+  updateLastOutput: (text) => {
+    set((state) => {
+      const msgs = state.messages
+      // Find the last output message (skip loading messages)
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].type === 'loading') continue
+        if (msgs[i].type === 'output') {
+          const updated = [...msgs]
+          updated[i] = { ...msgs[i], data: text }
+          return { messages: updated }
+        }
+        break
+      }
+      // No existing output to update — add as new
+      return {
+        messages: [...msgs, {
+          type: 'output' as const,
+          data: text,
+          id: `msg-${++messageCounter}-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+        }],
+      }
+    })
   },
 
   clearMessages: () => set({ messages: [], processStatus: null }),
