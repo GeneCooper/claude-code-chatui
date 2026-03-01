@@ -107,7 +107,7 @@ export function InputArea() {
         recentAttachRef.current.add(key)
         setTimeout(() => recentAttachRef.current.delete(key), 200)
 
-        const ref = `@${detail.filePath} `
+        const ref = `@${detail.filePath}\n`
         setText((prev) => {
           const ta = textareaRef.current
           if (ta && ta.selectionStart !== undefined) {
