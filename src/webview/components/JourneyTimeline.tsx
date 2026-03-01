@@ -59,7 +59,7 @@ const TOOL_VERBS: Record<string, ToolVerbMapping> = {
   TodoWrite: { active: 'Updating todos', done: 'Updated todos', getDetail: () => '' },
 }
 
-function getToolDisplay(toolName: string, rawInput: Record<string, unknown> | undefined, hasResult: boolean, hasError: boolean) {
+function getToolDisplay(toolName: string, rawInput: Record<string, unknown> | undefined, hasResult: boolean, hasError: boolean, planCompleted?: boolean) {
   const mapping = TOOL_VERBS[toolName]
   const detail = rawInput && mapping ? mapping.getDetail(rawInput) : ''
 
@@ -67,7 +67,7 @@ function getToolDisplay(toolName: string, rawInput: Record<string, unknown> | un
     const verb = mapping ? mapping.done : toolName
     return { icon: '✗', label: detail ? `${verb} ${detail}` : verb, color: STATUS_COLORS.failed }
   }
-  if (hasResult) {
+  if (hasResult || planCompleted) {
     const verb = mapping ? mapping.done : toolName
     return { icon: '✓', label: detail ? `${verb} ${detail}` : verb, color: STATUS_COLORS.completed }
   }
@@ -412,7 +412,7 @@ const SUBAGENT_COLORS: Record<string, string> = {
   'general-purpose': '#10b981',
 }
 
-const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void }) {
+const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle, planCompleted }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void; planCompleted?: boolean }) {
   const toolData = step.toolUse?.data as Record<string, unknown> | undefined
   const toolName = (toolData?.toolName as string) || 'Tool'
   const rawInput = toolData?.rawInput as Record<string, unknown> | undefined
@@ -427,8 +427,9 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }:
 
   // Subagent step — special rendering with colored left border
   if (isSubagent) {
-    const indicatorColor = hasError ? STATUS_COLORS.failed : hasResult ? STATUS_COLORS.completed : STATUS_COLORS.executing
-    const indicator = hasError ? STEP_INDICATORS.error : hasResult ? STEP_INDICATORS.done : STEP_INDICATORS.pending
+    const effectivelyDone = hasResult || planCompleted
+    const indicatorColor = hasError ? STATUS_COLORS.failed : effectivelyDone ? STATUS_COLORS.completed : STATUS_COLORS.executing
+    const indicator = hasError ? STEP_INDICATORS.error : effectivelyDone ? STEP_INDICATORS.done : STEP_INDICATORS.pending
     return (
       <div style={{ marginBottom: '4px' }}>
         <button
@@ -467,8 +468,8 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle }:
   }
 
   // Normal tool step — compact Cursor-style display
-  const display = getToolDisplay(toolName, rawInput, hasResult, !!hasError)
-  const isExecuting = !hasResult
+  const display = getToolDisplay(toolName, rawInput, hasResult, !!hasError, planCompleted)
+  const isExecuting = !hasResult && !planCompleted
 
   return (
     <div style={{ marginBottom: '2px' }}>
@@ -561,6 +562,7 @@ const PlanGroupCard = memo(function PlanGroupCard({ plan, isCollapsed, expandedS
               step={step}
               isCollapsed={!expandedSteps.has(step.id)}
               onToggle={onToggleStep}
+              planCompleted={plan.status === 'completed' || plan.status === 'failed'}
             />
           ))}
         </div>
