@@ -12,5 +12,9 @@
       "mcp__filesystem__read_text_file",
       "Bash(npx vsce:*)"
     ]
+  },
+  "enabledPlugins": {
+    "playwright@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
   }
 }

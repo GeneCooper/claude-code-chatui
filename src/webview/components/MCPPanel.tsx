@@ -5,11 +5,7 @@ import { useUIStore } from '../store'
 
 const SERVER_DESCRIPTIONS: Record<string, string> = {
   'context7': 'Up-to-date library docs',
-  'memory': 'Persistent memory/knowledge',
-  'fetch': 'HTTP fetch requests',
-  'playwright': 'Browser automation & testing',
-  'magicui': '150+ modern React/Tailwind components',
-  'shadcn': 'Clean Tailwind UI components',
+  'sequential-thinking': 'Structured reasoning for complex decisions',
 }
 
 const POPULAR_SERVERS = [
@@ -21,20 +17,12 @@ const POPULAR_SERVERS = [
     icon: '📚',
   },
   {
-    name: 'memory',
-    description: 'Persistent memory/knowledge',
+    name: 'sequential-thinking',
+    description: 'Structured reasoning for complex decisions',
     type: 'stdio' as const,
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-memory'],
-    icon: '💾',
-  },
-  {
-    name: 'fetch',
-    description: 'HTTP fetch requests',
-    type: 'stdio' as const,
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-fetch'],
-    icon: '🌐',
+    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+    icon: '🧠',
   },
 ]
 
