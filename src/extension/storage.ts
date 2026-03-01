@@ -62,6 +62,7 @@ export class MCPService {
 
   private static readonly DEFAULT_SERVERS: Record<string, MCPServerConfig> = {
     'context7': { type: 'http', url: 'https://context7.liam.sh/mcp' },
+    'sequential-thinking': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
   };
 
   private _ensureConfigDir(): void {
