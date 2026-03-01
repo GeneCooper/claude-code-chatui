@@ -7,6 +7,7 @@ import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { ErrorBoundary } from './ErrorBoundary'
+import { SUBAGENT_COLORS } from '../../shared/constants'
 
 // ============================================================================
 // Constants
@@ -57,6 +58,9 @@ const TOOL_VERBS: Record<string, ToolVerbMapping> = {
   },
   WebSearch: { active: 'Searching web', done: 'Searched web', getDetail: (i) => i.query ? `"${i.query}"` : '' },
   TodoWrite: { active: 'Updating todos', done: 'Updated todos', getDetail: () => '' },
+  TodoRead: { active: 'Reading todos', done: 'Read todos', getDetail: () => '' },
+  Agent: { active: 'Agent', done: 'Agent', getDetail: (i) => i.description ? String(i.description) : '' },
+  Task: { active: 'Agent', done: 'Agent', getDetail: (i) => i.description ? String(i.description) : '' },
 }
 
 function getToolDisplay(toolName: string, rawInput: Record<string, unknown> | undefined, hasResult: boolean, hasError: boolean, planCompleted?: boolean) {
@@ -250,6 +254,7 @@ function LoadingIndicator() {
 
   useEffect(() => {
     let tick = 0
+    let phraseTimeout: ReturnType<typeof setTimeout> | null = null
     const id = setInterval(() => {
       tick++
       setElapsed(tick)
@@ -257,13 +262,16 @@ function LoadingIndicator() {
       // Rotate phrase every 3 seconds
       if (tick % 3 === 0) {
         setFadeClass(false)
-        setTimeout(() => {
+        phraseTimeout = setTimeout(() => {
           setPhraseIndex((i) => (i + 1) % LOADING_PHRASES.length)
           setFadeClass(true)
         }, 200)
       }
     }, 1000)
-    return () => clearInterval(id)
+    return () => {
+      clearInterval(id)
+      if (phraseTimeout) clearTimeout(phraseTimeout)
+    }
   }, [])
 
   const formatTime = (s: number) => {
@@ -403,14 +411,6 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
       return null
   }
 })
-
-// Subagent type badge colors (keep in sync with ToolUseBlock)
-const SUBAGENT_COLORS: Record<string, string> = {
-  Bash: '#f59e0b',
-  Explore: '#3b82f6',
-  Plan: '#8b5cf6',
-  'general-purpose': '#10b981',
-}
 
 const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle, planCompleted }: { step: ToolStep; isCollapsed: boolean; onToggle: (id: string) => void; planCompleted?: boolean }) {
   const toolData = step.toolUse?.data as Record<string, unknown> | undefined

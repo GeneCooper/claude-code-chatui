@@ -70,6 +70,14 @@ export const AGENT_SYSTEM_PROMPT = [
     "20. AUTONOMOUS COMPLETION: Keep working until the task is fully resolved. Do not stop to ask \"should I continue?\" unless you hit genuine ambiguity. When done, summarize in one sentence — do not ask for confirmation of completion.",
 ].join(" ");
 
+/** Subagent type badge colors — shared between JourneyTimeline and ToolUseBlock */
+export const SUBAGENT_COLORS: Record<string, string> = {
+    Bash: '#f59e0b',
+    Explore: '#3b82f6',
+    Plan: '#8b5cf6',
+    'general-purpose': '#10b981',
+};
+
 /** File-editing tools that need before/after diff */
 export const FILE_EDIT_TOOLS: string[] = ["Edit", "MultiEdit", "Write", "NotebookEdit"];
 

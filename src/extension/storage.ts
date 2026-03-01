@@ -62,11 +62,6 @@ export class MCPService {
 
   private static readonly DEFAULT_SERVERS: Record<string, MCPServerConfig> = {
     'context7': { type: 'http', url: 'https://context7.liam.sh/mcp' },
-    'memory': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-    'fetch': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
-    'playwright': { type: 'stdio', command: 'npx', args: ['-y', '@anthropic-ai/mcp-server-playwright', '--headless'] },
-    'magicui': { type: 'stdio', command: 'npx', args: ['-y', '@magicuidesign/mcp@latest'] },
-    'shadcn': { type: 'stdio', command: 'npx', args: ['shadcn@latest', 'mcp'] },
   };
 
   private _ensureConfigDir(): void {
@@ -79,13 +74,24 @@ export class MCPService {
     }
   }
 
+  /** Servers that were previously bundled as defaults but are now opt-in */
+  private static readonly REMOVED_DEFAULTS = ['memory', 'fetch', 'playwright', 'magicui', 'shadcn'];
+
   private _migrateDefaults(): void {
     try {
       const config = JSON.parse(fs.readFileSync(this._configPath, 'utf8')) as MCPConfig;
       let changed = false;
+      // Add any new defaults
       for (const [name, serverConfig] of Object.entries(MCPService.DEFAULT_SERVERS)) {
         if (!(name in config.mcpServers)) {
           config.mcpServers[name] = serverConfig;
+          changed = true;
+        }
+      }
+      // Remove old defaults that are no longer bundled (user can re-add manually)
+      for (const name of MCPService.REMOVED_DEFAULTS) {
+        if (name in config.mcpServers) {
+          delete config.mcpServers[name];
           changed = true;
         }
       }

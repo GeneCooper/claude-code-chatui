@@ -1,14 +1,6 @@
 import { useState, memo } from 'react'
 import { postMessage } from '../hooks'
-import { FILE_EDIT_TOOLS } from '../../shared/constants'
-
-// Subagent type badge colors
-const SUBAGENT_COLORS: Record<string, string> = {
-  Bash: '#f59e0b',
-  Explore: '#3b82f6',
-  Plan: '#8b5cf6',
-  'general-purpose': '#10b981',
-}
+import { FILE_EDIT_TOOLS, SUBAGENT_COLORS } from '../../shared/constants'
 
 interface Props {
   data: Record<string, unknown>
