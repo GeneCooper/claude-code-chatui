@@ -1,67 +1,82 @@
-import { create } from 'zustand'
-import type { UsageData } from '../shared/types'
+import { create } from "zustand";
+import type { UsageData, MCPServerConfig, TodoItem } from "../shared/types";
+
+// Re-export so downstream consumers (hooks.ts, TodoDisplay.tsx) can keep importing from store
+export type { TodoItem };
 
 // ============================================================================
 // Chat Store
 // ============================================================================
 
-export interface TodoItem {
-  content: string
-  status: 'pending' | 'in_progress' | 'completed'
-  activeForm?: string
-}
-
 export interface ChatMessage {
-  id: string
-  type: 'userInput' | 'output' | 'thinking' | 'toolUse' | 'toolResult' | 'error' | 'sessionInfo' | 'loading' | 'compacting' | 'compactBoundary' | 'permissionRequest' | 'todosUpdate'
-  data: unknown
-  timestamp: string
+  id: string;
+  type:
+    | "userInput"
+    | "output"
+    | "thinking"
+    | "toolUse"
+    | "toolResult"
+    | "error"
+    | "sessionInfo"
+    | "loading"
+    | "compacting"
+    | "compactBoundary"
+    | "permissionRequest"
+    | "todosUpdate";
+  data: unknown;
+  timestamp: string;
 }
 
 interface TokenState {
-  totalTokensInput: number
-  totalTokensOutput: number
-  currentInputTokens: number
-  currentOutputTokens: number
-  cacheCreationTokens: number
-  cacheReadTokens: number
+  totalTokensInput: number;
+  totalTokensOutput: number;
+  currentInputTokens: number;
+  currentOutputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
 }
 
 interface TotalsState {
-  totalCost: number
-  totalTokensInput: number
-  totalTokensOutput: number
-  requestCount: number
-  currentCost?: number
-  currentDuration?: number
-  currentTurns?: number
+  totalCost: number;
+  totalTokensInput: number;
+  totalTokensOutput: number;
+  requestCount: number;
+  currentCost?: number;
+  currentDuration?: number;
+  currentTurns?: number;
 }
 
 interface ChatState {
-  messages: ChatMessage[]
-  isProcessing: boolean
-  sessionId: string | null
-  tokens: TokenState
-  totals: TotalsState
-  todos: TodoItem[]
-  processStatus: { status: string; detail?: string } | null
+  messages: ChatMessage[];
+  isProcessing: boolean;
+  sessionId: string | null;
+  tokens: TokenState;
+  totals: TotalsState;
+  todos: TodoItem[];
+  processStatus: { status: string; detail?: string } | null;
 
-  addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
-  appendToLastOutput: (text: string) => boolean
-  updateLastOutput: (text: string) => void
-  clearMessages: () => void
-  removeLoading: () => void
-  setProcessing: (isProcessing: boolean) => void
-  setSessionId: (id: string | null) => void
-  setProcessStatus: (status: { status: string; detail?: string } | null) => void
-  updateTokens: (tokens: Partial<TokenState>) => void
-  updateTotals: (totals: Partial<TotalsState>) => void
-  updatePermissionStatus: (id: string, status: string) => void
-  updateTodos: (todos: TodoItem[]) => void
-  restoreState: (state: { messages?: ChatMessage[]; sessionId?: string; totalCost?: number }) => void
+  addMessage: (msg: Omit<ChatMessage, "id" | "timestamp">) => void;
+  appendToLastOutput: (text: string) => boolean;
+  updateLastOutput: (text: string) => void;
+  clearMessages: () => void;
+  removeLoading: () => void;
+  setProcessing: (isProcessing: boolean) => void;
+  setSessionId: (id: string | null) => void;
+  setProcessStatus: (
+    status: { status: string; detail?: string } | null,
+  ) => void;
+  updateTokens: (tokens: Partial<TokenState>) => void;
+  updateTotals: (totals: Partial<TotalsState>) => void;
+  updatePermissionStatus: (id: string, status: string) => void;
+  updateTodos: (todos: TodoItem[]) => void;
+  restoreState: (state: {
+    messages?: ChatMessage[];
+    sessionId?: string;
+    totalCost?: number;
+  }) => void;
 }
 
-let messageCounter = 0
+let messageCounter = 0;
 
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
@@ -70,65 +85,86 @@ export const useChatStore = create<ChatState>((set) => ({
   todos: [],
   processStatus: null,
   tokens: {
-    totalTokensInput: 0, totalTokensOutput: 0,
-    currentInputTokens: 0, currentOutputTokens: 0,
-    cacheCreationTokens: 0, cacheReadTokens: 0,
+    totalTokensInput: 0,
+    totalTokensOutput: 0,
+    currentInputTokens: 0,
+    currentOutputTokens: 0,
+    cacheCreationTokens: 0,
+    cacheReadTokens: 0,
   },
-  totals: { totalCost: 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
+  totals: {
+    totalCost: 0,
+    totalTokensInput: 0,
+    totalTokensOutput: 0,
+    requestCount: 0,
+  },
 
   addMessage: (msg) =>
     set((state) => ({
-      messages: [...state.messages, { ...msg, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
+      messages: [
+        ...state.messages,
+        {
+          ...msg,
+          id: `msg-${++messageCounter}-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+        },
+      ],
     })),
 
   appendToLastOutput: (text) => {
-    const state = useChatStore.getState()
-    const msgs = state.messages
+    const state = useChatStore.getState();
+    const msgs = state.messages;
     // Find the last output message (skip any loading messages at the end)
     for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i]
-      if (m.type === 'loading') continue
-      if (m.type === 'output') {
+      const m = msgs[i];
+      if (m.type === "loading") continue;
+      if (m.type === "output") {
         // Merge text into existing output
-        const updated = [...msgs]
-        updated[i] = { ...m, data: String(m.data) + '\n\n' + text }
-        set({ messages: updated })
-        return true
+        const updated = [...msgs];
+        updated[i] = { ...m, data: String(m.data) + "\n\n" + text };
+        set({ messages: updated });
+        return true;
       }
-      break // Stop if we hit any non-loading, non-output message
+      break; // Stop if we hit any non-loading, non-output message
     }
-    return false
+    return false;
   },
 
   updateLastOutput: (text) => {
     set((state) => {
-      const msgs = state.messages
+      const msgs = state.messages;
       // Find the last output message (skip loading messages)
       for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].type === 'loading') continue
-        if (msgs[i].type === 'output') {
-          const updated = [...msgs]
-          updated[i] = { ...msgs[i], data: text }
-          return { messages: updated }
+        if (msgs[i].type === "loading") continue;
+        if (msgs[i].type === "output") {
+          const updated = [...msgs];
+          updated[i] = { ...msgs[i], data: text };
+          return { messages: updated };
         }
-        break
+        break;
       }
       // No existing output to update — add as new
       return {
-        messages: [...msgs, {
-          type: 'output' as const,
-          data: text,
-          id: `msg-${++messageCounter}-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-        }],
-      }
-    })
+        messages: [
+          ...msgs,
+          {
+            type: "output" as const,
+            data: text,
+            id: `msg-${++messageCounter}-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    });
   },
 
   clearMessages: () => set({ messages: [], processStatus: null }),
 
   removeLoading: () =>
-    set((state) => ({ messages: state.messages.filter((m) => m.type !== 'loading'), processStatus: null })),
+    set((state) => ({
+      messages: state.messages.filter((m) => m.type !== "loading"),
+      processStatus: null,
+    })),
 
   setProcessing: (isProcessing) => set({ isProcessing }),
   setSessionId: (sessionId) => set({ sessionId }),
@@ -143,11 +179,11 @@ export const useChatStore = create<ChatState>((set) => ({
   updatePermissionStatus: (id, status) =>
     set((state) => ({
       messages: state.messages.map((m) => {
-        if (m.type === 'permissionRequest') {
-          const data = m.data as Record<string, unknown>
-          if (data.id === id) return { ...m, data: { ...data, status } }
+        if (m.type === "permissionRequest") {
+          const data = m.data as Record<string, unknown>;
+          if (data.id === id) return { ...m, data: { ...data, status } };
         }
-        return m
+        return m;
       }),
     })),
 
@@ -155,55 +191,53 @@ export const useChatStore = create<ChatState>((set) => ({
 
   restoreState: (restored) =>
     set((state) => ({
-      messages: restored.messages !== undefined ? restored.messages : state.messages,
+      messages:
+        restored.messages !== undefined ? restored.messages : state.messages,
       sessionId: restored.sessionId || null,
-      totals: { totalCost: restored.totalCost || 0, totalTokensInput: 0, totalTokensOutput: 0, requestCount: 0 },
+      totals: {
+        totalCost: restored.totalCost || 0,
+        totalTokensInput: 0,
+        totalTokensOutput: 0,
+        requestCount: 0,
+      },
     })),
-}))
+}));
 
 // ============================================================================
 // Conversation Store
 // ============================================================================
 
 interface ConversationEntry {
-  filename: string
-  sessionId: string
-  startTime: string
-  endTime: string
-  messageCount: number
-  totalCost: number
-  firstUserMessage: string
-  lastUserMessage: string
+  filename: string;
+  sessionId: string;
+  startTime: string;
+  endTime: string;
+  messageCount: number;
+  totalCost: number;
+  firstUserMessage: string;
+  lastUserMessage: string;
 }
 
 interface ConversationState {
-  conversations: ConversationEntry[]
-  setConversations: (list: ConversationEntry[]) => void
+  conversations: ConversationEntry[];
+  setConversations: (list: ConversationEntry[]) => void;
 }
 
 export const useConversationStore = create<ConversationState>((set) => ({
   conversations: [],
   setConversations: (list) => set({ conversations: list }),
-}))
+}));
 
 // ============================================================================
 // MCP Store
 // ============================================================================
 
-interface MCPServerConfig {
-  type: 'stdio' | 'http' | 'sse'
-  command?: string
-  url?: string
-  args?: string[]
-  headers?: Record<string, string>
-}
-
 interface MCPState {
-  servers: Record<string, MCPServerConfig>
-  editingServer: string | null
-  setServers: (servers: Record<string, MCPServerConfig>) => void
-  setEditingServer: (name: string | null) => void
-  removeServer: (name: string) => void
+  servers: Record<string, MCPServerConfig>;
+  editingServer: string | null;
+  setServers: (servers: Record<string, MCPServerConfig>) => void;
+  setEditingServer: (name: string | null) => void;
+  removeServer: (name: string) => void;
 }
 
 export const useMCPStore = create<MCPState>((set) => ({
@@ -213,89 +247,105 @@ export const useMCPStore = create<MCPState>((set) => ({
   setEditingServer: (name) => set({ editingServer: name }),
   removeServer: (name) =>
     set((state) => {
-      const { [name]: _, ...rest } = state.servers
-      return { servers: rest }
+      const { [name]: _, ...rest } = state.servers;
+      return { servers: rest };
     }),
-}))
+}));
 
 // ============================================================================
 // Settings Store
 // ============================================================================
 
 interface SettingsState {
-  thinkingIntensity: string
-  yoloMode: boolean
-  maxTurns: number
-  disallowedTools: string[]
-  updateSettings: (settings: Partial<{ thinkingIntensity: string; yoloMode: boolean; maxTurns: number; disallowedTools: string[] }>) => void
+  thinkingIntensity: string;
+  yoloMode: boolean;
+  maxTurns: number;
+  disallowedTools: string[];
+  updateSettings: (
+    settings: Partial<{
+      thinkingIntensity: string;
+      yoloMode: boolean;
+      maxTurns: number;
+      disallowedTools: string[];
+    }>,
+  ) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  thinkingIntensity: 'fast',
+  thinkingIntensity: "fast",
   yoloMode: true,
   maxTurns: 0,
   disallowedTools: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
-}))
+}));
 
 // ============================================================================
 // UI Store
 // ============================================================================
 
-type ActiveView = 'chat' | 'history' | 'settings'
-type NotificationType = 'info' | 'success' | 'warning' | 'error'
+type ActiveView = "chat" | "history" | "settings";
+type NotificationType = "info" | "success" | "warning" | "error";
 
 interface Notification {
-  id: string
-  type: NotificationType
-  title: string
-  message?: string
-  timestamp: number
+  id: string;
+  type: NotificationType;
+  title: string;
+  message?: string;
+  timestamp: number;
 }
 
 interface UIState {
-  activeView: ActiveView
-  showIntensityModal: boolean
-  showMCPModal: boolean
-  showInstallModal: boolean
-  showLoginModal: boolean
-  loginErrorMessage: string
-  draftText: string
-  editingContext: { userInputIndex: number; images: string[] } | null
-  requestStartTime: number | null
-  usageData: UsageData | null
-  accountType: 'pro' | 'max' | undefined
-  platformInfo: { platform: string; isWindows: boolean } | null
-  showClaudeMdBanner: boolean
-  notifications: Notification[]
+  activeView: ActiveView;
+  showIntensityModal: boolean;
+  showMCPModal: boolean;
+  showInstallModal: boolean;
+  showLoginModal: boolean;
+  loginErrorMessage: string;
+  draftText: string;
+  editingContext: { userInputIndex: number; images: string[] } | null;
+  requestStartTime: number | null;
+  usageData: UsageData | null;
+  accountType: "pro" | "max" | undefined;
+  platformInfo: { platform: string; isWindows: boolean } | null;
+  showClaudeMdBanner: boolean;
+  notifications: Notification[];
 
-  setActiveView: (view: ActiveView) => void
-  setShowIntensityModal: (show: boolean) => void
-  setShowMCPModal: (show: boolean) => void
-  setShowInstallModal: (show: boolean) => void
-  setShowLoginModal: (show: boolean) => void
-  setLoginErrorMessage: (msg: string) => void
-  setDraftText: (text: string) => void
-  setEditingContext: (ctx: { userInputIndex: number; images: string[] } | null) => void
-  setRequestStartTime: (time: number | null) => void
-  setUsageData: (data: UsageData | null) => void
-  setAccountType: (type: 'pro' | 'max' | undefined) => void
-  setPlatformInfo: (info: { platform: string; isWindows: boolean } | null) => void
-  setShowClaudeMdBanner: (show: boolean) => void
-  showNotification: (type: NotificationType, title: string, message?: string, timeout?: number) => void
-  dismissNotification: (id: string) => void
+  setActiveView: (view: ActiveView) => void;
+  setShowIntensityModal: (show: boolean) => void;
+  setShowMCPModal: (show: boolean) => void;
+  setShowInstallModal: (show: boolean) => void;
+  setShowLoginModal: (show: boolean) => void;
+  setLoginErrorMessage: (msg: string) => void;
+  setDraftText: (text: string) => void;
+  setEditingContext: (
+    ctx: { userInputIndex: number; images: string[] } | null,
+  ) => void;
+  setRequestStartTime: (time: number | null) => void;
+  setUsageData: (data: UsageData | null) => void;
+  setAccountType: (type: "pro" | "max" | undefined) => void;
+  setPlatformInfo: (
+    info: { platform: string; isWindows: boolean } | null,
+  ) => void;
+  setShowClaudeMdBanner: (show: boolean) => void;
+  showNotification: (
+    type: NotificationType,
+    title: string,
+    message?: string,
+    timeout?: number,
+  ) => void;
+  dismissNotification: (id: string) => void;
 }
 
-let notifCounter = 0
+let notifCounter = 0;
 
 export const useUIStore = create<UIState>((set, get) => ({
-  activeView: 'chat',
+  activeView: "chat",
   showIntensityModal: false,
   showMCPModal: false,
   showInstallModal: false,
   showLoginModal: false,
-  loginErrorMessage: '',
-  draftText: '',
+  loginErrorMessage: "",
+  draftText: "",
   editingContext: null,
   requestStartTime: null,
   usageData: null,
@@ -319,14 +369,19 @@ export const useUIStore = create<UIState>((set, get) => ({
   setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
 
   showNotification: (type, title, message, timeout = 5000) => {
-    const id = `notif-${++notifCounter}`
-    const notification: Notification = { id, type, title, message, timestamp: Date.now() }
-    set({ notifications: [...get().notifications, notification] })
-    if (timeout > 0) setTimeout(() => get().dismissNotification(id), timeout)
+    const id = `notif-${++notifCounter}`;
+    const notification: Notification = {
+      id,
+      type,
+      title,
+      message,
+      timestamp: Date.now(),
+    };
+    set({ notifications: [...get().notifications, notification] });
+    if (timeout > 0) setTimeout(() => get().dismissNotification(id), timeout);
   },
 
   dismissNotification: (id) => {
-    set({ notifications: get().notifications.filter((n) => n.id !== id) })
+    set({ notifications: get().notifications.filter((n) => n.id !== id) });
   },
-}))
-
+}));
