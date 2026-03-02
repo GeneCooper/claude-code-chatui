@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ClaudeService, PermissionService } from './claude';
 import { ConversationService, UsageService, MCPService } from './storage';
-import { DiffContentProvider } from './handlers';
+import { DiffContentProvider, MarkdownContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider, getWebviewHtml } from './panel';
 import { PanelManager } from './panelManager';
 
@@ -15,10 +15,14 @@ export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel('Claude Code ChatUI');
   const usageService = new UsageService(outputChannel);
 
-  // Register diff content provider
+  // Register virtual document providers
   const diffProvider = vscode.workspace.registerTextDocumentContentProvider(
     DiffContentProvider.scheme,
     new DiffContentProvider(),
+  );
+  const markdownProvider = vscode.workspace.registerTextDocumentContentProvider(
+    MarkdownContentProvider.scheme,
+    new MarkdownContentProvider(),
   );
 
   // Create panel manager for multi-panel support
@@ -118,6 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     panelSerializer,
     webviewProviderReg,
     diffProvider,
+    markdownProvider,
     statusBarItem,
     sidebarClaudeService,
     permissionService,

@@ -6,6 +6,7 @@ import { ConversationService, UsageService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
+  MarkdownContentProvider,
   SessionStateManager,
   SettingsManager,
   handleWebviewMessage,
@@ -438,6 +439,36 @@ export class PanelProvider {
     });
   }
 
+  /** Check the last assistant output and auto-open as markdown doc if it looks like a plan/summary. */
+  private _tryAutoOpenArtifact(): void {
+    const conversation = this._messageProcessor.currentConversation;
+    if (conversation.length === 0) return;
+
+    // Find the last 'output' message
+    let lastOutput: string | null = null;
+    for (let i = conversation.length - 1; i >= 0; i--) {
+      const msg = conversation[i];
+      if (msg.messageType === 'output' && typeof msg.data === 'string') {
+        lastOutput = msg.data;
+        break;
+      }
+      // Stop looking if we hit a user input (only check current turn)
+      if (msg.messageType === 'userInput') break;
+    }
+
+    if (!lastOutput || lastOutput.length < 800) return;
+
+    // Heuristic: needs 3+ markdown headers to qualify as a structured document
+    const headerCount = (lastOutput.match(/^#{1,3}\s+/gm) || []).length;
+    if (headerCount < 3) return;
+
+    // Extract title from first heading
+    const titleMatch = lastOutput.match(/^#\s+(.+)/m);
+    const title = titleMatch ? titleMatch[1].slice(0, 40) : 'Claude Output';
+
+    void MarkdownContentProvider.openMarkdown(lastOutput, title);
+  }
+
   private _shouldUseSlimPrompt(): boolean {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) return false;
@@ -704,6 +735,12 @@ export class PanelProvider {
         });
         parts.push(`Diagnostics (${label}):\n${items.join('\n')}`);
       }
+
+      // File outline — extract class/interface/function signatures for small-to-medium files
+      if (doc.lineCount < 500) {
+        const outline = this._extractFileOutline(doc);
+        if (outline) parts.push(`File outline (${relativePath}):\n${outline}`);
+      }
     }
 
     if (parts.length === 0) return '';
@@ -732,6 +769,62 @@ export class PanelProvider {
     }
   }
 
+  /**
+   * Extract class/interface declarations and method/function signatures from the active file.
+   * Returns a concise outline string or null if nothing interesting was found.
+   */
+  private _extractFileOutline(doc: vscode.TextDocument): string | null {
+    const lang = doc.languageId;
+    const text = doc.getText();
+    const lines: string[] = [];
+
+    // Language-specific signature patterns
+    const patterns: RegExp[] = [];
+    if (['typescript', 'typescriptreact', 'javascript', 'javascriptreact'].includes(lang)) {
+      patterns.push(
+        /^(?:export\s+)?(?:abstract\s+)?(?:class|interface|type|enum)\s+\w+[^{]*/gm,
+        /^\s*(?:public|private|protected|static|async|get|set|\*)\s+\w+\s*\([^)]*\)/gm,
+        /^(?:export\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)/gm,
+        /^(?:export\s+)?const\s+\w+\s*[:=]\s*(?:\([^)]*\)\s*=>|function)/gm,
+      );
+    } else if (lang === 'java' || lang === 'kotlin') {
+      patterns.push(
+        /^(?:public|private|protected)?\s*(?:static\s+)?(?:abstract\s+)?(?:class|interface|enum)\s+\w+[^{]*/gm,
+        /^\s*(?:public|private|protected)\s+(?:static\s+)?(?:abstract\s+)?[\w<>\[\],\s]+\s+\w+\s*\([^)]*\)/gm,
+      );
+    } else if (lang === 'python') {
+      patterns.push(
+        /^class\s+\w+[^:]*:/gm,
+        /^\s*(?:async\s+)?def\s+\w+\s*\([^)]*\)/gm,
+      );
+    } else if (lang === 'go') {
+      patterns.push(
+        /^type\s+\w+\s+(?:struct|interface)/gm,
+        /^func\s+(?:\(\w+\s+\*?\w+\)\s+)?\w+\s*\([^)]*\)/gm,
+      );
+    } else if (lang === 'rust') {
+      patterns.push(
+        /^(?:pub\s+)?(?:struct|enum|trait|impl)\s+\w+/gm,
+        /^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+\s*(?:<[^>]*>)?\s*\([^)]*\)/gm,
+      );
+    } else {
+      return null; // unsupported language
+    }
+
+    for (const re of patterns) {
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        const sig = m[0].trim().replace(/\s+/g, ' ');
+        if (sig.length > 0 && sig.length < 200) lines.push(sig);
+      }
+    }
+
+    if (lines.length === 0) return null;
+    // Deduplicate and cap
+    const unique = [...new Set(lines)].slice(0, 30);
+    return unique.join('\n');
+  }
+
   private _setupClaudeServiceHandlers(): void {
     this._claudeService.onMessage((message: ClaudeMessage) => {
       void this._messageProcessor.processMessage(message);
@@ -747,6 +840,9 @@ export class PanelProvider {
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
+
+      // Auto-open artifact: if the final message is a long structured output, open as doc
+      this._tryAutoOpenArtifact();
     });
 
     this._claudeService.onError((error) => {

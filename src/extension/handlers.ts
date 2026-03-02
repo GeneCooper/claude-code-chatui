@@ -875,6 +875,10 @@ const handleOpenFile: MessageHandler = (msg) => {
 
 const handleOpenExternal: MessageHandler = (msg) => { void vscode.env.openExternal(vscode.Uri.parse(msg.url as string)); };
 
+const handleOpenMarkdownArtifact: MessageHandler = async (msg) => {
+  await MarkdownContentProvider.openMarkdown(msg.content as string, (msg.title as string) || 'Claude Output');
+};
+
 const handleOpenDiff: MessageHandler = async (msg) => {
   // Force side-by-side diff rendering
   const diffConfig = vscode.workspace.getConfiguration('diffEditor');
@@ -1134,6 +1138,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   openFile: handleOpenFile,
   openExternal: handleOpenExternal,
   openDiff: handleOpenDiff,
+  openMarkdownArtifact: handleOpenMarkdownArtifact,
   getConversationList: handleGetConversationList,
   loadConversation: handleLoadConversation,
   getSettings: handleGetSettings,
