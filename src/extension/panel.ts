@@ -543,15 +543,37 @@ export class PanelProvider {
       }
     } catch { /* skip */ }
 
-    if (hasImages) {
+    if (hasImages || hasRequirementIntent) {
       parts.push('', '[Analysis Instruction]');
-      parts.push('The user has provided image(s). This likely contains a requirement diagram, flowchart, or design document.');
+      if (hasImages) {
+        parts.push('The user has provided image(s). This likely contains a requirement diagram, flowchart, or design document.');
+      }
+      parts.push('IMPORTANT: For this analysis task, IGNORE the "be concise" and "one-sentence summary" rules. Produce COMPREHENSIVE structured output instead.');
+      parts.push('');
       parts.push('Before responding, you MUST:');
-      parts.push('1. Use Glob to get the file tree, then Grep keywords from the image to find relevant files. Do NOT read every file blindly.');
+      parts.push('1. Use Glob to get the file tree, then Grep keywords from the image/text to find relevant files. Do NOT read every file blindly.');
       parts.push('2. Read ONLY the relevant files (max 15). Prioritize: entities/models → controllers/routes → services.');
-      parts.push('3. Cross-reference the image against existing code. Output a comparison table: feature | status | existing file | notes.');
-      parts.push('4. After analysis, provide ACTIONABLE artifacts: SQL DDL, skeleton code, implementation order by dependency.');
-      parts.push('5. Do NOT stop at analysis — push through to executable output the user can directly use.');
+      parts.push('3. Cross-reference against existing code.');
+      parts.push('4. Do NOT stop at analysis — push through to executable output the user can directly use.');
+      parts.push('');
+      parts.push('OUTPUT FORMAT — your response MUST include ALL of these sections:');
+      parts.push('## Overview');
+      parts.push('Brief summary of what the requirement/diagram describes.');
+      parts.push('');
+      parts.push('## Data Structure');
+      parts.push('Markdown table: Layer | Name | Description | DB Table/Column mapping');
+      parts.push('');
+      parts.push('## Key Relationships');
+      parts.push('Describe entity relationships, cardinality, and special association rules.');
+      parts.push('');
+      parts.push('## Comparison with Existing Code');
+      parts.push('Markdown table: Feature | Status (Implemented/Missing/Partial) | Existing File | Notes');
+      parts.push('');
+      parts.push('## Recommendations & Actionable Artifacts');
+      parts.push('- New/modified SQL DDL');
+      parts.push('- Skeleton code for new classes/entities');
+      parts.push('- Implementation order based on dependency chain');
+      parts.push('- Key design decisions that need user input');
       parts.push('[/Analysis Instruction]');
     }
 
