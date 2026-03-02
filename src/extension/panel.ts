@@ -416,7 +416,8 @@ export class PanelProvider {
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
     const contextPrefix = this._gatherIDEContext();
-    const enrichedText = contextPrefix ? contextPrefix + '\n\n' + text : text;
+    const intentContext = this._detectAndEnrich(text, images);
+    const enrichedText = [contextPrefix, intentContext, text].filter(Boolean).join('\n\n');
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, planMode, thinkingMode, yoloMode,
@@ -424,6 +425,103 @@ export class PanelProvider {
       mcpConfigPath, images,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
     });
+  }
+
+  /**
+   * Detect if the user message warrants proactive codebase exploration
+   * (e.g. images, flowcharts, requirement docs) and inject project structure context.
+   */
+  private _detectAndEnrich(text: string, images?: string[]): string {
+    const hasImages = images && images.length > 0;
+    const requirementKeywords = /(?:需求|流程图|设计|架构|ER图|数据模型|UML|类图|时序图|用例|原型|wireframe|mockup|spec|requirement|flowchart|diagram|blueprint|schema)/i;
+    const hasRequirementIntent = requirementKeywords.test(text);
+
+    if (!hasImages && !hasRequirementIntent) return '';
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return '';
+
+    const rootPath = workspaceFolder.uri.fsPath;
+    const parts: string[] = ['[Project Structure Context]'];
+
+    // Scan top-level directory
+    try {
+      const topEntries = fs.readdirSync(rootPath, { withFileTypes: true });
+      const dirs: string[] = [];
+      const files: string[] = [];
+      for (const entry of topEntries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'build' || entry.name === 'out' || entry.name === 'target' || entry.name === '__pycache__') continue;
+        if (entry.isDirectory()) dirs.push(entry.name + '/');
+        else files.push(entry.name);
+      }
+      parts.push('Root: ' + [...dirs, ...files].join(', '));
+    } catch { /* skip */ }
+
+    // Scan key source directories (2 levels deep)
+    const sourceDirs = ['src', 'app', 'lib', 'server', 'api', 'pages', 'components', 'models', 'entities', 'controllers', 'services', 'routes'];
+    for (const dir of sourceDirs) {
+      const dirPath = path.join(rootPath, dir);
+      try {
+        if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) continue;
+        const tree = this._scanDir(dirPath, 2, rootPath);
+        if (tree) parts.push(tree);
+      } catch { /* skip */ }
+    }
+
+    // Also check src/main for Java/Kotlin projects
+    const srcMainPath = path.join(rootPath, 'src', 'main');
+    try {
+      if (fs.existsSync(srcMainPath) && fs.statSync(srcMainPath).isDirectory()) {
+        const tree = this._scanDir(srcMainPath, 3, rootPath);
+        if (tree) parts.push(tree);
+      }
+    } catch { /* skip */ }
+
+    // Detect CLAUDE.md for project context
+    const claudeMdPath = path.join(rootPath, 'CLAUDE.md');
+    try {
+      if (fs.existsSync(claudeMdPath)) {
+        parts.push('Note: CLAUDE.md exists at project root — read it for project context.');
+      }
+    } catch { /* skip */ }
+
+    if (hasImages) {
+      parts.push('', '[Analysis Instruction]');
+      parts.push('The user has provided image(s). This likely contains a requirement diagram, flowchart, or design document.');
+      parts.push('Before responding, you MUST:');
+      parts.push('1. Use Glob to get the file tree, then Grep keywords from the image to find relevant files. Do NOT read every file blindly.');
+      parts.push('2. Read ONLY the relevant files (max 15). Prioritize: entities/models → controllers/routes → services.');
+      parts.push('3. Cross-reference the image against existing code. Output a comparison table: feature | status | existing file | notes.');
+      parts.push('4. After analysis, provide ACTIONABLE artifacts: SQL DDL, skeleton code, implementation order by dependency.');
+      parts.push('5. Do NOT stop at analysis — push through to executable output the user can directly use.');
+      parts.push('[/Analysis Instruction]');
+    }
+
+    parts.push('[/Project Structure Context]');
+    return parts.join('\n');
+  }
+
+  private _scanDir(dirPath: string, maxDepth: number, rootPath: string, currentDepth = 0): string | null {
+    if (currentDepth >= maxDepth) return null;
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      const relativePath = path.relative(rootPath, dirPath).replace(/\\/g, '/');
+      const indent = '  '.repeat(currentDepth);
+      const lines: string[] = currentDepth === 0 ? [`${relativePath}/:`] : [];
+
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+        if (entry.isDirectory()) {
+          const subPath = path.join(dirPath, entry.name);
+          lines.push(`${indent}  ${entry.name}/`);
+          const sub = this._scanDir(subPath, maxDepth, rootPath, currentDepth + 1);
+          if (sub) lines.push(sub);
+        } else {
+          lines.push(`${indent}  ${entry.name}`);
+        }
+      }
+      return lines.length > (currentDepth === 0 ? 1 : 0) ? lines.join('\n') : null;
+    } catch { return null; }
   }
 
   /**

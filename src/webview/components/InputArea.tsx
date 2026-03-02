@@ -11,7 +11,7 @@ import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
 export function InputArea() {
   const [text, setText] = useState('')
-  const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
+  const [ctrlEnterSend, setCtrlEnterSend] = useState(true)
   const [planMode, setPlanMode] = useState(true)
   const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')

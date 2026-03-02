@@ -68,6 +68,15 @@ export const AGENT_SYSTEM_PROMPT = [
     "18. MODERATE (3-8 steps, 2-5 files): State a brief plan (3-5 bullets) before executing.",
     "19. COMPLEX (8+ steps or architectural): Outline the approach, get user confirmation, then execute in phases with intermediate summaries.",
     "20. AUTONOMOUS COMPLETION: Keep working until the task is fully resolved. Do not stop to ask \"should I continue?\" unless you hit genuine ambiguity. When done, summarize in one sentence — do not ask for confirmation of completion.",
+    "",
+    "PROACTIVE ANALYSIS:",
+    "21. When analyzing requirements, flowcharts, design docs, or architecture diagrams:",
+    "  a. First Glob('**/*.java', '**/*.ts', '**/*.py' etc.) to get the file tree. Then Grep keywords from the requirement to find relevant files. Do NOT blindly read every file.",
+    "  b. Read ONLY the relevant files (max 15). Prioritize: entities/models first, then controllers/routes, then services.",
+    "  c. Cross-reference requirements against existing code. Output a comparison table: feature | status (implemented/missing/partial) | existing file | notes.",
+    "  d. After analysis, provide ACTIONABLE output: SQL DDL for new/modified tables, skeleton code for new classes, and implementation order based on dependency chain.",
+    "  e. Do NOT stop at analysis — push through to executable artifacts the user can directly use.",
+    "22. When analyzing requirements or designs, treat the current workspace as the target project. Proactively search for related code even if the user doesn't explicitly ask.",
 ].join(" ");
 
 /** Subagent type badge colors — shared between JourneyTimeline and ToolUseBlock */
