@@ -46,6 +46,30 @@ export class DiffContentProvider implements vscode.TextDocumentContentProvider {
 }
 
 // ============================================================================
+// MarkdownContentProvider (artifact documents)
+// ============================================================================
+
+const markdownContentStore = new Map<string, string>();
+
+export class MarkdownContentProvider implements vscode.TextDocumentContentProvider {
+  static readonly scheme = 'claude-artifact';
+
+  provideTextDocumentContent(uri: vscode.Uri): string {
+    return markdownContentStore.get(uri.toString()) || '';
+  }
+
+  static async openMarkdown(content: string, title: string): Promise<void> {
+    const safeTitle = title.replace(/[^\w\u4e00-\u9fff-]/g, '_').slice(0, 40);
+    const label = `${safeTitle}.${Date.now()}.md`;
+    const uri = vscode.Uri.parse(`${MarkdownContentProvider.scheme}:${label}`);
+    markdownContentStore.set(uri.toString(), content);
+    const doc = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside });
+    await vscode.commands.executeCommand('markdown.showPreview', uri);
+  }
+}
+
+// ============================================================================
 // SessionStateManager
 // ============================================================================
 
@@ -441,6 +465,24 @@ export class ClaudeMessageProcessor {
           hidden,
         },
       });
+
+      // Emit tool error notification for extension-level handling
+      if (isError && toolName) {
+        const errorText = String(resultContent).replace(/<\/?tool_use_error>/g, '').trim();
+        const shortError = errorText.length > 120 ? errorText.substring(0, 120) + '...' : errorText;
+        this._poster.postMessage({ type: 'toolError', data: { toolName, error: shortError } });
+      }
+
+      // Auto-open diff when file-edit tool succeeds
+      if (fileContentAfter !== undefined && toolData?.fileContentBefore !== undefined && rawInput?.file_path && !isError) {
+        const autoOpenDiff = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoOpenDiff', false);
+        if (autoOpenDiff) {
+          const filePath = rawInput.file_path as string;
+          setTimeout(() => {
+            void DiffContentProvider.openDiff(toolData.fileContentBefore!, fileContentAfter!, filePath);
+          }, 300);
+        }
+      }
     }
   }
 

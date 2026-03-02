@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.8.28",
+  "version": "0.8.29",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -137,6 +137,11 @@
           },
           "default": [],
           "description": "List of tool names to block (e.g. Bash, Write). Passed as --disallowedTools to CLI."
+        },
+        "claudeCodeChatUI.autoOpenDiff": {
+          "type": "boolean",
+          "default": false,
+          "description": "文件被 Claude 修改后自动在 VS Code 中打开 Diff 视图"
         },
         "claudeCodeChatUI.projectProfile.enabled": {
           "type": "boolean",

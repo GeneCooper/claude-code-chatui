@@ -13,6 +13,7 @@ import {
   type WebviewMessage,
 } from './handlers';
 import { createModuleLogger } from '../shared/logger';
+import { AGENT_SYSTEM_PROMPT, AGENT_SYSTEM_PROMPT_FULL } from '../shared/constants';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
 
@@ -135,7 +136,14 @@ export class PanelProvider {
     this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
 
     const poster: MessagePoster = {
-      postMessage: (msg) => this._postMessage(msg),
+      postMessage: (msg) => {
+        if (msg.type === 'toolError') {
+          const data = msg.data as { toolName: string; error: string };
+          vscode.window.showWarningMessage(`Tool "${data.toolName}" failed: ${data.error}`);
+          return;
+        }
+        this._postMessage(msg);
+      },
       sendAndSaveMessage: (msg) => this._postMessage(msg),
     };
 
@@ -417,14 +425,33 @@ export class PanelProvider {
 
     const contextPrefix = this._gatherIDEContext();
     const intentContext = this._detectAndEnrich(text, images);
-    const enrichedText = [contextPrefix, intentContext, text].filter(Boolean).join('\n\n');
+    const processedText = this._preprocessFileReferences(text);
+    const enrichedText = [contextPrefix, intentContext, processedText].filter(Boolean).join('\n\n');
+
+    const systemPrompt = this._shouldUseSlimPrompt() ? AGENT_SYSTEM_PROMPT : AGENT_SYSTEM_PROMPT_FULL;
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, planMode, thinkingMode, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath, images,
+      mcpConfigPath, images, systemPrompt,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
     });
+  }
+
+  private _shouldUseSlimPrompt(): boolean {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return false;
+    const root = workspaceFolder.uri.fsPath;
+    const candidates = [path.join(root, 'CLAUDE.md'), path.join(root, '.claude', 'CLAUDE.md')];
+    for (const mdPath of candidates) {
+      try {
+        if (fs.existsSync(mdPath)) {
+          const content = fs.readFileSync(mdPath, 'utf8');
+          if (content.includes('Agent Rules') || content.includes('PARALLEL FIRST')) return true;
+        }
+      } catch { /* skip */ }
+    }
+    return false;
   }
 
   /**
@@ -522,6 +549,98 @@ export class PanelProvider {
       }
       return lines.length > (currentDepth === 0 ? 1 : 0) ? lines.join('\n') : null;
     } catch { return null; }
+  }
+
+  private _preprocessFileReferences(text: string): string {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return text;
+    const rootPath = workspaceFolder.uri.fsPath;
+
+    const fileRefPattern = /@([\w./\\-]+\.\w+)/g;
+    const matches: { fullMatch: string; relativePath: string }[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = fileRefPattern.exec(text)) !== null) {
+      matches.push({ fullMatch: match[0], relativePath: match[1] });
+    }
+    if (matches.length === 0) return text;
+
+    const binaryExts = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.svg', '.pdf', '.zip', '.tar', '.gz', '.rar', '.7z', '.exe', '.dll', '.so', '.dylib', '.wasm', '.mp3', '.mp4', '.wav', '.avi', '.mov']);
+    let result = text;
+
+    for (const { fullMatch, relativePath } of matches) {
+      const absPath = path.join(rootPath, relativePath);
+      try {
+        if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory()) continue;
+        const ext = path.extname(relativePath).toLowerCase();
+        if (binaryExts.has(ext)) continue;
+        const stat = fs.statSync(absPath);
+        if (stat.size > 1024 * 1024) {
+          result = result.replace(fullMatch, `[File: ${relativePath} | TOO LARGE (${Math.round(stat.size / 1024)}KB) — content not included]`);
+          continue;
+        }
+
+        const rawContent = fs.readFileSync(absPath, 'utf8');
+        const lines = rawContent.split('\n');
+        const lang = this._detectLanguage(ext);
+        const declarations = this._extractDeclarations(rawContent, lang);
+        const parts: string[] = [`[File: ${relativePath} | ${lang} | ${lines.length} lines]`];
+        if (declarations.length > 0) parts.push('Declarations: ' + declarations.join(', '));
+        if (lines.length <= 500) {
+          parts.push('```' + lang, rawContent, '```');
+        } else {
+          parts.push('```' + lang + ' (first 50 lines)', lines.slice(0, 50).join('\n'), '```');
+          parts.push(`... (${lines.length - 50} more lines)`);
+        }
+        parts.push('[/File]');
+        result = result.replace(fullMatch, parts.join('\n'));
+      } catch { continue; }
+    }
+    return result;
+  }
+
+  private _detectLanguage(ext: string): string {
+    const m: Record<string, string> = {
+      '.ts': 'typescript', '.tsx': 'typescript', '.js': 'javascript', '.jsx': 'javascript',
+      '.py': 'python', '.java': 'java', '.kt': 'kotlin', '.go': 'go', '.rs': 'rust',
+      '.rb': 'ruby', '.php': 'php', '.cs': 'csharp', '.cpp': 'cpp', '.c': 'c',
+      '.swift': 'swift', '.scala': 'scala', '.dart': 'dart', '.vue': 'vue',
+      '.html': 'html', '.css': 'css', '.scss': 'scss', '.json': 'json',
+      '.yaml': 'yaml', '.yml': 'yaml', '.toml': 'toml', '.xml': 'xml',
+      '.sql': 'sql', '.sh': 'bash', '.md': 'markdown',
+    };
+    return m[ext] || ext.replace('.', '');
+  }
+
+  private _extractDeclarations(content: string, language: string): string[] {
+    const decls: string[] = [];
+    const lines = content.split('\n');
+    let patterns: RegExp[] = [];
+    switch (language) {
+      case 'typescript': case 'javascript':
+        patterns = [/^export\s+(?:default\s+)?(?:class|interface|type|enum|function|const)\s+(\w+)/, /^(?:class|interface|type|enum|function)\s+(\w+)/];
+        break;
+      case 'python':
+        patterns = [/^class\s+(\w+)/, /^def\s+(\w+)/];
+        break;
+      case 'java': case 'kotlin': case 'csharp':
+        patterns = [/^\s*(?:public|private|protected)?\s*(?:static\s+)?(?:class|interface|enum|record|abstract\s+class)\s+(\w+)/];
+        break;
+      case 'go':
+        patterns = [/^func\s+(\w+)/, /^type\s+(\w+)\s+(?:struct|interface)/];
+        break;
+      case 'rust':
+        patterns = [/^pub\s+(?:fn|struct|enum|trait)\s+(\w+)/, /^(?:fn|struct|enum|trait)\s+(\w+)/];
+        break;
+      default:
+        patterns = [/^(?:export\s+)?(?:class|function|interface|type|struct|enum|def)\s+(\w+)/];
+    }
+    for (const line of lines) {
+      for (const p of patterns) {
+        const m = line.match(p);
+        if (m?.[1]) decls.push(m[1]);
+      }
+    }
+    return [...new Set(decls)].slice(0, 30);
   }
 
   /**

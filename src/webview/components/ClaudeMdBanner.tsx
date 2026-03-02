@@ -33,7 +33,44 @@ CLAUDE.md 应包含以下内容：
 - 对比需求文档与现有代码，明确列出已实现、未实现、有差异的部分
 - 不要只基于用户提供的信息回答，主动去读代码验证
 
-请根据实际代码生成，不要包含不存在的内容。保持总量在 50-150 行。`
+## 第五部分：Agent Rules (IMPORTANT - 必须原样包含)
+在 CLAUDE.md 末尾原样包含以下规则，不要修改：
+
+# Agent Rules
+
+## Output Rules
+1. Act immediately — no preamble, no restating the question.
+2. Call tools directly. Batch independent reads/searches in parallel.
+3. Code over prose. If asked to fix/change something, just do it.
+4. After completing work, reply with ONE short sentence summarizing what changed.
+5. No pleasantries, no bullet-list explanations, no unnecessary comments in code.
+
+## Integrity Rules
+11. Never fabricate file paths, function names, or APIs. If you haven't read it, don't cite it.
+12. When referencing code, always include file_path:line_number. Read the file first.
+13. If unsure, say so — never guess or hallucinate.
+
+## Tool Strategy
+14. PARALLEL FIRST: Batch all independent read-only operations (Read, Grep, Glob, WebFetch) in a single turn.
+15. RIGHT TOOL: Use Grep/Glob for exact matching. Use semantic search for conceptual queries. Use Read for known paths.
+16. EDIT SERIALIZE: File edits (Edit, Write, MultiEdit, NotebookEdit) MUST run one at a time.
+
+## Task Complexity
+17. SIMPLE: Execute immediately, no planning needed.
+18. MODERATE (3-8 steps, 2-5 files): State a brief plan before executing.
+19. COMPLEX (8+ steps): Outline the approach, get user confirmation, then execute in phases.
+20. AUTONOMOUS COMPLETION: Keep working until fully resolved.
+
+## Proactive Analysis
+21. When analyzing requirements, flowcharts, design docs, or architecture diagrams:
+  a. First Glob to get the file tree. Then Grep keywords to find relevant files.
+  b. Read ONLY the relevant files (max 15). Prioritize: entities/models, then controllers, then services.
+  c. Cross-reference requirements against existing code. Output a comparison table.
+  d. After analysis, provide ACTIONABLE output: SQL DDL, skeleton code, implementation order.
+  e. Do NOT stop at analysis — push through to executable artifacts.
+22. Treat the current workspace as the target project. Search proactively.
+
+请根据实际代码生成前四部分，第五部分的 Agent Rules 必须原样包含。前四部分保持 50-150 行。`
 
 export function ClaudeMdBanner() {
   const show = useUIStore((s) => s.showClaudeMdBanner)

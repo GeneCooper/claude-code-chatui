@@ -622,6 +622,26 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Auto-collapse previous completed plan groups during active streaming
+  useEffect(() => {
+    if (!isProcessing) return
+    const planGroups = items.filter((it): it is PlanGroup => it.kind === 'plan')
+    if (planGroups.length < 2) return
+    const completedIds = planGroups
+      .slice(0, -1)
+      .filter(p => p.status === 'completed' || p.status === 'failed')
+      .map(p => p.id)
+    if (completedIds.length === 0) return
+    setCollapsedPlans(prev => {
+      const next = new Set(prev)
+      let changed = false
+      for (const id of completedIds) {
+        if (!next.has(id)) { next.add(id); changed = true }
+      }
+      return changed ? next : prev
+    })
+  }, [items, isProcessing])
+
   const togglePlan = useCallback((id: string) => {
     setCollapsedPlans((prev) => {
       const next = new Set(prev)

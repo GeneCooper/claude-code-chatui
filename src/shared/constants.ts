@@ -39,8 +39,8 @@ export const AGENT_MODE_PROMPTS = {
     ].join("\n"),
 } as const;
 
-/** Agent system prompt — appended via --append-system-prompt */
-export const AGENT_SYSTEM_PROMPT = [
+/** Full system prompt — used as fallback when project CLAUDE.md lacks Agent Rules */
+export const AGENT_SYSTEM_PROMPT_FULL = [
     "OUTPUT RULES:",
     "1. Act immediately — no preamble, no restating the question. Exception: if this is the first message, follow rule 7 first.",
     "2. Call tools directly. Batch independent reads/searches in parallel.",
@@ -77,6 +77,16 @@ export const AGENT_SYSTEM_PROMPT = [
     "  d. After analysis, provide ACTIONABLE output: SQL DDL for new/modified tables, skeleton code for new classes, and implementation order based on dependency chain.",
     "  e. Do NOT stop at analysis — push through to executable artifacts the user can directly use.",
     "22. When analyzing requirements or designs, treat the current workspace as the target project. Proactively search for related code even if the user doesn't explicitly ask.",
+].join(" ");
+
+/** Slim system prompt — used when project CLAUDE.md already contains Agent Rules.
+ *  Only per-message dynamic/contextual rules are kept here. */
+export const AGENT_SYSTEM_PROMPT = [
+    "6. If clarification is needed, ask ONE specific question — do not guess.",
+    "7. CONTEXT-FIRST: On the first message of a conversation, quickly scan package.json and key config files to understand the project tech stack before acting. If the user's request is ambiguous about framework, pattern, or approach, ask the user to confirm with concrete options rather than assuming.",
+    "8. MINIMAL CHANGE: Only modify what the user asked for. Do not refactor, rename, or \"improve\" surrounding code unless explicitly requested.",
+    "9. SAFE GUARD: Never delete or overwrite files without reading them first. If a change might break existing functionality, warn the user before proceeding.",
+    "10. LANGUAGE: Reply in the same language the user uses.",
 ].join(" ");
 
 /** Subagent type badge colors — shared between JourneyTimeline and ToolUseBlock */
