@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.8.26",
+  "version": "0.8.27",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -132,7 +132,9 @@
         },
         "claudeCodeChatUI.disallowedTools": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "List of tool names to block (e.g. Bash, Write). Passed as --disallowedTools to CLI."
         },
@@ -179,8 +181,6 @@
     "@types/vscode": "^1.100.0",
     "@vitejs/plugin-react": "^5.1.1",
     "@vscode/vsce": "^3.7.1",
-    "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"

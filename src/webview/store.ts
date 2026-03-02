@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import type { UsageData, MCPServerConfig, TodoItem } from "../shared/types";
+import type {
+  UsageData,
+  MCPServerConfig,
+  TodoItem,
+  ConversationIndexEntry,
+} from "../shared/types";
 
 // Re-export so downstream consumers (hooks.ts, TodoDisplay.tsx) can keep importing from store
 export type { TodoItem };
@@ -207,20 +212,9 @@ export const useChatStore = create<ChatState>((set) => ({
 // Conversation Store
 // ============================================================================
 
-interface ConversationEntry {
-  filename: string;
-  sessionId: string;
-  startTime: string;
-  endTime: string;
-  messageCount: number;
-  totalCost: number;
-  firstUserMessage: string;
-  lastUserMessage: string;
-}
-
 interface ConversationState {
-  conversations: ConversationEntry[];
-  setConversations: (list: ConversationEntry[]) => void;
+  conversations: ConversationIndexEntry[];
+  setConversations: (list: ConversationIndexEntry[]) => void;
 }
 
 export const useConversationStore = create<ConversationState>((set) => ({
