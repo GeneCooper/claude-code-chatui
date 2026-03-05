@@ -372,7 +372,7 @@ export class ClaudeMessageProcessor {
     let toolInput = '';
     let fileContentBefore: string | undefined;
 
-    if (toolName === 'TodoWrite' && input.todos) {
+    if (toolName === 'TodoWrite' && Array.isArray(input.todos)) {
       toolInput = '\nTodo List Update:';
       for (const todo of input.todos as Array<{ content: string; status: string; priority?: string }>) {
         const icon = todo.status === 'completed' ? '✅' : todo.status === 'in_progress' ? '🔄' : '⏳';

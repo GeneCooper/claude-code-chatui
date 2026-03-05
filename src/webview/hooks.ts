@@ -82,7 +82,8 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
     // Extract todos from todosUpdate messages
     const todosMsg = data.messages.filter((m) => m.type === 'todosUpdate').pop()
-    const todos = todosMsg ? (todosMsg.data as { todos: TodoItem[] })?.todos : undefined
+    const rawTodos = todosMsg ? (todosMsg.data as { todos: unknown })?.todos : undefined
+    const todos = Array.isArray(rawTodos) ? rawTodos as TodoItem[] : undefined
 
     // Single state update for all messages
     useChatStore.setState((state) => ({
@@ -279,8 +280,10 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   todosUpdate: (msg) => {
-    const todosData = msg.data as { todos: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }> }
-    useChatStore.getState().updateTodos(todosData.todos)
+    const todosData = msg.data as { todos: unknown }
+    if (Array.isArray(todosData?.todos)) {
+      useChatStore.getState().updateTodos(todosData.todos as Array<{ content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }>)
+    }
   },
 
   editorSelection: (msg) => {
