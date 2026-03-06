@@ -380,17 +380,17 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, thinkingMode?: boolean, images?: string[]) =>
-        this._handleSendMessage(text, thinkingMode, images),
+      handleSendMessage: (text: string, _thinkingMode?: boolean, images?: string[]) =>
+        this._handleSendMessage(text, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
     };
   }
 
-  private _handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void {
+  private _handleSendMessage(text: string, images?: string[]): void {
     if (this._stateManager.isProcessing) return;
 
-    log.info('Sending message', { thinkingMode, hasImages: !!images?.length });
+    log.info('Sending message', { hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -433,7 +433,7 @@ export class PanelProvider {
     const systemPrompt = AGENT_SYSTEM_PROMPT;
 
     void this._claudeService.sendMessage(enrichedText, {
-      cwd, thinkingMode, yoloMode,
+      cwd, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images, systemPrompt,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
@@ -559,53 +559,32 @@ export class PanelProvider {
     // Git status (branch + dirty files) — lightweight, no spawn
     this._appendGitContext(parts, workspaceFolder);
 
-    // --- Layer 2: Open files list (cap at 10) ---
-    const openTabs = vscode.window.tabGroups.all
-      .flatMap(g => g.tabs)
-      .filter(t => t.input && (t.input as { uri?: vscode.Uri }).uri)
-      .map(t => vscode.workspace.asRelativePath((t.input as { uri: vscode.Uri }).uri, false))
-      .slice(0, 10);
-    if (openTabs.length > 0) {
-      parts.push(`Open files: ${openTabs.join(', ')}`);
-    }
-
-    // --- Layer 3: Active file details ---
+    // --- Layer 2: Active file + selection (most relevant context) ---
     const editor = vscode.window.activeTextEditor;
     if (editor) {
       const doc = editor.document;
       const relativePath = vscode.workspace.asRelativePath(doc.uri, false);
+      parts.push(`Active file: ${relativePath}`);
 
-      // Active file info
-      parts.push(`Active file: ${relativePath} (${doc.languageId})`);
-
-      // Selection (cap at 200 lines)
+      // Selection only — most valuable context, skip if nothing selected
       const selection = editor.selection;
       if (!selection.isEmpty) {
         const selectedText = doc.getText(selection);
         const lines = selectedText.split('\n');
-        const capped = lines.length > 200 ? lines.slice(0, 200).join('\n') + '\n... (truncated)' : selectedText;
+        const capped = lines.length > 100 ? lines.slice(0, 100).join('\n') + '\n... (truncated)' : selectedText;
         parts.push(`Selected text (lines ${selection.start.line + 1}-${selection.end.line + 1}):\n\`\`\`\n${capped}\n\`\`\``);
       }
 
-      // Diagnostics — errors and warnings in current file (cap at 20)
-      const diagnostics = vscode.languages.getDiagnostics(doc.uri);
-      const problems = diagnostics
-        .filter(d => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning)
-        .slice(0, 20);
-      if (problems.length > 0) {
-        const label = problems.length === 1 ? '1 problem' : `${problems.length} problems`;
-        const items = problems.map(d => {
-          const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'Error' : 'Warning';
+      // Diagnostics — only errors (warnings are too noisy), cap at 10
+      const diagnostics = vscode.languages.getDiagnostics(doc.uri)
+        .filter(d => d.severity === vscode.DiagnosticSeverity.Error)
+        .slice(0, 10);
+      if (diagnostics.length > 0) {
+        const items = diagnostics.map(d => {
           const src = d.source ? ` [${d.source}]` : '';
-          return `- Line ${d.range.start.line + 1}: ${sev}: ${d.message}${src}`;
+          return `- L${d.range.start.line + 1}: ${d.message}${src}`;
         });
-        parts.push(`Diagnostics (${label}):\n${items.join('\n')}`);
-      }
-
-      // File outline — extract class/interface/function signatures for small-to-medium files
-      if (doc.lineCount < 500) {
-        const outline = this._extractFileOutline(doc);
-        if (outline) parts.push(`File outline (${relativePath}):\n${outline}`);
+        parts.push(`Errors:\n${items.join('\n')}`);
       }
     }
 
@@ -635,61 +614,6 @@ export class PanelProvider {
     }
   }
 
-  /**
-   * Extract class/interface declarations and method/function signatures from the active file.
-   * Returns a concise outline string or null if nothing interesting was found.
-   */
-  private _extractFileOutline(doc: vscode.TextDocument): string | null {
-    const lang = doc.languageId;
-    const text = doc.getText();
-    const lines: string[] = [];
-
-    // Language-specific signature patterns
-    const patterns: RegExp[] = [];
-    if (['typescript', 'typescriptreact', 'javascript', 'javascriptreact'].includes(lang)) {
-      patterns.push(
-        /^(?:export\s+)?(?:abstract\s+)?(?:class|interface|type|enum)\s+\w+[^{]*/gm,
-        /^\s*(?:public|private|protected|static|async|get|set|\*)\s+\w+\s*\([^)]*\)/gm,
-        /^(?:export\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)/gm,
-        /^(?:export\s+)?const\s+\w+\s*[:=]\s*(?:\([^)]*\)\s*=>|function)/gm,
-      );
-    } else if (lang === 'java' || lang === 'kotlin') {
-      patterns.push(
-        /^(?:public|private|protected)?\s*(?:static\s+)?(?:abstract\s+)?(?:class|interface|enum)\s+\w+[^{]*/gm,
-        /^\s*(?:public|private|protected)\s+(?:static\s+)?(?:abstract\s+)?[\w<>\[\],\s]+\s+\w+\s*\([^)]*\)/gm,
-      );
-    } else if (lang === 'python') {
-      patterns.push(
-        /^class\s+\w+[^:]*:/gm,
-        /^\s*(?:async\s+)?def\s+\w+\s*\([^)]*\)/gm,
-      );
-    } else if (lang === 'go') {
-      patterns.push(
-        /^type\s+\w+\s+(?:struct|interface)/gm,
-        /^func\s+(?:\(\w+\s+\*?\w+\)\s+)?\w+\s*\([^)]*\)/gm,
-      );
-    } else if (lang === 'rust') {
-      patterns.push(
-        /^(?:pub\s+)?(?:struct|enum|trait|impl)\s+\w+/gm,
-        /^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+\s*(?:<[^>]*>)?\s*\([^)]*\)/gm,
-      );
-    } else {
-      return null; // unsupported language
-    }
-
-    for (const re of patterns) {
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(text)) !== null) {
-        const sig = m[0].trim().replace(/\s+/g, ' ');
-        if (sig.length > 0 && sig.length < 200) lines.push(sig);
-      }
-    }
-
-    if (lines.length === 0) return null;
-    // Deduplicate and cap
-    const unique = [...new Set(lines)].slice(0, 30);
-    return unique.join('\n');
-  }
 
   private _setupClaudeServiceHandlers(): void {
     this._claudeService.onMessage((message: ClaudeMessage) => {

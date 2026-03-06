@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../shared/types';
-import { AGENT_MODE_PROMPTS, AGENT_SYSTEM_PROMPT, AgentMode } from '../shared/constants';
+import { AGENT_SYSTEM_PROMPT } from '../shared/constants';
 
 // ============================================================================
 // PermissionService
@@ -110,7 +110,6 @@ export class PermissionService implements vscode.Disposable {
 
 interface SendMessageOptions {
   cwd: string;
-  thinkingMode?: boolean;
   yoloMode?: boolean;
   model?: string;
   mcpConfigPath?: string;
