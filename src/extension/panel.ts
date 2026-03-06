@@ -6,7 +6,6 @@ import { ConversationService, UsageService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
-  MarkdownContentProvider,
   SessionStateManager,
   SettingsManager,
   handleWebviewMessage,
@@ -122,7 +121,6 @@ export class PanelProvider {
   private _sessionId: string | undefined;
 
   // Performance caches
-  private _projectStructureCache: { result: string; timestamp: number; rootPath: string } | undefined;
   private _slimPromptCache: { result: boolean; timestamp: number } | undefined;
   private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -388,17 +386,17 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]) =>
-        this._handleSendMessage(text, planMode, thinkingMode, images),
+      handleSendMessage: (text: string, thinkingMode?: boolean, images?: string[]) =>
+        this._handleSendMessage(text, thinkingMode, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
     };
   }
 
-  private _handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void {
+  private _handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void {
     if (this._stateManager.isProcessing) return;
 
-    log.info('Sending message', { planMode, thinkingMode, hasImages: !!images?.length });
+    log.info('Sending message', { thinkingMode, hasImages: !!images?.length });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -431,48 +429,17 @@ export class PanelProvider {
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
     const contextPrefix = this._gatherIDEContext();
-    const intentContext = this._detectAndEnrich(text, images);
     const processedText = this._preprocessFileReferences(text);
-    const enrichedText = [contextPrefix, intentContext, processedText].filter(Boolean).join('\n\n');
+    const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
 
     const systemPrompt = this._shouldUseSlimPrompt() ? AGENT_SYSTEM_PROMPT : AGENT_SYSTEM_PROMPT_FULL;
 
     void this._claudeService.sendMessage(enrichedText, {
-      cwd, planMode, thinkingMode, yoloMode,
+      cwd, thinkingMode, yoloMode,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images, systemPrompt,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
     });
-  }
-
-  /** Check the last assistant output and auto-open as markdown doc if it looks like a plan/summary. */
-  private _tryAutoOpenArtifact(): void {
-    const conversation = this._messageProcessor.currentConversation;
-    if (conversation.length === 0) return;
-
-    // Find the last 'output' message
-    let lastOutput: string | null = null;
-    for (let i = conversation.length - 1; i >= 0; i--) {
-      const msg = conversation[i];
-      if (msg.messageType === 'output' && typeof msg.data === 'string') {
-        lastOutput = msg.data;
-        break;
-      }
-      // Stop looking if we hit a user input (only check current turn)
-      if (msg.messageType === 'userInput') break;
-    }
-
-    if (!lastOutput || lastOutput.length < 800) return;
-
-    // Heuristic: needs 3+ markdown headers to qualify as a structured document
-    const headerCount = (lastOutput.match(/^#{1,3}\s+/gm) || []).length;
-    if (headerCount < 3) return;
-
-    // Extract title from first heading
-    const titleMatch = lastOutput.match(/^#\s+(.+)/m);
-    const title = titleMatch ? titleMatch[1].slice(0, 40) : 'Claude Output';
-
-    void MarkdownContentProvider.openMarkdown(lastOutput, title);
   }
 
   private _shouldUseSlimPrompt(): boolean {
@@ -495,142 +462,6 @@ export class PanelProvider {
     }
     this._slimPromptCache = { result, timestamp: now };
     return result;
-  }
-
-  /**
-   * Detect if the user message warrants proactive codebase exploration
-   * (e.g. images, flowcharts, requirement docs) and inject project structure context.
-   */
-  private _getProjectStructure(rootPath: string): string {
-    const now = Date.now();
-    if (this._projectStructureCache
-      && this._projectStructureCache.rootPath === rootPath
-      && (now - this._projectStructureCache.timestamp) < PanelProvider.CACHE_TTL_MS) {
-      return this._projectStructureCache.result;
-    }
-
-    const parts: string[] = [];
-    // Scan top-level directory
-    try {
-      const topEntries = fs.readdirSync(rootPath, { withFileTypes: true });
-      const dirs: string[] = [];
-      const files: string[] = [];
-      for (const entry of topEntries) {
-        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'build' || entry.name === 'out' || entry.name === 'target' || entry.name === '__pycache__') continue;
-        if (entry.isDirectory()) dirs.push(entry.name + '/');
-        else files.push(entry.name);
-      }
-      parts.push('Root: ' + [...dirs, ...files].join(', '));
-    } catch { /* skip */ }
-
-    // Scan key source directories (2 levels deep)
-    const sourceDirs = ['src', 'app', 'lib', 'server', 'api', 'pages', 'components', 'models', 'entities', 'controllers', 'services', 'routes'];
-    for (const dir of sourceDirs) {
-      const dirPath = path.join(rootPath, dir);
-      try {
-        if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) continue;
-        const tree = this._scanDir(dirPath, 2, rootPath);
-        if (tree) parts.push(tree);
-      } catch { /* skip */ }
-    }
-
-    // Also check src/main for Java/Kotlin projects
-    const srcMainPath = path.join(rootPath, 'src', 'main');
-    try {
-      if (fs.existsSync(srcMainPath) && fs.statSync(srcMainPath).isDirectory()) {
-        const tree = this._scanDir(srcMainPath, 3, rootPath);
-        if (tree) parts.push(tree);
-      }
-    } catch { /* skip */ }
-
-    // Detect CLAUDE.md for project context
-    const claudeMdPath = path.join(rootPath, 'CLAUDE.md');
-    try {
-      if (fs.existsSync(claudeMdPath)) {
-        parts.push('Note: CLAUDE.md exists at project root — read it for project context.');
-      }
-    } catch { /* skip */ }
-
-    const result = parts.join('\n');
-    this._projectStructureCache = { result, timestamp: now, rootPath };
-    return result;
-  }
-
-  private _detectAndEnrich(text: string, images?: string[]): string {
-    const hasImages = images && images.length > 0;
-    const requirementKeywords = /(?:需求|流程图|设计|架构|ER图|数据模型|UML|类图|时序图|用例|原型|wireframe|mockup|spec|requirement|flowchart|diagram|blueprint|schema)/i;
-    const hasRequirementIntent = requirementKeywords.test(text);
-
-    if (!hasImages && !hasRequirementIntent) return '';
-
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) return '';
-
-    const rootPath = workspaceFolder.uri.fsPath;
-    const parts: string[] = ['[Project Structure Context]'];
-
-    const structure = this._getProjectStructure(rootPath);
-    if (structure) parts.push(structure);
-
-    if (hasImages || hasRequirementIntent) {
-      parts.push('', '[Analysis Instruction]');
-      if (hasImages) {
-        parts.push('The user has provided image(s). This likely contains a requirement diagram, flowchart, or design document.');
-      }
-      parts.push('IMPORTANT: For this analysis task, IGNORE the "be concise" and "one-sentence summary" rules. Produce COMPREHENSIVE structured output instead.');
-      parts.push('');
-      parts.push('Before responding, you MUST:');
-      parts.push('1. Use Glob to get the file tree, then Grep keywords from the image/text to find relevant files. Do NOT read every file blindly.');
-      parts.push('2. Read ONLY the relevant files (max 15). Prioritize: entities/models → controllers/routes → services.');
-      parts.push('3. Cross-reference against existing code.');
-      parts.push('4. Do NOT stop at analysis — push through to executable output the user can directly use.');
-      parts.push('');
-      parts.push('OUTPUT FORMAT — your response MUST include ALL of these sections:');
-      parts.push('## Overview');
-      parts.push('Brief summary of what the requirement/diagram describes.');
-      parts.push('');
-      parts.push('## Data Structure');
-      parts.push('Markdown table: Layer | Name | Description | DB Table/Column mapping');
-      parts.push('');
-      parts.push('## Key Relationships');
-      parts.push('Describe entity relationships, cardinality, and special association rules.');
-      parts.push('');
-      parts.push('## Comparison with Existing Code');
-      parts.push('Markdown table: Feature | Status (Implemented/Missing/Partial) | Existing File | Notes');
-      parts.push('');
-      parts.push('## Recommendations & Actionable Artifacts');
-      parts.push('- New/modified SQL DDL');
-      parts.push('- Skeleton code for new classes/entities');
-      parts.push('- Implementation order based on dependency chain');
-      parts.push('- Key design decisions that need user input');
-      parts.push('[/Analysis Instruction]');
-    }
-
-    parts.push('[/Project Structure Context]');
-    return parts.join('\n');
-  }
-
-  private _scanDir(dirPath: string, maxDepth: number, rootPath: string, currentDepth = 0): string | null {
-    if (currentDepth >= maxDepth) return null;
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-      const relativePath = path.relative(rootPath, dirPath).replace(/\\/g, '/');
-      const indent = '  '.repeat(currentDepth);
-      const lines: string[] = currentDepth === 0 ? [`${relativePath}/:`] : [];
-
-      for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue;
-        if (entry.isDirectory()) {
-          const subPath = path.join(dirPath, entry.name);
-          lines.push(`${indent}  ${entry.name}/`);
-          const sub = this._scanDir(subPath, maxDepth, rootPath, currentDepth + 1);
-          if (sub) lines.push(sub);
-        } else {
-          lines.push(`${indent}  ${entry.name}`);
-        }
-      }
-      return lines.length > (currentDepth === 0 ? 1 : 0) ? lines.join('\n') : null;
-    } catch { return null; }
   }
 
   private _preprocessFileReferences(text: string): string {
@@ -900,8 +731,6 @@ export class PanelProvider {
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
 
-      // Auto-open artifact: if the final message is a long structured output, open as doc
-      this._tryAutoOpenArtifact();
     });
 
     this._claudeService.onError((error) => {

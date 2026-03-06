@@ -110,7 +110,6 @@ export class PermissionService implements vscode.Disposable {
 
 interface SendMessageOptions {
   cwd: string;
-  planMode?: boolean;
   thinkingMode?: boolean;
   yoloMode?: boolean;
   model?: string;
@@ -193,7 +192,6 @@ export class ClaudeService implements vscode.Disposable {
       args.push('--permission-prompt-tool', 'stdio');
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
-    if (options.planMode && !options.yoloMode) args.push('--permission-mode', 'plan');
     if (options.thinkingMode) {
       const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
       const mode = config.get<AgentMode>('thinking.intensity', AgentMode.Fast);

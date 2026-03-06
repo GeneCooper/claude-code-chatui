@@ -809,7 +809,7 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, planMode?: boolean, thinkingMode?: boolean, images?: string[]): void;
+  handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
 }
@@ -825,7 +825,6 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
   }
   ctx.handleSendMessage(
     msg.text as string,
-    msg.planMode as boolean | undefined,
     msg.thinkingMode as boolean | undefined,
     msg.images as string[] | undefined,
   );
