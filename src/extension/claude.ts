@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../shared/types';
-import { AGENT_MODE_PROMPTS, AGENT_SYSTEM_PROMPT, AGENT_SYSTEM_PROMPT_FULL, AgentMode } from '../shared/constants';
+import { AGENT_MODE_PROMPTS, AGENT_SYSTEM_PROMPT, AgentMode } from '../shared/constants';
 
 // ============================================================================
 // PermissionService
@@ -183,7 +183,7 @@ export class ClaudeService implements vscode.Disposable {
     // --append-system-prompt, because on Windows with shell:true cmd.exe
     // interprets >, <, |, & inside CLI arguments as shell operators, which
     // silently redirects stdout to rogue files (e.g. ">8" creates file "8").
-    const sysPrompt = options.systemPrompt || AGENT_SYSTEM_PROMPT_FULL;
+    const sysPrompt = options.systemPrompt || AGENT_SYSTEM_PROMPT;
     actualMessage = `${sysPrompt}\n\n${actualMessage}`;
 
     if (options.yoloMode) {

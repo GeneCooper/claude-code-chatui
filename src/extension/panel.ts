@@ -13,7 +13,7 @@ import {
   type WebviewMessage,
 } from './handlers';
 import { createModuleLogger } from '../shared/logger';
-import { AGENT_SYSTEM_PROMPT, AGENT_SYSTEM_PROMPT_FULL } from '../shared/constants';
+import { AGENT_SYSTEM_PROMPT } from '../shared/constants';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
 
@@ -120,9 +120,6 @@ export class PanelProvider {
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
 
-  // Performance caches
-  private _slimPromptCache: { result: boolean; timestamp: number } | undefined;
-  private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -269,9 +266,6 @@ export class PanelProvider {
     }
   }
 
-  reinitializeWebview(): void {
-    // No-op: with retainContextWhenHidden the webview stays alive
-  }
 
   async newSession(): Promise<void> {
     if (this._panelManager) {
@@ -425,6 +419,10 @@ export class PanelProvider {
     if (yoloMode && !disallowedTools.includes('AskUserQuestion')) {
       disallowedTools.push('AskUserQuestion');
     }
+    // EnterPlanMode requires interactive approval in CLI which doesn't work in stream-json mode
+    if (!disallowedTools.includes('EnterPlanMode')) {
+      disallowedTools.push('EnterPlanMode');
+    }
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
@@ -432,7 +430,7 @@ export class PanelProvider {
     const processedText = this._preprocessFileReferences(text);
     const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
 
-    const systemPrompt = this._shouldUseSlimPrompt() ? AGENT_SYSTEM_PROMPT : AGENT_SYSTEM_PROMPT_FULL;
+    const systemPrompt = AGENT_SYSTEM_PROMPT;
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, thinkingMode, yoloMode,
@@ -440,28 +438,6 @@ export class PanelProvider {
       mcpConfigPath, images, systemPrompt,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
     });
-  }
-
-  private _shouldUseSlimPrompt(): boolean {
-    const now = Date.now();
-    if (this._slimPromptCache && (now - this._slimPromptCache.timestamp) < PanelProvider.CACHE_TTL_MS) {
-      return this._slimPromptCache.result;
-    }
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) return false;
-    const root = workspaceFolder.uri.fsPath;
-    const candidates = [path.join(root, 'CLAUDE.md'), path.join(root, '.claude', 'CLAUDE.md')];
-    let result = false;
-    for (const mdPath of candidates) {
-      try {
-        if (fs.existsSync(mdPath)) {
-          const content = fs.readFileSync(mdPath, 'utf8');
-          if (content.includes('Agent Rules') || content.includes('PARALLEL FIRST')) { result = true; break; }
-        }
-      } catch { /* skip */ }
-    }
-    this._slimPromptCache = { result, timestamp: now };
-    return result;
   }
 
   private _preprocessFileReferences(text: string): string {
@@ -871,7 +847,6 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this._panelProvider.closeMainPanel();
-        this._panelProvider.reinitializeWebview();
       }
     });
 

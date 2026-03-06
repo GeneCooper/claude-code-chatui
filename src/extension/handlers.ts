@@ -1097,12 +1097,13 @@ function checkClaudeMdExists(ctx: MessageHandlerContext): void {
   ].some((p) => fs.existsSync(p));
 
   if (exists) return;
+  if (ctx.extensionContext.globalState.get<boolean>('claudeMdBannerDismissed')) return;
 
   ctx.postMessage({ type: 'showClaudeMdBanner' });
 }
 
-const handleDismissClaudeMdBanner: MessageHandler = () => {
-  // No-op: no longer persist dismissal — banner reappears every session until CLAUDE.md exists
+const handleDismissClaudeMdBanner: MessageHandler = (_msg, ctx) => {
+  void ctx.extensionContext.globalState.update('claudeMdBannerDismissed', true);
 };
 
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
