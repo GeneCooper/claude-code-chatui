@@ -149,6 +149,32 @@ export function computeLineDiff(oldContent: string, newContent: string, options?
 }
 
 // ============================================================================
+// Character-level inline diff (for highlighting changed chars within a line)
+// ============================================================================
+
+export interface CharDiffSegment {
+  type: 'equal' | 'insert' | 'delete';
+  value: string;
+}
+
+export function computeCharDiff(oldStr: string, newStr: string): CharDiffSegment[] {
+  const a = [...oldStr];
+  const b = [...newStr];
+  const ops = myersDiff(a, b, (x, y) => x === y);
+  // Merge consecutive ops of the same type
+  const segments: CharDiffSegment[] = [];
+  for (const op of ops) {
+    const type = op.type === 'insert' ? 'insert' : op.type === 'delete' ? 'delete' : 'equal';
+    if (segments.length > 0 && segments[segments.length - 1].type === type) {
+      segments[segments.length - 1].value += op.value;
+    } else {
+      segments.push({ type, value: op.value });
+    }
+  }
+  return segments;
+}
+
+// ============================================================================
 // Permission Error Detection
 // ============================================================================
 
