@@ -2,10 +2,10 @@
 
 /* ===== Design Tokens ===== */
 :root {
-  --chatui-accent: #ed6e1d;
-  --chatui-accent-dark: #de5513;
-  --chatui-accent-glow: rgba(237, 110, 29, 0.25);
-  --chatui-accent-subtle: rgba(237, 110, 29, 0.12);
+  --chatui-accent: #e74c3c;
+  --chatui-accent-dark: #c0392b;
+  --chatui-accent-glow: rgba(231, 76, 60, 0.25);
+  --chatui-accent-subtle: rgba(231, 76, 60, 0.12);
   --chatui-glass-bg: rgba(30, 30, 30, 0.4);
   --chatui-glass-border: rgba(255, 255, 255, 0.08);
   --chatui-surface-1: rgba(255, 255, 255, 0.03);

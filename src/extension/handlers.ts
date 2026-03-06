@@ -532,39 +532,25 @@ export class ClaudeMessageProcessor {
               }
             }
 
-            // Auto-save & format the edited file, then collect diagnostics
+            // Collect diagnostics (errors only) after a brief delay for language services
+            // NOTE: Do NOT auto-format or save here — it causes race conditions when
+            // Claude is still working on the file in the same turn (especially YOLO mode)
             try {
-              const doc = await vscode.workspace.openTextDocument(uri);
-              // Format the document if a formatter is available
-              const edits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
-                'vscode.executeFormatDocumentProvider', uri,
-                { tabSize: 2, insertSpaces: true } as vscode.FormattingOptions,
-              );
-              if (edits && edits.length > 0) {
-                const wsEdit = new vscode.WorkspaceEdit();
-                for (const e of edits) wsEdit.replace(uri, e.range, e.newText);
-                await vscode.workspace.applyEdit(wsEdit);
-              }
-              // Save the document
-              if (doc.isDirty) await doc.save();
-
-              // Wait briefly for language services to update diagnostics
-              await new Promise(r => setTimeout(r, 500));
+              await new Promise(r => setTimeout(r, 800));
               const diagnostics = vscode.languages.getDiagnostics(uri)
-                .filter(d => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning)
-                .slice(0, 15);
+                .filter(d => d.severity === vscode.DiagnosticSeverity.Error)
+                .slice(0, 10);
               if (diagnostics.length > 0) {
                 const items = diagnostics.map(d => {
-                  const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'Error' : 'Warning';
                   const src = d.source ? ` [${d.source}]` : '';
-                  return `Line ${d.range.start.line + 1}: ${sev}: ${d.message}${src}`;
+                  return `Line ${d.range.start.line + 1}: ${d.message}${src}`;
                 });
                 this._poster.postMessage({
                   type: 'diagnosticsAfterEdit',
                   data: { filePath, diagnostics: items },
                 });
               }
-            } catch { /* format/save/diagnostics failed — non-critical */ }
+            } catch { /* diagnostics collection failed — non-critical */ }
           } catch { /* File read failed */ }
         })();
       }
