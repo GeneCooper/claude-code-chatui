@@ -304,6 +304,7 @@ export interface ToolUseData {
   toolInput: string;
   rawInput: Record<string, unknown>;
   toolName: string;
+  toolUseId?: string;
   fileContentBefore?: string;
   startLine?: number;
   startLines?: number[];

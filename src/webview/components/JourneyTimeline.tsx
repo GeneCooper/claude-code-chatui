@@ -149,11 +149,30 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
       }
       case 'toolResult': {
         if (currentPlan && currentPlan.steps.length > 0) {
-          const lastStep = currentPlan.steps[currentPlan.steps.length - 1]
-          if (lastStep && !lastStep.toolResult) {
-            lastStep.toolResult = msg
-          } else {
-            currentPlan.steps.push({ id: msg.id, toolResult: msg })
+          // Match by toolUseId to handle parallel tool execution (YOLO mode)
+          const resultData = msg.data as Record<string, unknown>
+          const resultToolUseId = resultData?.toolUseId as string | undefined
+          let matched = false
+          if (resultToolUseId) {
+            for (const step of currentPlan.steps) {
+              if (!step.toolResult && step.toolUse) {
+                const useData = step.toolUse.data as Record<string, unknown>
+                if (useData?.toolUseId === resultToolUseId) {
+                  step.toolResult = msg
+                  matched = true
+                  break
+                }
+              }
+            }
+          }
+          if (!matched) {
+            // Fallback: assign to last step without result, or create orphan
+            const lastStep = currentPlan.steps[currentPlan.steps.length - 1]
+            if (lastStep && !lastStep.toolResult) {
+              lastStep.toolResult = msg
+            } else {
+              currentPlan.steps.push({ id: msg.id, toolResult: msg })
+            }
           }
         } else {
           if (!currentPlan) {

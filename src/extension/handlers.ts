@@ -399,14 +399,14 @@ export class ClaudeMessageProcessor {
     }
 
     // Send tool use message immediately — don't block on file read
+    const toolUseId = content.id as string || `${toolName}-${Date.now()}`;
     const toolUseData: ToolUseData = {
-      toolInfo, toolInput, rawInput: input, toolName,
+      toolInfo, toolInput, rawInput: input, toolName, toolUseId,
     };
     this._sendAndSave({ type: 'toolUse', data: toolUseData });
 
     // Read file content asynchronously for diff tracking (stored in metric, used by tool_result)
     if (FILE_EDIT_TOOLS.includes(toolName) && input.file_path) {
-      const toolUseId = content.id as string || `${toolName}-${Date.now()}`;
       void (async () => {
         let fileContentBefore = '';
         try {
@@ -436,13 +436,16 @@ export class ClaudeMessageProcessor {
           fileContentBefore, startLine, startLines,
         });
 
-        // Also update the conversation entry with file content for diff
-        const convEntry = this._currentConversation[this._currentConversation.length - 1];
-        if (convEntry?.messageType === 'toolUse') {
-          const data = convEntry.data as ToolUseData;
-          data.fileContentBefore = fileContentBefore;
-          data.startLine = startLine;
-          data.startLines = startLines;
+        // Update the matching conversation entry (find by toolUseId, not last entry)
+        for (let i = this._currentConversation.length - 1; i >= 0; i--) {
+          const entry = this._currentConversation[i];
+          if (entry.messageType === 'toolUse' && (entry.data as ToolUseData).toolUseId === toolUseId) {
+            const data = entry.data as ToolUseData;
+            data.fileContentBefore = fileContentBefore;
+            data.startLine = startLine;
+            data.startLines = startLines;
+            break;
+          }
         }
       })();
     }
@@ -462,8 +465,16 @@ export class ClaudeMessageProcessor {
       }
 
       const isError = !!content.is_error;
-      const lastToolUse = this._currentConversation[this._currentConversation.length - 1];
-      const toolData = lastToolUse?.data as ToolUseData | undefined;
+      // Match toolUse by toolUseId (not last entry) to handle parallel tool execution in YOLO mode
+      const targetToolUseId = content.tool_use_id as string;
+      let toolData: ToolUseData | undefined;
+      for (let i = this._currentConversation.length - 1; i >= 0; i--) {
+        const entry = this._currentConversation[i];
+        if (entry.messageType === 'toolUse' && (entry.data as ToolUseData).toolUseId === targetToolUseId) {
+          toolData = entry.data as ToolUseData;
+          break;
+        }
+      }
       const toolName = toolData?.toolName;
       const rawInput = toolData?.rawInput;
       const hidden = HIDDEN_RESULT_TOOLS.includes(toolName || '') && !isError;
