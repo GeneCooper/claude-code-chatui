@@ -269,23 +269,25 @@ export class ClaudeService implements vscode.Disposable {
       }
     }
 
-    let rawOutput = '';
+    let remainder = '';
     let errorOutput = '';
     let gotResultMessage = false;
 
     claudeProcess.stdout?.on('data', (data: Buffer) => {
-      rawOutput += data.toString();
+      const chunk = data.toString();
       // stdout activity also proves the process is alive — emit heartbeat
       if (!this._stderrDebounceTimer) {
         this._processStatusEmitter.emit('status', { status: 'active' });
       }
-      const lines = rawOutput.split('\n');
-      rawOutput = lines.pop() || '';
+      const combined = remainder + chunk;
+      const lines = combined.split('\n');
+      remainder = lines.pop() || '';
 
       for (const line of lines) {
-        if (!line.trim()) continue;
+        const trimmed = line.trim();
+        if (!trimmed) continue;
         try {
-          const json = JSON.parse(line.trim());
+          const json = JSON.parse(trimmed);
           if (json.type === 'control_request') { this._handleControlRequest(json, claudeProcess); continue; }
           if (json.type === 'control_response') { this._handleControlResponse(json); continue; }
           if (json.type === 'result') {

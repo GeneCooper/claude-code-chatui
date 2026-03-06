@@ -589,11 +589,20 @@ interface Props {
   onEdit?: (userInputIndex: number, text: string, images: string[] | undefined) => void
 }
 
+const VISIBLE_WINDOW_SIZE = 50 // Only render the last N items initially
+
 export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   const [collapsedPlans, setCollapsedPlans] = useState<Set<string>>(new Set())
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
+  const [showAll, setShowAll] = useState(false)
 
   const items = useMemo(() => buildTimelineItems(messages, isProcessing), [messages, isProcessing])
+
+  // Windowed rendering: only render the last N items unless user requests all
+  const visibleItems = useMemo(() => {
+    if (showAll || items.length <= VISIBLE_WINDOW_SIZE) return items
+    return items.slice(-VISIBLE_WINDOW_SIZE)
+  }, [items, showAll])
 
   // Map message IDs to their userInput index (0-based count of userInput messages)
   const userInputIndexMap = useMemo(() => {
@@ -658,9 +667,27 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
     })
   }, [])
 
+  const hiddenCount = items.length - visibleItems.length
+
   return (
     <div className="space-y-2">
-      {items.map((item) => {
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full text-center cursor-pointer border-none"
+          style={{
+            padding: '6px 12px',
+            fontSize: '11px',
+            color: 'var(--vscode-textLink-foreground)',
+            background: 'rgba(128, 128, 128, 0.08)',
+            borderRadius: '6px',
+            opacity: 0.8,
+          }}
+        >
+          Show {hiddenCount} earlier messages
+        </button>
+      )}
+      {visibleItems.map((item) => {
         if (item.kind === 'message') {
           const uiIdx = item.message.type === 'userInput' ? userInputIndexMap.get(item.message.id) : undefined
           return (

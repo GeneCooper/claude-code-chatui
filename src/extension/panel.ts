@@ -121,6 +121,11 @@ export class PanelProvider {
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
 
+  // Performance caches
+  private _projectStructureCache: { result: string; timestamp: number; rootPath: string } | undefined;
+  private _slimPromptCache: { result: boolean; timestamp: number } | undefined;
+  private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
   constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _context: vscode.ExtensionContext,
@@ -165,12 +170,13 @@ export class PanelProvider {
     this._usageService.onUsageUpdate((data) => { this._postMessage({ type: 'usageUpdate', data }); });
     this._usageService.onError((err) => { this._postMessage({ type: 'usageError', data: err }); });
 
+    // Start usage polling lazily (deferred from activation)
+    this._usageService.startPollingIfNeeded();
+
     // Send current usage data immediately so the indicator shows on startup
     const currentUsage = this._usageService.currentUsage;
     if (currentUsage) {
       this._postMessage({ type: 'usageUpdate', data: currentUsage });
-    } else {
-      this._usageService.fetchUsageData();
     }
 
     // Real-time rate-limit updates from the main Claude process stderr
@@ -470,38 +476,40 @@ export class PanelProvider {
   }
 
   private _shouldUseSlimPrompt(): boolean {
+    const now = Date.now();
+    if (this._slimPromptCache && (now - this._slimPromptCache.timestamp) < PanelProvider.CACHE_TTL_MS) {
+      return this._slimPromptCache.result;
+    }
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) return false;
     const root = workspaceFolder.uri.fsPath;
     const candidates = [path.join(root, 'CLAUDE.md'), path.join(root, '.claude', 'CLAUDE.md')];
+    let result = false;
     for (const mdPath of candidates) {
       try {
         if (fs.existsSync(mdPath)) {
           const content = fs.readFileSync(mdPath, 'utf8');
-          if (content.includes('Agent Rules') || content.includes('PARALLEL FIRST')) return true;
+          if (content.includes('Agent Rules') || content.includes('PARALLEL FIRST')) { result = true; break; }
         }
       } catch { /* skip */ }
     }
-    return false;
+    this._slimPromptCache = { result, timestamp: now };
+    return result;
   }
 
   /**
    * Detect if the user message warrants proactive codebase exploration
    * (e.g. images, flowcharts, requirement docs) and inject project structure context.
    */
-  private _detectAndEnrich(text: string, images?: string[]): string {
-    const hasImages = images && images.length > 0;
-    const requirementKeywords = /(?:需求|流程图|设计|架构|ER图|数据模型|UML|类图|时序图|用例|原型|wireframe|mockup|spec|requirement|flowchart|diagram|blueprint|schema)/i;
-    const hasRequirementIntent = requirementKeywords.test(text);
+  private _getProjectStructure(rootPath: string): string {
+    const now = Date.now();
+    if (this._projectStructureCache
+      && this._projectStructureCache.rootPath === rootPath
+      && (now - this._projectStructureCache.timestamp) < PanelProvider.CACHE_TTL_MS) {
+      return this._projectStructureCache.result;
+    }
 
-    if (!hasImages && !hasRequirementIntent) return '';
-
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) return '';
-
-    const rootPath = workspaceFolder.uri.fsPath;
-    const parts: string[] = ['[Project Structure Context]'];
-
+    const parts: string[] = [];
     // Scan top-level directory
     try {
       const topEntries = fs.readdirSync(rootPath, { withFileTypes: true });
@@ -542,6 +550,27 @@ export class PanelProvider {
         parts.push('Note: CLAUDE.md exists at project root — read it for project context.');
       }
     } catch { /* skip */ }
+
+    const result = parts.join('\n');
+    this._projectStructureCache = { result, timestamp: now, rootPath };
+    return result;
+  }
+
+  private _detectAndEnrich(text: string, images?: string[]): string {
+    const hasImages = images && images.length > 0;
+    const requirementKeywords = /(?:需求|流程图|设计|架构|ER图|数据模型|UML|类图|时序图|用例|原型|wireframe|mockup|spec|requirement|flowchart|diagram|blueprint|schema)/i;
+    const hasRequirementIntent = requirementKeywords.test(text);
+
+    if (!hasImages && !hasRequirementIntent) return '';
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return '';
+
+    const rootPath = workspaceFolder.uri.fsPath;
+    const parts: string[] = ['[Project Structure Context]'];
+
+    const structure = this._getProjectStructure(rootPath);
+    if (structure) parts.push(structure);
 
     if (hasImages || hasRequirementIntent) {
       parts.push('', '[Analysis Instruction]');
@@ -620,18 +649,26 @@ export class PanelProvider {
     const binaryExts = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.svg', '.pdf', '.zip', '.tar', '.gz', '.rar', '.7z', '.exe', '.dll', '.so', '.dylib', '.wasm', '.mp3', '.mp4', '.wav', '.avi', '.mov']);
     let result = text;
 
+    // Pre-validate all files and read in batch (avoid repeated existsSync+statSync)
+    const validFiles: { fullMatch: string; relativePath: string; absPath: string; stat: fs.Stats; ext: string }[] = [];
     for (const { fullMatch, relativePath } of matches) {
       const absPath = path.join(rootPath, relativePath);
       try {
-        if (!fs.existsSync(absPath) || fs.statSync(absPath).isDirectory()) continue;
+        const stat = fs.statSync(absPath);
+        if (stat.isDirectory()) continue;
         const ext = path.extname(relativePath).toLowerCase();
         if (binaryExts.has(ext)) continue;
-        const stat = fs.statSync(absPath);
         if (stat.size > 1024 * 1024) {
           result = result.replace(fullMatch, `[File: ${relativePath} | TOO LARGE (${Math.round(stat.size / 1024)}KB) — content not included]`);
           continue;
         }
+        validFiles.push({ fullMatch, relativePath, absPath, stat, ext });
+      } catch { continue; }
+    }
 
+    // Read all valid files
+    for (const { fullMatch, relativePath, absPath, ext } of validFiles) {
+      try {
         const rawContent = fs.readFileSync(absPath, 'utf8');
         const lines = rawContent.split('\n');
         const lang = this._detectLanguage(ext);

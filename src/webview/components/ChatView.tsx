@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, memo } from 'react'
 import { useChatStore, useUIStore } from '../store'
 import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
@@ -8,7 +8,7 @@ interface ChatViewProps {
   onHintClick?: (text: string) => void
 }
 
-export function ChatView({ onHintClick }: ChatViewProps) {
+export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
   const messages = useChatStore((s) => s.messages)
   const isProcessing = useChatStore((s) => s.isProcessing)
   // Use instant scroll during streaming to avoid smooth-scroll "chasing" jitter
@@ -40,4 +40,4 @@ export function ChatView({ onHintClick }: ChatViewProps) {
       )}
     </div>
   )
-}
+})

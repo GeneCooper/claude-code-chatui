@@ -109,23 +109,56 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   output: (msg) => {
-    const store = useChatStore.getState()
-    store.removeLoading()
+    const text = String(msg.data)
     if (msg.partial) {
-      // Partial streaming update — replace the last output with cumulative text
-      store.updateLastOutput(String(msg.data))
+      // Partial streaming update — single setState: remove loading + update/add output
+      useChatStore.setState((state) => {
+        const msgs = state.messages.filter((m) => m.type !== 'loading')
+        // Find last output to replace
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].type === 'output') {
+            const updated = [...msgs]
+            updated[i] = { ...msgs[i], data: text }
+            return { messages: updated, processStatus: null }
+          }
+          if (msgs[i].type !== 'loading') break
+        }
+        // No existing output — add new
+        return {
+          messages: [...msgs, { type: 'output' as const, data: text, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
+          processStatus: null,
+        }
+      })
     } else {
-      // Final/complete message — use existing merge logic
-      const merged = store.appendToLastOutput(String(msg.data))
-      if (!merged) {
-        store.addMessage({ type: 'output', data: msg.data })
-      }
+      // Final/complete message — single setState: remove loading + merge/add
+      useChatStore.setState((state) => {
+        const msgs = state.messages.filter((m) => m.type !== 'loading')
+        // Try to merge into last output
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].type === 'output') {
+            const updated = [...msgs]
+            updated[i] = { ...msgs[i], data: String(msgs[i].data) + '\n\n' + text }
+            return { messages: updated, processStatus: null }
+          }
+          if (msgs[i].type !== 'loading') break
+        }
+        return {
+          messages: [...msgs, { type: 'output' as const, data: text, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
+          processStatus: null,
+        }
+      })
     }
   },
 
   thinking: (msg) => {
-    useChatStore.getState().removeLoading()
-    useChatStore.getState().addMessage({ type: 'thinking', data: msg.data })
+    // Single setState: remove loading + add thinking
+    useChatStore.setState((state) => ({
+      messages: [
+        ...state.messages.filter((m) => m.type !== 'loading'),
+        { type: 'thinking' as const, data: msg.data, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() },
+      ],
+      processStatus: null,
+    }))
   },
 
   loading: (msg) => {
@@ -160,28 +193,55 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   sessionCleared: () => {
-    useChatStore.getState().clearMessages()
-    useChatStore.getState().setSessionId(null)
+    useChatStore.setState({ messages: [], processStatus: null, sessionId: null })
     useUIStore.getState().setRequestStartTime(null)
   },
 
   sessionInfo: (msg) => {
     const info = msg.data as { sessionId: string }
-    useChatStore.getState().setSessionId(info.sessionId)
-    useChatStore.getState().addMessage({ type: 'sessionInfo', data: msg.data })
+    useChatStore.setState((state) => ({
+      sessionId: info.sessionId,
+      messages: [...state.messages, { type: 'sessionInfo' as const, data: msg.data, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
+    }))
   },
 
   updateTokens: (msg) => { useChatStore.getState().updateTokens(msg.data as Record<string, number>) },
   updateTotals: (msg) => { useChatStore.getState().updateTotals(msg.data as Record<string, number>) },
 
   toolUse: (msg) => {
-    useChatStore.getState().removeLoading()
-    useChatStore.getState().addMessage({ type: 'toolUse', data: msg.data })
+    // Single setState: remove loading + add toolUse
+    useChatStore.setState((state) => ({
+      messages: [
+        ...state.messages.filter((m) => m.type !== 'loading'),
+        { type: 'toolUse' as const, data: msg.data, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() },
+      ],
+      processStatus: null,
+    }))
   },
 
   toolResult: (msg) => {
     const result = msg.data as { hidden?: boolean }
     if (!result.hidden) useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
+  },
+
+  toolResultDiffUpdate: (msg) => {
+    // Async diff update — patch fileContentAfter into the matching toolResult message
+    const update = msg.data as { toolUseId: string; fileContentAfter: string }
+    if (!update?.toolUseId) return
+    useChatStore.setState((state) => {
+      const msgs = state.messages
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].type === 'toolResult') {
+          const data = msgs[i].data as Record<string, unknown>
+          if (data.toolUseId === update.toolUseId) {
+            const updated = [...msgs]
+            updated[i] = { ...msgs[i], data: { ...data, fileContentAfter: update.fileContentAfter } }
+            return { messages: updated }
+          }
+        }
+      }
+      return {}
+    })
   },
 
   permissionRequest: (msg) => { useChatStore.getState().addMessage({ type: 'permissionRequest', data: msg.data }) },

@@ -313,9 +313,18 @@ export class UsageService implements vscode.Disposable {
   private _currentProcess: ChildProcess | null = null;
   private _isDisposed = false;
 
+  private _pollingStarted = false;
+
   constructor(private readonly _outputChannel?: vscode.OutputChannel) {
-    this._log('UsageService initializing');
+    this._log('UsageService initializing (deferred polling)');
     this._loadFromCache();
+    // Polling is deferred — call startPollingIfNeeded() when first panel is created
+  }
+
+  /** Start polling lazily — called when the first panel or sidebar is created. */
+  startPollingIfNeeded(): void {
+    if (this._pollingStarted || this._isDisposed) return;
+    this._pollingStarted = true;
     this._startPolling();
   }
 

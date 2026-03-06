@@ -15,6 +15,7 @@ export default function App() {
   useVSCode()
 
   const activeView = useUIStore((s) => s.activeView)
+  const showMCPModal = useUIStore((s) => s.showMCPModal)
   const setDraftText = useUIStore((s) => s.setDraftText)
 
   const handleHintClick = (text: string) => {
@@ -33,7 +34,7 @@ export default function App() {
       )}
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
-      <MCPPanel />
+      {showMCPModal && <MCPPanel />}
       <InstallModal />
       <LoginModal />
     </div>

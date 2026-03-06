@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react'
+import { useState, useMemo, useRef, useEffect, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -68,11 +68,27 @@ const markdownComponents = {
 }
 
 /**
- * With --include-partial-messages, text arrives incrementally from the CLI.
- * No fake reveal animation needed — just pass through the text as-is.
+ * Debounce markdown rendering during streaming — only re-render every 150ms
+ * to avoid expensive markdown parsing on every character.
  */
-function useStreamingText(fullText: string, _isStreaming: boolean) {
-  return fullText
+function useDebouncedText(text: string, isStreaming: boolean, delayMs = 150): string {
+  const [debouncedText, setDebouncedText] = useState(text)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    if (!isStreaming) {
+      // When not streaming, render immediately
+      if (timerRef.current) clearTimeout(timerRef.current)
+      setDebouncedText(text)
+      return
+    }
+    // During streaming, debounce updates
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setDebouncedText(text), delayMs)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [text, isStreaming, delayMs])
+
+  return debouncedText
 }
 
 /**
@@ -109,7 +125,7 @@ function isArtifactWorthy(text: string): boolean {
 
 export const AssistantMessage = memo(function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
-  const displayText = useStreamingText(text, isStreaming)
+  const displayText = useDebouncedText(text, isStreaming)
   const showOpenAsDoc = !isStreaming && isArtifactWorthy(text)
 
   const handleOpenAsDoc = () => {
@@ -134,12 +150,13 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // Memoize markdown rendering — only re-parse when displayText actually changes
+  // Memoize tree-structure escaping separately, then markdown rendering
+  const escapedText = useMemo(() => escapeTreeStructures(displayText), [displayText])
   const renderedMarkdown = useMemo(() => (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-      {escapeTreeStructures(displayText)}
+      {escapedText}
     </ReactMarkdown>
-  ), [displayText])
+  ), [escapedText])
 
   return (
     <div

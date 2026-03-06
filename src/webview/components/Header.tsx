@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
 import { postMessage } from '../hooks'
@@ -22,7 +22,7 @@ function LogoIcon({ size = 20 }: { size?: number }) {
   )
 }
 
-export function Header() {
+export const Header = memo(function Header() {
   const sessionId = useChatStore((s) => s.sessionId)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const activeView = useUIStore((s) => s.activeView)
@@ -117,7 +117,7 @@ export function Header() {
     )}
     </div>
   )
-}
+})
 
 function RequestTimer({ startTime }: { startTime: number }) {
   const [elapsed, setElapsed] = useState(0)

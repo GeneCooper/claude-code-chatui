@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
@@ -9,7 +9,7 @@ import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
 import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
-export function InputArea() {
+export const InputArea = memo(function InputArea() {
   const [text, setText] = useState('')
   const [ctrlEnterSend, setCtrlEnterSend] = useState(true)
   const [planMode, setPlanMode] = useState(true)
@@ -786,7 +786,7 @@ export function InputArea() {
 
     </div>
   )
-}
+})
 
 function InputSep() {
   return (

@@ -247,6 +247,8 @@ export class ClaudeMessageProcessor {
   private _currentConversation: ConversationMessage[] = [];
   private _partialText: string | null = null;
   private _hasPartialOutput = false;
+  private _pendingTokenUpdate: Record<string, number> | null = null;
+  private _tokenDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly _poster: MessagePoster,
@@ -254,12 +256,24 @@ export class ClaudeMessageProcessor {
     private readonly _callbacks: ProcessorCallbacks,
   ) {}
 
+  private _flushTokenUpdate(): void {
+    if (this._pendingTokenUpdate) {
+      this._poster.postMessage({ type: 'updateTokens', data: this._pendingTokenUpdate });
+      this._pendingTokenUpdate = null;
+    }
+    if (this._tokenDebounceTimer) {
+      clearTimeout(this._tokenDebounceTimer);
+      this._tokenDebounceTimer = undefined;
+    }
+  }
+
   get currentConversation(): ConversationMessage[] { return this._currentConversation; }
 
   resetSession(): void {
     this._currentConversation = [];
     this._partialText = null;
     this._hasPartialOutput = false;
+    this._flushTokenUpdate();
   }
 
   truncateConversation(endIndex: number): void {
@@ -334,17 +348,21 @@ export class ClaudeMessageProcessor {
         cacheCreationTokens: u.cache_creation_input_tokens || 0,
       });
 
-      this._sendAndSave({
-        type: 'updateTokens',
-        data: {
-          totalTokensInput: this._stateManager.totalTokensInput,
-          totalTokensOutput: this._stateManager.totalTokensOutput,
-          currentInputTokens: u.input_tokens || 0,
-          currentOutputTokens: u.output_tokens || 0,
-          cacheCreationTokens: u.cache_creation_input_tokens || 0,
-          cacheReadTokens: u.cache_read_input_tokens || 0,
-        },
-      });
+      // Debounce token updates — accumulate and send max every 300ms
+      this._pendingTokenUpdate = {
+        totalTokensInput: this._stateManager.totalTokensInput,
+        totalTokensOutput: this._stateManager.totalTokensOutput,
+        currentInputTokens: u.input_tokens || 0,
+        currentOutputTokens: u.output_tokens || 0,
+        cacheCreationTokens: u.cache_creation_input_tokens || 0,
+        cacheReadTokens: u.cache_read_input_tokens || 0,
+      };
+      if (!this._tokenDebounceTimer) {
+        this._tokenDebounceTimer = setTimeout(() => {
+          this._tokenDebounceTimer = undefined;
+          this._flushTokenUpdate();
+        }, 300);
+      }
     }
 
     for (const content of assistant.message.content) {
@@ -370,7 +388,6 @@ export class ClaudeMessageProcessor {
     const toolInfo = `🔧 Executing: ${toolName}`;
 
     let toolInput = '';
-    let fileContentBefore: string | undefined;
 
     if (toolName === 'TodoWrite' && Array.isArray(input.todos)) {
       toolInput = '\nTodo List Update:';
@@ -381,46 +398,54 @@ export class ClaudeMessageProcessor {
       this._poster.postMessage({ type: 'todosUpdate', data: { todos: input.todos } });
     }
 
-    if (FILE_EDIT_TOOLS.includes(toolName) && input.file_path) {
-      try {
-        const uri = vscode.Uri.file(input.file_path as string);
-        const data = await vscode.workspace.fs.readFile(uri);
-        fileContentBefore = Buffer.from(data).toString('utf8');
-      } catch {
-        fileContentBefore = '';
-      }
-    }
-
-    let startLine: number | undefined;
-    let startLines: number[] | undefined;
-
-    if (fileContentBefore !== undefined) {
-      if (toolName === 'Edit' && input.old_string) {
-        const pos = fileContentBefore.indexOf(input.old_string as string);
-        if (pos !== -1) {
-          startLine = (fileContentBefore.substring(0, pos).match(/\n/g) || []).length + 1;
-        } else {
-          startLine = 1;
-        }
-      } else if (toolName === 'MultiEdit' && input.edits) {
-        startLines = (input.edits as Array<{ old_string?: string }>).map((edit) => {
-          if (edit.old_string && fileContentBefore) {
-            const pos = fileContentBefore.indexOf(edit.old_string);
-            if (pos !== -1) {
-              return (fileContentBefore.substring(0, pos).match(/\n/g) || []).length + 1;
-            }
-          }
-          return 1;
-        });
-      }
-    }
-
+    // Send tool use message immediately — don't block on file read
     const toolUseData: ToolUseData = {
       toolInfo, toolInput, rawInput: input, toolName,
-      fileContentBefore, startLine, startLines,
     };
-
     this._sendAndSave({ type: 'toolUse', data: toolUseData });
+
+    // Read file content asynchronously for diff tracking (stored in metric, used by tool_result)
+    if (FILE_EDIT_TOOLS.includes(toolName) && input.file_path) {
+      const toolUseId = content.id as string || `${toolName}-${Date.now()}`;
+      void (async () => {
+        let fileContentBefore = '';
+        try {
+          const uri = vscode.Uri.file(input.file_path as string);
+          const data = await vscode.workspace.fs.readFile(uri);
+          fileContentBefore = Buffer.from(data).toString('utf8');
+        } catch { /* empty fallback */ }
+
+        let startLine: number | undefined;
+        let startLines: number[] | undefined;
+
+        if (toolName === 'Edit' && input.old_string) {
+          const pos = fileContentBefore.indexOf(input.old_string as string);
+          startLine = pos !== -1 ? (fileContentBefore.substring(0, pos).match(/\n/g) || []).length + 1 : 1;
+        } else if (toolName === 'MultiEdit' && input.edits) {
+          startLines = (input.edits as Array<{ old_string?: string }>).map((edit) => {
+            if (edit.old_string && fileContentBefore) {
+              const pos = fileContentBefore.indexOf(edit.old_string);
+              if (pos !== -1) return (fileContentBefore.substring(0, pos).match(/\n/g) || []).length + 1;
+            }
+            return 1;
+          });
+        }
+
+        this._stateManager.setToolMetric(toolUseId, {
+          startTime: Date.now(), toolName, rawInput: input,
+          fileContentBefore, startLine, startLines,
+        });
+
+        // Also update the conversation entry with file content for diff
+        const convEntry = this._currentConversation[this._currentConversation.length - 1];
+        if (convEntry?.messageType === 'toolUse') {
+          const data = convEntry.data as ToolUseData;
+          data.fileContentBefore = fileContentBefore;
+          data.startLine = startLine;
+          data.startLines = startLines;
+        }
+      })();
+    }
   }
 
   private async _handleUserMessage(msg: ClaudeMessage): Promise<void> {
@@ -433,7 +458,7 @@ export class ClaudeMessageProcessor {
 
       let resultContent = content.content || 'Tool executed successfully';
       if (typeof resultContent === 'object' && resultContent !== null) {
-        resultContent = JSON.stringify(resultContent, null, 2);
+        resultContent = JSON.stringify(resultContent);
       }
 
       const isError = !!content.is_error;
@@ -441,25 +466,15 @@ export class ClaudeMessageProcessor {
       const toolData = lastToolUse?.data as ToolUseData | undefined;
       const toolName = toolData?.toolName;
       const rawInput = toolData?.rawInput;
-
-      let fileContentAfter: string | undefined;
-      if (FILE_EDIT_TOOLS.includes(toolName || '') && rawInput?.file_path && !isError) {
-        try {
-          const uri = vscode.Uri.file(rawInput.file_path as string);
-          const data = await vscode.workspace.fs.readFile(uri);
-          fileContentAfter = Buffer.from(data).toString('utf8');
-        } catch { /* File read failed */ }
-      }
-
       const hidden = HIDDEN_RESULT_TOOLS.includes(toolName || '') && !isError;
 
+      // Send tool result immediately — don't block on file read
       this._sendAndSave({
         type: 'toolResult',
         data: {
           content: resultContent, isError,
           toolUseId: content.tool_use_id, toolName, rawInput,
           fileContentBefore: toolData?.fileContentBefore,
-          fileContentAfter,
           startLine: toolData?.startLine,
           startLines: toolData?.startLines,
           hidden,
@@ -473,21 +488,47 @@ export class ClaudeMessageProcessor {
         this._poster.postMessage({ type: 'toolError', data: { toolName, error: shortError } });
       }
 
-      // Auto-open diff when file-edit tool succeeds
-      if (fileContentAfter !== undefined && toolData?.fileContentBefore !== undefined && rawInput?.file_path && !isError) {
-        const autoOpenDiff = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoOpenDiff', false);
-        if (autoOpenDiff) {
-          const filePath = rawInput.file_path as string;
-          setTimeout(() => {
-            void DiffContentProvider.openDiff(toolData.fileContentBefore!, fileContentAfter!, filePath);
-          }, 300);
-        }
+      // Read file-after content asynchronously and send diff update
+      if (FILE_EDIT_TOOLS.includes(toolName || '') && rawInput?.file_path && !isError) {
+        const filePath = rawInput.file_path as string;
+        const capturedToolData = toolData;
+        void (async () => {
+          try {
+            const uri = vscode.Uri.file(filePath);
+            const data = await vscode.workspace.fs.readFile(uri);
+            const fileContentAfter = Buffer.from(data).toString('utf8');
+
+            // Update the conversation entry with after-content for replay
+            const convEntry = this._currentConversation[this._currentConversation.length - 1];
+            if (convEntry?.messageType === 'toolResult') {
+              const resultData = convEntry.data as Record<string, unknown>;
+              resultData.fileContentAfter = fileContentAfter;
+            }
+
+            // Send diff update to webview
+            this._poster.postMessage({
+              type: 'toolResultDiffUpdate',
+              data: { toolUseId: content.tool_use_id, fileContentAfter },
+            });
+
+            // Auto-open diff when file-edit tool succeeds
+            if (capturedToolData?.fileContentBefore !== undefined) {
+              const autoOpenDiff = vscode.workspace.getConfiguration('claudeCodeChatUI').get<boolean>('autoOpenDiff', false);
+              if (autoOpenDiff) {
+                setTimeout(() => {
+                  void DiffContentProvider.openDiff(capturedToolData.fileContentBefore!, fileContentAfter, filePath);
+                }, 300);
+              }
+            }
+          } catch { /* File read failed */ }
+        })();
       }
     }
   }
 
   private _handleResultMessage(msg: ClaudeMessage): void {
     this._flushPartialOutput();
+    this._flushTokenUpdate();
     const result = msg as {
       subtype: string; session_id?: string; total_cost_usd?: number;
       duration_ms?: number; num_turns?: number; is_error?: boolean; result?: string;
