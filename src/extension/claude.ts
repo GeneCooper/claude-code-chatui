@@ -165,18 +165,6 @@ export class ClaudeService implements vscode.Disposable {
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
     let actualMessage = message;
-    if (options.thinkingMode) {
-      const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-      const mode = config.get<AgentMode>('thinking.intensity', AgentMode.Fast);
-      const prompt = AGENT_MODE_PROMPTS[mode] || AGENT_MODE_PROMPTS.fast;
-      actualMessage = `${prompt}\n\n${actualMessage}`;
-    }
-
-    const effortMap: Record<AgentMode, string> = {
-      [AgentMode.Fast]: 'low',
-      [AgentMode.Deep]: 'medium',
-      [AgentMode.Precise]: 'high',
-    };
 
     const args = ['-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose', '--include-partial-messages'];
     // System prompt is prepended to the user message instead of using
@@ -192,11 +180,6 @@ export class ClaudeService implements vscode.Disposable {
       args.push('--permission-prompt-tool', 'stdio');
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
-    if (options.thinkingMode) {
-      const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-      const mode = config.get<AgentMode>('thinking.intensity', AgentMode.Fast);
-      args.push('--effort', effortMap[mode] || 'low');
-    }
     if (options.model && options.model !== 'default') args.push('--model', options.model);
     if (options.allowedTools?.length) {
       for (const tool of options.allowedTools) args.push('--allowedTools', tool);
