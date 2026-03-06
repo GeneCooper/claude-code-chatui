@@ -503,7 +503,14 @@ export function InputArea() {
 
         {/* Plan toggle */}
         <button
-          onClick={() => setPlanMode(!planMode)}
+          onClick={() => {
+            const next = !planMode
+            setPlanMode(next)
+            if (next && yoloMode) {
+              postMessage({ type: 'updateSettings', settings: { yoloMode: false } })
+              useSettingsStore.getState().updateSettings({ yoloMode: false })
+            }
+          }}
           className="flex items-center gap-1 cursor-pointer border-none"
           style={{
             padding: '2px 10px',
@@ -528,6 +535,7 @@ export function InputArea() {
             const next = !yoloMode
             postMessage({ type: 'updateSettings', settings: { yoloMode: next } })
             useSettingsStore.getState().updateSettings({ yoloMode: next })
+            if (next && planMode) setPlanMode(false)
           }}
           className="flex items-center gap-1 cursor-pointer border-none"
           style={{

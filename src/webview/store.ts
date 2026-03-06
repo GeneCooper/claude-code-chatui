@@ -267,7 +267,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   thinkingIntensity: "fast",
-  yoloMode: true,
+  yoloMode: false,
   maxTurns: 0,
   disallowedTools: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),

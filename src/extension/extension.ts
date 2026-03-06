@@ -8,6 +8,18 @@ import { PanelManager } from './panelManager';
 export function activate(context: vscode.ExtensionContext): void {
   console.log('Claude Code ChatUI extension is being activated');
 
+  // One-time migration: reset yoloMode if it was explicitly set to true (old default was true, new default is false)
+  const YOLO_MIGRATION_KEY = 'yoloMode.defaultReset.v1';
+  if (!context.globalState.get<boolean>(YOLO_MIGRATION_KEY)) {
+    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+    const inspection = config.inspect<boolean>('permissions.yoloMode');
+    // If user has explicit global value of true (likely from old default), reset it
+    if (inspection?.globalValue === true) {
+      void config.update('permissions.yoloMode', undefined, vscode.ConfigurationTarget.Global);
+    }
+    void context.globalState.update(YOLO_MIGRATION_KEY, true);
+  }
+
   // Initialize shared services
   const conversationService = new ConversationService(context);
   const mcpService = new MCPService(context);

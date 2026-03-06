@@ -173,6 +173,12 @@ export class ClaudeService implements vscode.Disposable {
       actualMessage = `${prompt}\n\n${actualMessage}`;
     }
 
+    const effortMap: Record<AgentMode, string> = {
+      [AgentMode.Fast]: 'low',
+      [AgentMode.Deep]: 'medium',
+      [AgentMode.Precise]: 'high',
+    };
+
     const args = ['-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose', '--include-partial-messages'];
     // System prompt is prepended to the user message instead of using
     // --append-system-prompt, because on Windows with shell:true cmd.exe
@@ -188,6 +194,11 @@ export class ClaudeService implements vscode.Disposable {
     }
     if (options.mcpConfigPath) args.push('--mcp-config', options.mcpConfigPath);
     if (options.planMode && !options.yoloMode) args.push('--permission-mode', 'plan');
+    if (options.thinkingMode) {
+      const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
+      const mode = config.get<AgentMode>('thinking.intensity', AgentMode.Fast);
+      args.push('--effort', effortMap[mode] || 'low');
+    }
     if (options.model && options.model !== 'default') args.push('--model', options.model);
     if (options.allowedTools?.length) {
       for (const tool of options.allowedTools) args.push('--allowedTools', tool);

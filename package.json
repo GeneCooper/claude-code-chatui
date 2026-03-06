@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.8.32",
+  "version": "0.8.34",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -115,7 +115,7 @@
         },
         "claudeCodeChatUI.permissions.yoloMode": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Skip all permission checks (use with caution)"
         },
         "claudeCodeChatUI.notifications.enabled": {

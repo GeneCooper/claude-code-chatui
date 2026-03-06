@@ -608,7 +608,7 @@ const DEFAULTS = {
   THINKING_ENABLED: true,
   THINKING_INTENSITY: 'fast',
   THINKING_SHOW_PROCESS: true,
-  YOLO_MODE: true,
+  YOLO_MODE: false,
   AUTO_APPROVE_PATTERNS: [] as string[],
   MAX_HISTORY_SIZE: 100,
   STREAM_RESPONSES: true,
@@ -747,7 +747,7 @@ export class SettingsManager {
   }
 
   isYoloModeEnabled(): boolean {
-    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
+    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, false);
   }
 }
 
