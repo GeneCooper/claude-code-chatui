@@ -244,6 +244,15 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     })
   },
 
+  diagnosticsAfterEdit: (msg) => {
+    const data = msg.data as { filePath: string; diagnostics: string[] }
+    if (data?.diagnostics?.length) {
+      const fileName = data.filePath.replace(/.*[/\\]/, '')
+      const text = `${fileName}: ${data.diagnostics.length} problem(s)\n${data.diagnostics.join('\n')}`
+      useChatStore.getState().addMessage({ type: 'error', data: text })
+    }
+  },
+
   permissionRequest: (msg) => { useChatStore.getState().addMessage({ type: 'permissionRequest', data: msg.data }) },
 
   updatePermissionStatus: (msg) => {

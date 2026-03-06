@@ -520,6 +520,40 @@ export class ClaudeMessageProcessor {
                 }, 300);
               }
             }
+
+            // Auto-save & format the edited file, then collect diagnostics
+            try {
+              const doc = await vscode.workspace.openTextDocument(uri);
+              // Format the document if a formatter is available
+              const edits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+                'vscode.executeFormatDocumentProvider', uri,
+                { tabSize: 2, insertSpaces: true } as vscode.FormattingOptions,
+              );
+              if (edits && edits.length > 0) {
+                const wsEdit = new vscode.WorkspaceEdit();
+                for (const e of edits) wsEdit.replace(uri, e.range, e.newText);
+                await vscode.workspace.applyEdit(wsEdit);
+              }
+              // Save the document
+              if (doc.isDirty) await doc.save();
+
+              // Wait briefly for language services to update diagnostics
+              await new Promise(r => setTimeout(r, 500));
+              const diagnostics = vscode.languages.getDiagnostics(uri)
+                .filter(d => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning)
+                .slice(0, 15);
+              if (diagnostics.length > 0) {
+                const items = diagnostics.map(d => {
+                  const sev = d.severity === vscode.DiagnosticSeverity.Error ? 'Error' : 'Warning';
+                  const src = d.source ? ` [${d.source}]` : '';
+                  return `Line ${d.range.start.line + 1}: ${sev}: ${d.message}${src}`;
+                });
+                this._poster.postMessage({
+                  type: 'diagnosticsAfterEdit',
+                  data: { filePath, diagnostics: items },
+                });
+              }
+            } catch { /* format/save/diagnostics failed — non-critical */ }
           } catch { /* File read failed */ }
         })();
       }
