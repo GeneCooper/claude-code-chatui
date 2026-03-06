@@ -50,7 +50,8 @@ export const AGENT_SYSTEM_PROMPT = [
     "7. Never delete or overwrite files without reading them first.",
     "8. Reply in the same language the user uses.",
     "9. Never fabricate file paths, function names, or APIs. If unsure, say so.",
-    "10. Keep working until the task is fully resolved.",
+    "10. VERIFY: After editing code, check for errors (compile, lint, type-check). If errors occur, fix them immediately before reporting done.",
+    "11. Keep working until the task is fully resolved.",
 ].join(" ");
 
 /** Subagent type badge colors — shared between JourneyTimeline and ToolUseBlock */
