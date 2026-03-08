@@ -351,7 +351,7 @@ export const InputArea = memo(function InputArea() {
         const ctx = canvas.getContext('2d')!
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         const resized = canvas.toDataURL('image/png')
-        postMessage({ type: 'showInfo', data: `图片 "${fileName}" 尺寸过大（${img.width}x${img.height}），已自动缩放至 ${canvas.width}x${canvas.height}。` })
+        postMessage({ type: 'showInfo', data: `Image "${fileName}" too large (${img.width}x${img.height}), auto-scaled to ${canvas.width}x${canvas.height}.` })
         resolve(resized)
       }
       img.src = dataUrl
@@ -361,7 +361,7 @@ export const InputArea = memo(function InputArea() {
   const addImageFile = (file: File) => {
     if (file.size > MAX_IMAGE_SIZE) {
       const sizeMB = (file.size / 1024 / 1024).toFixed(1)
-      postMessage({ type: 'showWarning', data: `图片 "${file.name}" 太大（${sizeMB}MB），最大支持 5MB。请压缩后重试。` })
+      postMessage({ type: 'showWarning', data: `Image "${file.name}" too large (${sizeMB}MB), max 5MB. Please compress and retry.` })
       return
     }
     const reader = new FileReader()
@@ -416,11 +416,11 @@ export const InputArea = memo(function InputArea() {
             color: 'var(--chatui-accent)',
           }}
         >
-          <span style={{ opacity: 0.8 }}>编辑消息</span>
+          <span style={{ opacity: 0.8 }}>Editing message</span>
           <button
             onClick={() => { setEditingContext(null); setText(''); setImages([]) }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6, padding: '0 2px', fontSize: '13px', lineHeight: 1 }}
-            title="取消编辑"
+            title="Cancel edit"
           >
             ×
           </button>

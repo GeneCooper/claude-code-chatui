@@ -233,7 +233,7 @@ export class ClaudeService implements vscode.Disposable {
           this._process = undefined;
           this._cancelPendingPermissions();
           this._processEndEmitter.emit('end');
-          this._errorEmitter.emit('error', `消息发送失败，请重试。(${writeErr.message})`);
+          this._errorEmitter.emit('error', `Failed to send message, please retry. (${writeErr.message})`);
         }
       });
 
