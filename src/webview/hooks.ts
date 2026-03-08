@@ -183,13 +183,24 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     }
   },
 
+  requestResult: (msg) => {
+    const { result } = msg.data as { result: 'success' | 'error' }
+    const ui = useUIStore.getState()
+    const duration = ui.requestStartTime ? Math.floor((Date.now() - ui.requestStartTime) / 1000) : null
+    ui.setLastRequestResult(result, duration)
+  },
+
   setProcessing: (msg) => {
     const isProcessing = (msg.data as { isProcessing: boolean }).isProcessing
     const store = useChatStore.getState()
     // Skip if already in the target state (optimistic update already applied)
     if (store.isProcessing === isProcessing) return
     store.setProcessing(isProcessing)
-    useUIStore.getState().setRequestStartTime(isProcessing ? Date.now() : null)
+    const ui = useUIStore.getState()
+    if (isProcessing) {
+      ui.setLastRequestResult(null, null)
+    }
+    ui.setRequestStartTime(isProcessing ? Date.now() : null)
   },
 
   sessionCleared: () => {

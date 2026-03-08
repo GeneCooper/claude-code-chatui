@@ -1,6 +1,7 @@
 import { useState, useEffect, memo } from 'react'
 import { useChatStore } from '../store'
 import { useUIStore } from '../store'
+import type { RequestResult } from '../store'
 import { postMessage } from '../hooks'
 import { UsageIndicator } from './UsageIndicator'
 
@@ -22,12 +23,37 @@ function LogoIcon({ size = 20 }: { size?: number }) {
   )
 }
 
+const STATUS_CONFIG = {
+  processing: { color: '#ff9500', glow: 'rgba(255, 149, 0, 0.5)', barColor: 'var(--chatui-accent)' },
+  success:    { color: '#3fb950', glow: 'rgba(63, 185, 80, 0.5)',  barColor: '#3fb950' },
+  error:      { color: '#e74c3c', glow: 'rgba(231, 76, 60, 0.5)',  barColor: '#e74c3c' },
+} as const
+
 export const Header = memo(function Header() {
   const sessionId = useChatStore((s) => s.sessionId)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const activeView = useUIStore((s) => s.activeView)
   const setActiveView = useUIStore((s) => s.setActiveView)
   const requestStartTime = useUIStore((s) => s.requestStartTime)
+  const lastRequestResult = useUIStore((s) => s.lastRequestResult)
+  const lastRequestDuration = useUIStore((s) => s.lastRequestDuration)
+
+  // Auto-dismiss the result indicator after 3s
+  const [showResult, setShowResult] = useState(false)
+  useEffect(() => {
+    if (!lastRequestResult) { setShowResult(false); return }
+    setShowResult(true)
+    const timer = setTimeout(() => setShowResult(false), 3000)
+    return () => clearTimeout(timer)
+  }, [lastRequestResult])
+
+  // Determine the current visual state
+  const visualState: 'idle' | 'processing' | 'success' | 'error' =
+    isProcessing ? 'processing' :
+    showResult && lastRequestResult ? lastRequestResult :
+    'idle'
+
+  const config = visualState !== 'idle' ? STATUS_CONFIG[visualState] : null
 
   return (
     <div
@@ -51,18 +77,14 @@ export const Header = memo(function Header() {
             {sessionId.substring(0, 8)}
           </span>
         )}
-        {isProcessing && (
-          <>
-            <span
-              className="inline-block w-2 h-2 rounded-full"
-              style={{
-                background: '#ff9500',
-                boxShadow: '0 0 6px rgba(255, 149, 0, 0.5)',
-                animation: 'pulse 1.5s ease-in-out infinite',
-              }}
-            />
-            {requestStartTime && <RequestTimer startTime={requestStartTime} />}
-          </>
+        {config && (
+          <StatusBadge
+            visualState={visualState as 'processing' | 'success' | 'error'}
+            config={config}
+            requestStartTime={requestStartTime}
+            lastRequestDuration={lastRequestDuration}
+            showResult={showResult}
+          />
         )}
       </div>
 
@@ -92,32 +114,113 @@ export const Header = memo(function Header() {
         </HeaderIconButton>
       </div>
     </div>
-    {/* Marquee loading bar */}
-    {isProcessing && (
-      <div
+    {/* Progress bar */}
+    <HeaderProgressBar visualState={visualState} config={config} />
+    </div>
+  )
+})
+
+/** Status badge: dot + timer/duration + optional icon */
+function StatusBadge({
+  visualState,
+  config,
+  requestStartTime,
+  lastRequestDuration,
+  showResult,
+}: {
+  visualState: 'processing' | 'success' | 'error'
+  config: { color: string; glow: string }
+  requestStartTime: number | null
+  lastRequestDuration: number | null
+  showResult: boolean
+}) {
+  return (
+    <span
+      className="flex items-center gap-1.5"
+      style={{
+        animation: showResult && visualState !== 'processing' ? 'headerResultFadeOut 3s ease forwards' : undefined,
+      }}
+    >
+      <span
+        className="inline-block w-2 h-2 rounded-full"
         style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '2px',
-          overflow: 'hidden',
+          background: config.color,
+          boxShadow: `0 0 6px ${config.glow}`,
+          animation: visualState === 'processing' ? 'pulse 1.5s ease-in-out infinite' :
+                     visualState === 'error' ? 'headerErrorFlash 0.6s ease' : undefined,
+          transition: 'background 0.3s ease, box-shadow 0.3s ease',
         }}
-      >
+      />
+      {visualState === 'processing' && requestStartTime && (
+        <RequestTimer startTime={requestStartTime} />
+      )}
+      {visualState === 'success' && lastRequestDuration != null && (
+        <span className="text-[10px] font-mono" style={{ color: config.color, opacity: 0.8 }}>
+          {formatTime(lastRequestDuration)} ✓
+        </span>
+      )}
+      {visualState === 'error' && lastRequestDuration != null && (
+        <span className="text-[10px] font-mono" style={{ color: config.color, opacity: 0.8 }}>
+          {formatTime(lastRequestDuration)} ✗
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** Header progress bar with three animation modes */
+function HeaderProgressBar({
+  visualState,
+  config,
+}: {
+  visualState: 'idle' | 'processing' | 'success' | 'error'
+  config: { barColor: string } | null
+}) {
+  if (visualState === 'idle') return null
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '2px',
+        overflow: 'hidden',
+      }}
+    >
+      {visualState === 'processing' ? (
         <div
           style={{
             position: 'absolute',
             height: '100%',
             width: '40%',
-            background: 'linear-gradient(90deg, transparent, var(--chatui-accent), transparent)',
+            background: `linear-gradient(90deg, transparent, ${config!.barColor}, transparent)`,
             animation: 'marquee-slide 1.5s ease-in-out infinite',
           }}
         />
-      </div>
-    )}
+      ) : (
+        <div
+          style={{
+            height: '100%',
+            width: '100%',
+            background: config!.barColor,
+            animation: visualState === 'success'
+              ? 'headerBarFillThenFade 1.5s ease forwards'
+              : 'headerBarFlashThenFade 1.5s ease forwards',
+          }}
+        />
+      )}
     </div>
   )
-})
+}
+
+function formatTime(s: number) {
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}m${sec.toString().padStart(2, '0')}s`
+}
 
 function RequestTimer({ startTime }: { startTime: number }) {
   const [elapsed, setElapsed] = useState(0)
@@ -128,13 +231,6 @@ function RequestTimer({ startTime }: { startTime: number }) {
     }, 1000)
     return () => clearInterval(interval)
   }, [startTime])
-
-  const formatTime = (s: number) => {
-    if (s < 60) return `${s}s`
-    const m = Math.floor(s / 60)
-    const sec = s % 60
-    return `${m}m${sec.toString().padStart(2, '0')}s`
-  }
 
   return (
     <span className="text-[10px] opacity-40 font-mono">{formatTime(elapsed)}</span>

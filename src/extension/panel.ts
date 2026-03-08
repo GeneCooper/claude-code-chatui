@@ -628,6 +628,7 @@ export class PanelProvider {
       this._stateManager.isProcessing = false;
       this._postMessage({ type: 'processStatus', data: null });
       this._postMessage({ type: 'clearLoading' });
+      this._postMessage({ type: 'requestResult', data: { result: 'success' } });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
 
@@ -638,6 +639,7 @@ export class PanelProvider {
       this._stateManager.isProcessing = false;
       this._postMessage({ type: 'processStatus', data: null });
       this._postMessage({ type: 'clearLoading' });
+      this._postMessage({ type: 'requestResult', data: { result: 'error' } });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
 
       if (error.includes('ENOENT') || error.includes('command not found')) {

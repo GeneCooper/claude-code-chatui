@@ -288,6 +288,8 @@ interface Notification {
   timestamp: number;
 }
 
+export type RequestResult = "success" | "error" | null;
+
 interface UIState {
   activeView: ActiveView;
   showIntensityModal: boolean;
@@ -298,6 +300,8 @@ interface UIState {
   draftText: string;
   editingContext: { userInputIndex: number; images: string[] } | null;
   requestStartTime: number | null;
+  lastRequestResult: RequestResult;
+  lastRequestDuration: number | null;
   usageData: UsageData | null;
   accountType: "pro" | "max" | undefined;
   platformInfo: { platform: string; isWindows: boolean } | null;
@@ -315,6 +319,7 @@ interface UIState {
     ctx: { userInputIndex: number; images: string[] } | null,
   ) => void;
   setRequestStartTime: (time: number | null) => void;
+  setLastRequestResult: (result: RequestResult, duration: number | null) => void;
   setUsageData: (data: UsageData | null) => void;
   setAccountType: (type: "pro" | "max" | undefined) => void;
   setPlatformInfo: (
@@ -342,6 +347,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   draftText: "",
   editingContext: null,
   requestStartTime: null,
+  lastRequestResult: null,
+  lastRequestDuration: null,
   usageData: null,
   accountType: undefined,
   platformInfo: null,
@@ -357,6 +364,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setDraftText: (text) => set({ draftText: text }),
   setEditingContext: (ctx) => set({ editingContext: ctx }),
   setRequestStartTime: (time) => set({ requestStartTime: time }),
+  setLastRequestResult: (result, duration) => set({ lastRequestResult: result, lastRequestDuration: duration }),
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
