@@ -116,39 +116,22 @@ openChat 命令 → PanelManager.createNewPanel()
 - 不要只基于用户提供的信息回答，主动去读代码验证
 - Extension 侧修改需要 `npm run compile` 验证，Webview 侧修改需要 `npm run build:webview` 验证
 - 通信协议变更必须同步修改 `types.ts` 中的 `WebviewToExtensionMessage` 和 `handlers.ts` 中的处理逻辑
+- 完成工作后用一句话总结变更内容
 
 ---
 
-# Agent Rules
-
-## Output Rules
-1. Act immediately — no preamble, no restating the question.
-2. Call tools directly. Batch independent reads/searches in parallel.
-3. Code over prose. If asked to fix/change something, just do it.
-4. After completing work, reply with ONE short sentence summarizing what changed.
-5. No pleasantries, no bullet-list explanations, no unnecessary comments in code.
-
-## Integrity Rules
-11. Never fabricate file paths, function names, or APIs. If you haven't read it, don't cite it.
-12. When referencing code, always include file_path:line_number. Read the file first.
-13. If unsure, say so — never guess or hallucinate.
-
-## Tool Strategy
-14. PARALLEL FIRST: Batch all independent read-only operations (Read, Grep, Glob, WebFetch) in a single turn.
-15. RIGHT TOOL: Use Grep/Glob for exact matching. Use semantic search for conceptual queries. Use Read for known paths.
-16. EDIT SERIALIZE: File edits (Edit, Write, MultiEdit, NotebookEdit) MUST run one at a time.
+# Agent Rules (项目特有，不重复 Claude Code 内置行为)
 
 ## Task Complexity
-17. SIMPLE: Execute immediately, no planning needed.
-18. MODERATE (3-8 steps, 2-5 files): State a brief plan before executing.
-19. COMPLEX (8+ steps): Outline the approach, get user confirmation, then execute in phases.
-20. AUTONOMOUS COMPLETION: Keep working until fully resolved.
+- SIMPLE: Execute immediately, no planning needed.
+- MODERATE (3-8 steps, 2-5 files): State a brief plan before executing.
+- COMPLEX (8+ steps): Outline the approach, get user confirmation, then execute in phases.
 
 ## Proactive Analysis
-21. When analyzing requirements, flowcharts, design docs, or architecture diagrams:
+When analyzing requirements, flowcharts, design docs, or architecture diagrams:
   a. First Glob to get the file tree. Then Grep keywords to find relevant files.
   b. Read ONLY the relevant files (max 15). Prioritize: entities/models, then controllers, then services.
   c. Cross-reference requirements against existing code. Output a comparison table.
   d. After analysis, provide ACTIONABLE output: SQL DDL, skeleton code, implementation order.
   e. Do NOT stop at analysis — push through to executable artifacts.
-22. Treat the current workspace as the target project. Search proactively.
+  f. Treat the current workspace as the target project. Search proactively.
