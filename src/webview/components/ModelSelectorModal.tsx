@@ -67,6 +67,7 @@ export function ModelSelectorModal({ show, selectedModel, onSelect, onClose }: P
           <span style={{ fontWeight: 600, fontSize: '14px' }}>Select Model</span>
           <button
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: 'none',
               border: 'none',

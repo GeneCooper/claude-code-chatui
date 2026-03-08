@@ -47,6 +47,7 @@ export function LoginModal() {
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 12px 0 0' }}>
           <button
             onClick={() => setShow(false)}
+            aria-label="Close"
             style={{ background: 'none', border: 'none', color: 'var(--vscode-foreground)', cursor: 'pointer', fontSize: '16px', padding: '4px', opacity: 0.6 }}
           >
             {'✕'}

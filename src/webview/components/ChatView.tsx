@@ -1,4 +1,5 @@
 import { useCallback, memo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useChatStore, useUIStore } from '../store'
 import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
@@ -9,8 +10,7 @@ interface ChatViewProps {
 }
 
 export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
-  const messages = useChatStore((s) => s.messages)
-  const isProcessing = useChatStore((s) => s.isProcessing)
+  const { messages, isProcessing } = useChatStore(useShallow((s) => ({ messages: s.messages, isProcessing: s.isProcessing })))
   // Use instant scroll during streaming to avoid smooth-scroll "chasing" jitter
   const { containerRef } = useAutoScroll<HTMLDivElement>({
     dependencies: [messages],

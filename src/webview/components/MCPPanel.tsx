@@ -162,6 +162,7 @@ export function MCPPanel() {
           <span style={{ fontWeight: 600, fontSize: '14px' }}>MCP Servers</span>
           <button
             onClick={handleClose}
+            aria-label="Close"
             style={{
               background: 'none',
               border: 'none',

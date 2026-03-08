@@ -172,6 +172,7 @@ function HeaderIconButton({
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       className="cursor-pointer border-none flex items-center justify-center"
       style={{
         background: 'transparent',

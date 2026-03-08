@@ -112,6 +112,8 @@ type TimelineItem = PlanGroup | MessageItem
 function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): TimelineItem[] {
   const timeline: TimelineItem[] = []
   let currentPlan: PlanGroup | null = null
+  // O(1) lookup map: toolUseId → step index within currentPlan.steps
+  let toolUseIdMap = new Map<string, number>()
 
   const flushPlan = () => {
     if (currentPlan) {
@@ -122,6 +124,7 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
       }
       timeline.push(currentPlan)
       currentPlan = null
+      toolUseIdMap = new Map()
     }
   }
 
@@ -144,29 +147,28 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
         if (!currentPlan) {
           currentPlan = { id: msg.id, kind: 'plan', assistantMessage: msg, steps: [], status: 'executing' }
         }
+        const stepIndex = currentPlan.steps.length
         currentPlan.steps.push({ id: msg.id, toolUse: msg })
+        // Index by toolUseId for O(1) result matching
+        const useData = msg.data as Record<string, unknown>
+        const toolUseId = useData?.toolUseId as string | undefined
+        if (toolUseId) toolUseIdMap.set(toolUseId, stepIndex)
         break
       }
       case 'toolResult': {
         if (currentPlan && currentPlan.steps.length > 0) {
-          // Match by toolUseId to handle parallel tool execution (YOLO mode)
           const resultData = msg.data as Record<string, unknown>
           const resultToolUseId = resultData?.toolUseId as string | undefined
           let matched = false
           if (resultToolUseId) {
-            for (const step of currentPlan.steps) {
-              if (!step.toolResult && step.toolUse) {
-                const useData = step.toolUse.data as Record<string, unknown>
-                if (useData?.toolUseId === resultToolUseId) {
-                  step.toolResult = msg
-                  matched = true
-                  break
-                }
-              }
+            // O(1) lookup instead of linear scan
+            const idx = toolUseIdMap.get(resultToolUseId)
+            if (idx !== undefined && !currentPlan.steps[idx].toolResult) {
+              currentPlan.steps[idx].toolResult = msg
+              matched = true
             }
           }
           if (!matched) {
-            // Fallback: assign to last step without result, or create orphan
             const lastStep = currentPlan.steps[currentPlan.steps.length - 1]
             if (lastStep && !lastStep.toolResult) {
               lastStep.toolResult = msg
@@ -317,7 +319,7 @@ function LoadingIndicator() {
   }
 
   return (
-    <div className="px-3 py-2 text-xs" style={{ opacity: 0.8 }}>
+    <div className="px-3 py-2 text-xs" style={{ opacity: 0.8 }} role="status" aria-live="polite" aria-label="Processing">
       <div className="flex items-center gap-3">
         {/* Animated sparkle spinner — pulse faster when active */}
         <div
@@ -651,23 +653,16 @@ export function JourneyTimeline({ messages, isProcessing, onEdit }: Props) {
   }, [])
 
   // Auto-collapse previous completed plan groups during active streaming
+  // Only checks the second-to-last plan to avoid scanning all items on every message
   useEffect(() => {
     if (!isProcessing) return
     const planGroups = items.filter((it): it is PlanGroup => it.kind === 'plan')
     if (planGroups.length < 2) return
-    const completedIds = planGroups
-      .slice(0, -1)
-      .filter(p => p.status === 'completed' || p.status === 'failed')
-      .map(p => p.id)
-    if (completedIds.length === 0) return
-    setCollapsedPlans(prev => {
-      const next = new Set(prev)
-      let changed = false
-      for (const id of completedIds) {
-        if (!next.has(id)) { next.add(id); changed = true }
-      }
-      return changed ? next : prev
-    })
+    const prev = planGroups[planGroups.length - 2]
+    if ((prev.status === 'completed' || prev.status === 'failed') && !collapsedPlans.has(prev.id)) {
+      setCollapsedPlans(p => { const n = new Set(p); n.add(prev.id); return n })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, isProcessing])
 
   const togglePlan = useCallback((id: string) => {

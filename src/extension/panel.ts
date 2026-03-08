@@ -285,7 +285,7 @@ export class PanelProvider {
   }
 
   async loadConversation(filename: string): Promise<void> {
-    const conversation = this._conversationService.loadConversation(filename);
+    const conversation = await this._conversationService.loadConversation(filename);
     if (!conversation) {
       this._postMessage({ type: 'error', data: 'Failed to load conversation' });
       return;
@@ -757,14 +757,15 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     // Restore sidebar conversation from saved webview state (survives extension host restart)
     const savedState = context.state as { sessionId?: string } | undefined;
     if (savedState?.sessionId) {
-      const conversation = this._conversationService.findBySessionId(savedState.sessionId);
-      if (conversation) {
-        this._panelProvider.loadConversationData(
-          conversation.messages,
-          conversation.sessionId,
-          conversation.totalCost,
-        );
-      }
+      void this._conversationService.findBySessionId(savedState.sessionId).then((conversation) => {
+        if (conversation) {
+          this._panelProvider.loadConversationData(
+            conversation.messages,
+            conversation.sessionId,
+            conversation.totalCost,
+          );
+        }
+      });
     }
 
     // Prevent webview destruction when sidebar is hidden

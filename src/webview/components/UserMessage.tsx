@@ -1,4 +1,5 @@
 import { useState, memo } from 'react'
+import { CopyButton } from './CopyButton'
 
 interface Props {
   text: string
@@ -8,14 +9,7 @@ interface Props {
 }
 
 export const UserMessage = memo(function UserMessage({ text, images, onEdit, isProcessing }: Props) {
-  const [copied, setCopied] = useState(false)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   return (
     <>
@@ -51,12 +45,12 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
                 </svg>
               </button>
             )}
-            <button
-              onClick={(e) => { e.stopPropagation(); handleCopy() }}
+            <CopyButton
+              text={text}
               className="checkpoint-action-btn"
-              title="Copy message"
+              style={{ padding: 0, background: 'none', color: 'inherit', opacity: 1 }}
             >
-              {copied ? (
+              {(copied) => copied ? (
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
@@ -66,7 +60,7 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
               )}
-            </button>
+            </CopyButton>
           </div>
 
           {/* Image thumbnails */}
@@ -105,8 +99,12 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
       {previewSrc && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
+          role="dialog"
+          aria-label="Image preview"
           style={{ background: 'rgba(0, 0, 0, 0.85)', cursor: 'zoom-out' }}
           onClick={() => setPreviewSrc(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setPreviewSrc(null) }}
+          tabIndex={0}
         >
           <img
             src={previewSrc}

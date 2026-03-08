@@ -963,9 +963,9 @@ const handleGetConversationList: MessageHandler = (_msg, ctx) => {
   ctx.postMessage({ type: 'conversationList', data: ctx.conversationService.getConversationList() });
 };
 
-const handleLoadConversation: MessageHandler = (msg, ctx) => {
+const handleLoadConversation: MessageHandler = async (msg, ctx) => {
   const filename = msg.filename as string;
-  const conversation = ctx.conversationService.loadConversation(filename);
+  const conversation = await ctx.conversationService.loadConversation(filename);
   if (!conversation) {
     ctx.postMessage({ type: 'error', data: 'Failed to load conversation' });
     return;
@@ -1002,17 +1002,17 @@ const handleLoadMCPServers: MessageHandler = (_msg, ctx) => {
   ctx.postMessage({ type: 'mcpServers', data: ctx.mcpService.loadServers() });
 };
 
-const handleSaveMCPServer: MessageHandler = (msg, ctx) => {
+const handleSaveMCPServer: MessageHandler = async (msg, ctx) => {
   try {
-    ctx.mcpService.saveServer(msg.name as string, msg.config as MCPServerConfig);
+    await ctx.mcpService.saveServer(msg.name as string, msg.config as MCPServerConfig);
     ctx.postMessage({ type: 'mcpServerSaved', data: { name: msg.name } });
   } catch {
     ctx.postMessage({ type: 'mcpServerError', data: { error: 'Failed to save MCP server' } });
   }
 };
 
-const handleDeleteMCPServer: MessageHandler = (msg, ctx) => {
-  if (ctx.mcpService.deleteServer(msg.name as string)) {
+const handleDeleteMCPServer: MessageHandler = async (msg, ctx) => {
+  if (await ctx.mcpService.deleteServer(msg.name as string)) {
     ctx.postMessage({ type: 'mcpServerDeleted', data: { name: msg.name } });
   } else {
     ctx.postMessage({ type: 'mcpServerError', data: { error: `Server "${msg.name}" not found` } });
@@ -1034,8 +1034,8 @@ const handleSearchConversations: MessageHandler = (msg, ctx) => {
   ctx.postMessage({ type: 'conversationList', data: ctx.conversationService.searchConversations(msg.query as string) });
 };
 
-const handleExportConversation: MessageHandler = (msg, ctx) => {
-  const json = ctx.conversationService.exportConversation(msg.filename as string);
+const handleExportConversation: MessageHandler = async (msg, ctx) => {
+  const json = await ctx.conversationService.exportConversation(msg.filename as string);
   if (json) {
     ctx.postMessage({ type: 'conversationExport', data: { filename: msg.filename, content: json } });
   } else {

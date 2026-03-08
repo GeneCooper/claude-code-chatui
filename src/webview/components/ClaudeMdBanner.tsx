@@ -90,7 +90,7 @@ export function ClaudeMdBanner() {
         </div>
       </div>
 
-      <button onClick={handleGenerate} disabled={isProcessing}
+      <button onClick={handleGenerate} disabled={isProcessing} aria-label="Generate CLAUDE.md"
         style={{
           padding: '5px 12px', fontSize: '12px', fontWeight: 600,
           borderRadius: '4px', border: 'none',
@@ -101,7 +101,7 @@ export function ClaudeMdBanner() {
         }}>
         Generate
       </button>
-      <button onClick={handleDismiss}
+      <button onClick={handleDismiss} aria-label="Dismiss banner"
         style={{
           background: 'none', border: 'none',
           color: 'var(--vscode-foreground)',

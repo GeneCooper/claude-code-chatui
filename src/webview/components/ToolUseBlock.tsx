@@ -59,6 +59,9 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
         {/* Subagent header */}
         <div
           className="flex items-center gap-2 cursor-pointer"
+          role="button"
+          aria-expanded={showInput}
+          aria-label={`${showInput ? 'Collapse' : 'Expand'} subagent details`}
           style={{
             padding: '6px 10px',
             borderBottom: showInput ? `1px solid ${subagentColor}20` : 'none',
@@ -124,6 +127,9 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
       {/* Tool header */}
       <div
         className="flex items-center gap-2 cursor-pointer"
+        role="button"
+        aria-expanded={showInput}
+        aria-label={`${showInput ? 'Collapse' : 'Expand'} ${toolName} details`}
         style={{
           padding: '6px 10px',
           borderBottom: showInput ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
@@ -149,6 +155,7 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
               e.stopPropagation()
               handlePreviewDiff()
             }}
+            aria-label="Preview file diff"
             className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
             Preview Diff
@@ -160,6 +167,7 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
               e.stopPropagation()
               postMessage({ type: 'openFile', filePath: String(rawInput.file_path) })
             }}
+            aria-label={`Open ${String(rawInput.file_path)}`}
             className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
             Open

@@ -35,11 +35,9 @@ export class PermissionService implements vscode.Disposable {
 
   async getPermissions(): Promise<Permissions> {
     try {
-      if (fs.existsSync(this._permissionsPath)) {
-        const raw = fs.readFileSync(this._permissionsPath, 'utf8');
-        return JSON.parse(raw) as Permissions;
-      }
-    } catch { /* corrupt file */ }
+      const raw = await fs.promises.readFile(this._permissionsPath, 'utf8');
+      return JSON.parse(raw) as Permissions;
+    } catch { /* missing or corrupt file */ }
     return { allowedPatterns: [] };
   }
 
@@ -97,7 +95,7 @@ export class PermissionService implements vscode.Disposable {
 
   private async _savePermissions(permissions: Permissions): Promise<void> {
     try {
-      fs.writeFileSync(this._permissionsPath, JSON.stringify(permissions, null, 2), 'utf8');
+      await fs.promises.writeFile(this._permissionsPath, JSON.stringify(permissions, null, 2), 'utf8');
     } catch (err) {
       console.error('Failed to save permissions:', err);
     }
@@ -144,6 +142,8 @@ export class ClaudeService implements vscode.Disposable {
   private _accountInfoEmitter = new EventEmitter();
   private _processStatusEmitter = new EventEmitter();
   private _stderrDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private _inactivityTimer: ReturnType<typeof setTimeout> | undefined;
+  private static readonly INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes with no activity
 
   constructor(private readonly _context: vscode.ExtensionContext) {
     this._subscriptionType = _context.globalState.get<'pro' | 'max' | undefined>('claude.subscriptionType');
@@ -253,8 +253,12 @@ export class ClaudeService implements vscode.Disposable {
     let errorOutput = '';
     let gotResultMessage = false;
 
+    // Start inactivity timer — kills process if no stdout/stderr for 10 minutes
+    this._resetInactivityTimer(claudeProcess);
+
     claudeProcess.stdout?.on('data', (data: Buffer) => {
       const chunk = data.toString();
+      this._resetInactivityTimer(claudeProcess);
       // stdout activity also proves the process is alive — emit heartbeat
       if (!this._stderrDebounceTimer) {
         this._processStatusEmitter.emit('status', { status: 'active' });
@@ -281,6 +285,7 @@ export class ClaudeService implements vscode.Disposable {
 
     claudeProcess.stderr?.on('data', (data: Buffer) => {
       const chunk = data.toString();
+      this._resetInactivityTimer(claudeProcess);
       errorOutput += chunk;
       // Debounced stderr activity → process is alive
       if (!this._stderrDebounceTimer) {
@@ -312,6 +317,8 @@ export class ClaudeService implements vscode.Disposable {
       this._isStopping = false;
       clearTimeout(this._stderrDebounceTimer);
       this._stderrDebounceTimer = undefined;
+      clearTimeout(this._inactivityTimer);
+      this._inactivityTimer = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
       // Only emit stderr as error if we didn't already get a result message via stdout
@@ -326,6 +333,8 @@ export class ClaudeService implements vscode.Disposable {
       this._isStopping = false;
       clearTimeout(this._stderrDebounceTimer);
       this._stderrDebounceTimer = undefined;
+      clearTimeout(this._inactivityTimer);
+      this._inactivityTimer = undefined;
       this._cancelPendingPermissions();
       this._processEndEmitter.emit('end');
       if (!wasStopping) this._errorEmitter.emit('error', `Error running Claude: ${error.message}`);
@@ -527,6 +536,16 @@ export class ClaudeService implements vscode.Disposable {
     return parts.length > 1 ? `${firstWord} *` : firstWord;
   }
 
+  private _resetInactivityTimer(proc: cp.ChildProcess): void {
+    clearTimeout(this._inactivityTimer);
+    this._inactivityTimer = setTimeout(() => {
+      if (this._process === proc) {
+        this._errorEmitter.emit('error', 'Process killed: no activity for 10 minutes');
+        void this.stopProcess();
+      }
+    }, ClaudeService.INACTIVITY_TIMEOUT_MS);
+  }
+
   private _cancelPendingPermissions(): void {
     this._pendingPermissions.clear();
   }
@@ -534,6 +553,7 @@ export class ClaudeService implements vscode.Disposable {
   dispose(): void {
     void this.stopProcess();
     clearTimeout(this._stderrDebounceTimer);
+    clearTimeout(this._inactivityTimer);
     this._messageEmitter.removeAllListeners();
     this._processEndEmitter.removeAllListeners();
     this._errorEmitter.removeAllListeners();

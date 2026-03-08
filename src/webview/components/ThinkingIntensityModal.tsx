@@ -103,6 +103,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
             </div>
             <button
               onClick={() => setShow(false)}
+              aria-label="Close"
               style={{
                 background: 'none',
                 border: 'none',

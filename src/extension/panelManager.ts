@@ -79,7 +79,7 @@ export class PanelManager {
   }
 
   /** Adopt a panel restored by VS Code's webview serializer on restart */
-  adoptRestoredPanel(panel: vscode.WebviewPanel, sessionId?: string): void {
+  async adoptRestoredPanel(panel: vscode.WebviewPanel, sessionId?: string): Promise<void> {
     const panelId = `panel-${++this._panelCounter}`;
     const claudeService = new ClaudeService(this._context);
 
@@ -96,7 +96,7 @@ export class PanelManager {
 
     // Restore conversation from saved sessionId if available
     if (sessionId) {
-      const conversation = this._conversationService.findBySessionId(sessionId);
+      const conversation = await this._conversationService.findBySessionId(sessionId);
       if (conversation) {
         provider.loadConversationData(
           conversation.messages,

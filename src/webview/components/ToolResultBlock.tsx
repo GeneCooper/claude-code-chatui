@@ -1,7 +1,7 @@
 import { useState, memo } from 'react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { DiffView } from './DiffView'
+import { CopyButton } from './CopyButton'
 import { postMessage } from '../hooks'
 import { useSettingsStore } from '../store'
 import { isPermissionError } from '../utils'
@@ -22,7 +22,6 @@ function guessLanguage(toolName?: string, content?: string): string | undefined 
 
 export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const [copied, setCopied] = useState(false)
   const isError = data.isError as boolean
   const rawContent = String(data.content || '')
   // Clean up XML-like tags from error messages (e.g. <tool_use_error>...</tool_use_error>)
@@ -41,12 +40,6 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
   const isLong = content.length > 300
   const displayContent = expanded ? content : content.substring(0, 300)
   const language = guessLanguage(toolName, content)
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const showYoloHint = isError && isPermissionError(content) && !yoloMode
@@ -88,12 +81,11 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
           }}>OUT</span>
         )}
         {content && (
-          <button
-            onClick={handleCopy}
+          <CopyButton
+            text={content}
             className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
+            style={{ padding: 0, background: 'none', color: 'inherit', opacity: 0.4, fontSize: '10px' }}
+          />
         )}
         {hasDiff && (
           <button
@@ -106,6 +98,7 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
                 filePath: filePath,
               })
             }}
+            aria-label="Open diff view"
             className="ml-auto opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
           >
             Open Diff
@@ -156,8 +149,7 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
       {!hasDiff && content && content !== 'Tool executed successfully' && (
         <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           {language ? (
-            <SyntaxHighlighter
-              style={vscDarkPlus}
+            <LazySyntaxHighlighter
               language={language}
               PreTag="div"
               customStyle={{
@@ -171,7 +163,7 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
               }}
             >
               {displayContent + (isLong && !expanded ? '...' : '')}
-            </SyntaxHighlighter>
+            </LazySyntaxHighlighter>
           ) : (
             <pre
               className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0"
@@ -189,6 +181,8 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
           {isLong && (
             <button
               onClick={() => setExpanded(!expanded)}
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Show less content' : 'Show more content'}
               className="px-3 py-1 text-[10px] opacity-50 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit"
             >
               {expanded ? 'Show less' : 'Show more'}

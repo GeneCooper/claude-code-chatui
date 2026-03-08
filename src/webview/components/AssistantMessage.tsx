@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useEffect, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
+import { CopyButton } from './CopyButton'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
 
@@ -73,7 +73,7 @@ const markdownComponents = {
  */
 function useDebouncedText(text: string, isStreaming: boolean, delayMs = 150): string {
   const [debouncedText, setDebouncedText] = useState(text)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     if (!isStreaming) {
@@ -209,6 +209,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = copied ? '1' : '0.6' }}
           title="Copy message"
+          aria-label={copied ? 'Copied' : 'Copy message'}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -321,41 +322,7 @@ function linkifyFilePaths(text: string): React.ReactNode {
   return result
 }
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      onClick={() => {
-        navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      }}
-      className="cursor-pointer border-none"
-      style={{
-        background: 'none',
-        color: copied ? '#4ade80' : 'var(--vscode-descriptionForeground)',
-        padding: '4px 8px',
-        borderRadius: 'var(--radius-sm)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        opacity: copied ? 1 : 0.7,
-        fontSize: '11px',
-        transition: 'all 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--chatui-surface-2)'
-        e.currentTarget.style.opacity = '1'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'none'
-        e.currentTarget.style.opacity = copied ? '1' : '0.7'
-      }}
-    >
-      {copied ? 'Copied!' : 'Copy'}
-    </button>
-  )
-}
+// CopyButton imported from shared component
 
 function CodeComponent({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) {
   const match = /language-(\w+)/.exec(className || '')
@@ -394,8 +361,7 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
           </span>
           <CopyButton text={code} />
         </div>
-        <SyntaxHighlighter
-          style={vscDarkPlus}
+        <LazySyntaxHighlighter
           language={match[1]}
           PreTag="div"
           customStyle={{
@@ -406,7 +372,7 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
           }}
         >
           {code}
-        </SyntaxHighlighter>
+        </LazySyntaxHighlighter>
       </div>
     )
   }

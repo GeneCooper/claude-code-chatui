@@ -25,6 +25,8 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
     >
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-label={expanded ? 'Collapse thinking' : 'Expand thinking'}
         className="flex items-center gap-2 w-full text-left cursor-pointer border-none text-inherit"
         style={{
           padding: '5px 10px',
@@ -43,6 +45,7 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
         <div className="relative" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           <button
             onClick={handleCopy}
+            aria-label={copied ? 'Copied' : 'Copy thinking text'}
             className="absolute right-2 top-1 opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px] z-10"
           >
             {copied ? 'Copied!' : 'Copy'}

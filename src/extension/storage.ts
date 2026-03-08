@@ -108,17 +108,17 @@ export class MCPService {
     } catch { return {}; }
   }
 
-  saveServer(name: string, config: MCPServerConfig): void {
-    const allConfig = this._loadConfig();
+  async saveServer(name: string, config: MCPServerConfig): Promise<void> {
+    const allConfig = await this._loadConfigAsync();
     allConfig.mcpServers[name] = config;
-    this._writeConfig(allConfig);
+    await this._writeConfigAsync(allConfig);
   }
 
-  deleteServer(name: string): boolean {
-    const allConfig = this._loadConfig();
+  async deleteServer(name: string): Promise<boolean> {
+    const allConfig = await this._loadConfigAsync();
     if (!(name in allConfig.mcpServers)) return false;
     delete allConfig.mcpServers[name];
-    this._writeConfig(allConfig);
+    await this._writeConfigAsync(allConfig);
     return true;
   }
 
@@ -127,8 +127,13 @@ export class MCPService {
     catch { return { mcpServers: {} }; }
   }
 
-  private _writeConfig(config: MCPConfig): void {
-    fs.writeFileSync(this._configPath, JSON.stringify(config, null, 2), 'utf8');
+  private async _loadConfigAsync(): Promise<MCPConfig> {
+    try { return JSON.parse(await fsp.readFile(this._configPath, 'utf8')) as MCPConfig; }
+    catch { return { mcpServers: {} }; }
+  }
+
+  private async _writeConfigAsync(config: MCPConfig): Promise<void> {
+    await fsp.writeFile(this._configPath, JSON.stringify(config, null, 2), 'utf8');
   }
 }
 
@@ -168,9 +173,10 @@ export class ConversationService {
     } catch (err) { console.error('Failed to save conversation:', err); }
   }
 
-  loadConversation(filename: string): ConversationData | null {
+  async loadConversation(filename: string): Promise<ConversationData | null> {
     try {
-      return JSON.parse(fs.readFileSync(path.join(this._conversationsDir, filename), 'utf8')) as ConversationData;
+      const raw = await fsp.readFile(path.join(this._conversationsDir, filename), 'utf8');
+      return JSON.parse(raw) as ConversationData;
     } catch { console.error(`Failed to load conversation: ${filename}`); return null; }
   }
 
@@ -240,8 +246,8 @@ export class ConversationService {
     );
   }
 
-  exportConversation(filename: string): string | null {
-    const conversation = this.loadConversation(filename);
+  async exportConversation(filename: string): Promise<string | null> {
+    const conversation = await this.loadConversation(filename);
     return conversation ? JSON.stringify(conversation, null, 2) : null;
   }
 
@@ -250,14 +256,14 @@ export class ConversationService {
     return list.length > 0 ? list[0].sessionId : undefined;
   }
 
-  findBySessionId(sessionId: string): ConversationData | null {
+  async findBySessionId(sessionId: string): Promise<ConversationData | null> {
     const list = this.getConversationList();
     const entry = list.find((e) => e.sessionId === sessionId);
     if (!entry) return null;
     return this.loadConversation(entry.filename);
   }
 
-  getLatestConversation(): ConversationData | null {
+  async getLatestConversation(): Promise<ConversationData | null> {
     const list = this.getConversationList();
     if (list.length === 0) return null;
     return this.loadConversation(list[0].filename);
