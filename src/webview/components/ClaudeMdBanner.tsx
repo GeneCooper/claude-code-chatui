@@ -2,35 +2,36 @@ import { postMessage } from '../hooks'
 import { useChatStore, useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 
-export const GENERATE_CLAUDE_MD_PROMPT = `请深入分析当前项目的代码，然后在项目根目录创建 CLAUDE.md 文件。
+export const GENERATE_CLAUDE_MD_PROMPT = `Analyze the current project's code and create a CLAUDE.md file in the project root.
 
-CLAUDE.md 应包含以下内容：
+IMPORTANT: Do NOT repeat information already available in README.md or package.json (project description, tech stack lists, install/build commands). CLAUDE.md should only contain what Claude cannot infer from those files.
 
-## 第一部分：项目概况
-- 项目名称、用途、整体架构
-- 技术栈和主要依赖
-- 开发常用命令（构建、测试、运行、lint 等）
-- 代码风格和规范（命名、格式、导入顺序等）
+CLAUDE.md should contain:
 
-## 第二部分：关键文件索引（重点）
-按功能模块列出核心文件及其职责，格式示例：
-- \`src/xxx/foo.ts\` — 负责XX功能，核心函数: funcA(), funcB()
-- \`src/xxx/bar.tsx\` — XX组件，管理XX状态
+## 1. Project Overview (brief)
+One sentence describing the project's purpose and architecture pattern (e.g., "Monorepo with Next.js frontend + Express API" or "VS Code extension with React webview"). Only include build/dev commands if they are non-obvious (not standard npm scripts).
 
-要求：
-- 覆盖所有主要功能模块
-- 标注每个文件的核心职责和关键导出
-- 标注模块间的依赖关系和数据流方向
+## 2. Key File Index (core value)
+List core files grouped by module, with responsibilities and key exports:
+- \`src/xxx/foo.ts\` — Handles XX, key exports: funcA(), ClassB
+- \`src/xxx/bar.tsx\` — XX component, manages XX state
 
-## 第三部分：架构关键路径
-列出 2-3 个核心流程的调用链，例如：
-- 用户操作 → 组件 → 服务 → API 的完整路径
+Requirements:
+- Cover all major functional modules
+- Note dependencies and data flow between modules
+- Skip test files, configs, and generated code
 
-## 第四部分：工作规范
-- 收到任务时，先读代码验证，不要只基于用户描述回答
-- 对比需求与现有代码，明确列出已实现、未实现、有差异的部分
+## 3. Architecture: Critical Paths
+2-3 core workflows as call chains, e.g.:
+- User action → Component → Service → API → Response rendering
 
-整体保持 50-150 行，简洁实用。`
+## 4. Project-Specific Constraints
+Rules that are unique to THIS project (do NOT include generic coding advice like "read before edit" or "keep code clean" — Claude already knows those). Examples:
+- "Protocol changes must update both types.ts and handlers.ts"
+- "Extension changes require \`npm run compile\`, webview changes require \`npm run build:webview\`"
+- "All state mutations go through Zustand stores, never direct setState"
+
+Keep the entire file between 40-120 lines. Be concise and actionable.`
 
 export function ClaudeMdBanner() {
   const show = useUIStore((s) => s.showClaudeMdBanner)
