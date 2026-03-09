@@ -469,7 +469,7 @@ function HooksSection() {
 // ============================================================================
 
 export function SettingsPanel() {
-  const { thinkingIntensity, yoloMode, maxTurns, disallowedTools } = useSettingsStore()
+  const { thinkingIntensity, yoloMode, disallowedTools } = useSettingsStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
 
   useEffect(() => {
@@ -531,11 +531,12 @@ export function SettingsPanel() {
             <option value="precise">Precise</option>
           </select>
           <p style={descStyle}>
-            <span style={{ color: 'var(--chatui-accent)', fontWeight: 500 }}>Fast</span>: minimal tokens
+            Maps to CLI <span className="font-mono" style={{ opacity: 0.8 }}>--effort</span>.{' '}
+            <span style={{ color: 'var(--chatui-accent)', fontWeight: 500 }}>Fast</span> (low): minimal tokens
             {' | '}
-            <span style={{ color: '#22c55e', fontWeight: 500 }}>Deep</span>: structured workflow
+            <span style={{ color: '#22c55e', fontWeight: 500 }}>Deep</span> (medium): balanced
             {' | '}
-            <span style={{ color: '#f59e0b', fontWeight: 500 }}>Precise</span>: anti-hallucination
+            <span style={{ color: '#f59e0b', fontWeight: 500 }}>Precise</span> (high): thorough reasoning
           </p>
         </div>
 
@@ -581,43 +582,6 @@ export function SettingsPanel() {
           </label>
           <p style={descStyle}>
             Skip all permission prompts. Claude will execute tools without asking for approval. Safe with Git version control.
-          </p>
-        </div>
-
-        {/* Max Turns */}
-        <div style={cardStyle}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '10px' }}>
-            <span style={sectionTitleStyle}>Max Turns</span>
-            <span style={{
-              fontSize: '14px',
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              color: maxTurns === 0 ? 'var(--chatui-accent)' : 'var(--vscode-editor-foreground)',
-              background: 'rgba(255,255,255,0.08)',
-              padding: '2px 10px',
-              borderRadius: '6px',
-              minWidth: '36px',
-              textAlign: 'center',
-            }}>
-              {maxTurns === 0 ? 'Unlimited' : maxTurns}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={50}
-            step={1}
-            value={maxTurns}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10)
-              useSettingsStore.getState().updateSettings({ maxTurns: v })
-              updateSetting('maxTurns', v)
-            }}
-            className="w-full accent-(--vscode-focusBorder)"
-            style={{ height: '4px' }}
-          />
-          <p style={descStyle}>
-            Limit tool-use loops per request. Prevents runaway loops and controls token usage. Recommended: 20-30.
           </p>
         </div>
 

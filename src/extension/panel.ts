@@ -413,6 +413,10 @@ export class PanelProvider {
 
     const yoloMode = this._settingsManager.isYoloModeEnabled();
     const disallowedTools = [...this._settingsManager.getDisallowedTools()];
+    // Map thinkingIntensity to CLI --effort level
+    const intensityToEffort: Record<string, string> = { fast: 'low', deep: 'medium', precise: 'high' };
+    const settings = this._settingsManager.getCurrentSettings(this._stateManager.selectedModel);
+    const effortLevel = intensityToEffort[settings.thinkingIntensity] || 'medium';
     // In YOLO mode, disallow AskUserQuestion — the CLI can't get real user input
     // in stream-json mode with --dangerously-skip-permissions, so the tool returns
     // a useless result and truncates the conversation.
@@ -433,7 +437,7 @@ export class PanelProvider {
     const systemPrompt = AGENT_SYSTEM_PROMPT;
 
     void this._claudeService.sendMessage(enrichedText, {
-      cwd, yoloMode,
+      cwd, yoloMode, effortLevel,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images, systemPrompt,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
