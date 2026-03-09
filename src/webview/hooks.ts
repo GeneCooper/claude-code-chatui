@@ -383,6 +383,15 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   hooksSaved: () => {
     window.dispatchEvent(new CustomEvent('hooksSaved'))
   },
+
+  showDiagnostics: () => {
+    useUIStore.getState().setActiveView('diagnostics')
+  },
+
+  diagnosticsResults: (msg) => {
+    const data = msg.data as import('../shared/types').DiagnosticsResult
+    useUIStore.getState().setDiagnosticsResult(data)
+  },
 }
 
 function handleExtensionMessage(msg: ExtensionMessage): void {

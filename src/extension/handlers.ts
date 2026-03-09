@@ -843,6 +843,7 @@ export interface MessageHandlerContext {
   handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
+  diagnosticsService?: import('./diagnostics').DiagnosticsService;
 }
 
 export type WebviewMessage = { type: string; [key: string]: unknown };
@@ -1237,6 +1238,16 @@ const messageHandlers: Record<string, MessageHandler> = {
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
   dismissClaudeMdBanner: handleDismissClaudeMdBanner,
+  runDiagnostics: (_msg: WebviewMessage, ctx: MessageHandlerContext) => {
+    if (ctx.diagnosticsService) {
+      void ctx.diagnosticsService.runAllChecks(ctx.postMessage);
+    }
+  },
+  diagnosticFixAction: (msg: WebviewMessage, ctx: MessageHandlerContext) => {
+    if (ctx.diagnosticsService) {
+      ctx.diagnosticsService.handleFixAction(msg.action as string, ctx.postMessage);
+    }
+  },
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

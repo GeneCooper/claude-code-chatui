@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
 import type { ConversationService, UsageService, MCPService } from './storage';
+import type { DiagnosticsService } from './diagnostics';
 import { PanelProvider, getWebviewHtml } from './panel';
 import type { ConversationMessage } from '../shared/types';
 
@@ -17,6 +18,7 @@ export class PanelManager {
     private readonly _mcpService: MCPService,
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
+    private readonly _diagnosticsService?: DiagnosticsService,
   ) {}
 
   createNewPanel(
@@ -41,6 +43,7 @@ export class PanelManager {
       this._usageService,
       this._permissionService,
       this,
+      this._diagnosticsService,
     );
 
     const panel = vscode.window.createWebviewPanel(
@@ -92,6 +95,7 @@ export class PanelManager {
       this._usageService,
       this._permissionService,
       this,
+      this._diagnosticsService,
     );
 
     // Restore conversation from saved sessionId if available

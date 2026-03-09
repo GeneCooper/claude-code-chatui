@@ -4,6 +4,7 @@ import type {
   MCPServerConfig,
   TodoItem,
   ConversationIndexEntry,
+  DiagnosticsResult,
 } from "../shared/types";
 
 // Re-export so downstream consumers (hooks.ts, TodoDisplay.tsx) can keep importing from store
@@ -277,7 +278,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 // UI Store
 // ============================================================================
 
-type ActiveView = "chat" | "history" | "settings";
+type ActiveView = "chat" | "history" | "settings" | "diagnostics";
 type NotificationType = "info" | "success" | "warning" | "error";
 
 interface Notification {
@@ -307,6 +308,7 @@ interface UIState {
   platformInfo: { platform: string; isWindows: boolean } | null;
   showClaudeMdBanner: boolean;
   notifications: Notification[];
+  diagnosticsResult: DiagnosticsResult | null;
 
   setActiveView: (view: ActiveView) => void;
   setShowIntensityModal: (show: boolean) => void;
@@ -326,6 +328,7 @@ interface UIState {
     info: { platform: string; isWindows: boolean } | null,
   ) => void;
   setShowClaudeMdBanner: (show: boolean) => void;
+  setDiagnosticsResult: (result: DiagnosticsResult | null) => void;
   showNotification: (
     type: NotificationType,
     title: string,
@@ -354,6 +357,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   platformInfo: null,
   showClaudeMdBanner: false,
   notifications: [],
+  diagnosticsResult: null,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowIntensityModal: (show) => set({ showIntensityModal: show }),
@@ -369,6 +373,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
   setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
+  setDiagnosticsResult: (result) => set({ diagnosticsResult: result }),
 
   showNotification: (type, title, message, timeout = 5000) => {
     const id = `notif-${++notifCounter}`;

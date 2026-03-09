@@ -42,6 +42,11 @@
         "title": "Chat with this file",
         "category": "Claude Code ChatUI",
         "icon": "media/icon.png"
+      },
+      {
+        "command": "claude-code-chatui.doctor",
+        "title": "Run Diagnostics (Doctor)",
+        "category": "Claude Code ChatUI"
       }
     ],
     "keybindings": [
