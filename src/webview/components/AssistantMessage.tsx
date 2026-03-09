@@ -22,16 +22,15 @@ const markdownComponents = {
   a: LinkComponent,
   p: ParagraphWithPaths,
   table: ({ children, ...props }: ComponentPropsWithoutRef<'table'>) => (
-    <div style={{ overflowX: 'auto', margin: '8px 0' }}>
+    <div style={{ overflowX: 'auto', margin: '8px 0', borderRadius: '6px', border: '1px solid var(--vscode-panel-border)' }}>
       <table
         {...props}
         style={{
-          minWidth: '100%',
-          width: 'max-content',
-          borderCollapse: 'collapse',
+          width: '100%',
+          borderCollapse: 'separate',
+          borderSpacing: 0,
           fontSize: '12px',
-          border: '1px solid var(--vscode-panel-border)',
-          borderRadius: '6px',
+          tableLayout: 'auto',
         }}
       >
         {children}
@@ -46,8 +45,10 @@ const markdownComponents = {
         textAlign: 'left',
         fontWeight: 600,
         borderBottom: '1px solid var(--vscode-panel-border)',
+        borderRight: '1px solid rgba(128, 128, 128, 0.15)',
         background: 'rgba(128, 128, 128, 0.1)',
-        whiteSpace: 'nowrap',
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
       }}
     >
       {children}
@@ -59,7 +60,9 @@ const markdownComponents = {
       style={{
         padding: '5px 10px',
         borderBottom: '1px solid rgba(128, 128, 128, 0.1)',
-        whiteSpace: 'nowrap',
+        borderRight: '1px solid rgba(128, 128, 128, 0.08)',
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
       }}
     >
       {children}

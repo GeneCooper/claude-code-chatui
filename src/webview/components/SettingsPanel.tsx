@@ -516,7 +516,7 @@ export function SettingsPanel() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '16px 16px 48px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Agent Mode */}
         <div style={cardStyle}>
           <div style={sectionTitleStyle}>Agent Mode</div>

@@ -327,6 +327,15 @@ body {
   line-height: 1.5;
 }
 
+/* ===== Markdown Tables ===== */
+.markdown-content th:last-child,
+.markdown-content td:last-child {
+  border-right: none !important;
+}
+.markdown-content tr:last-child td {
+  border-bottom: none !important;
+}
+
 /* ===== Loading Dots ===== */
 .loading-dot {
   animation: bounceDot 1.4s ease-in-out infinite both;
