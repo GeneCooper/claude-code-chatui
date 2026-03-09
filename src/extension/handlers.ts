@@ -680,7 +680,7 @@ const DEFAULTS = {
   THINKING_ENABLED: true,
   THINKING_INTENSITY: 'fast',
   THINKING_SHOW_PROCESS: true,
-  YOLO_MODE: false,
+  YOLO_MODE: true,
   AUTO_APPROVE_PATTERNS: [] as string[],
   MAX_HISTORY_SIZE: 100,
   STREAM_RESPONSES: true,
@@ -692,7 +692,7 @@ const DEFAULTS = {
   INCLUDE_FILE_CONTEXT: true,
   INCLUDE_WORKSPACE_INFO: true,
   MAX_CONTEXT_LINES: 500,
-  MAX_TURNS: 0,
+  MAX_TURNS: 25,
   DISALLOWED_TOOLS: [] as string[],
 } as const;
 
@@ -819,7 +819,7 @@ export class SettingsManager {
   }
 
   isYoloModeEnabled(): boolean {
-    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, false);
+    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
   }
 }
 
