@@ -7,7 +7,6 @@ import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { MCPPanel } from './components/MCPPanel'
-import { DiagnosticsPanel } from './components/DiagnosticsPanel'
 import { InstallModal } from './components/InstallModal'
 import { LoginModal } from './components/LoginModal'
 
@@ -35,8 +34,7 @@ export default function App() {
       )}
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
-      {activeView === 'diagnostics' && <DiagnosticsPanel />}
-      {showMCPModal && <MCPPanel />}
+{showMCPModal && <MCPPanel />}
       <InstallModal />
       <LoginModal />
     </div>

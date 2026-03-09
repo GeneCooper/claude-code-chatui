@@ -1248,6 +1248,7 @@ const messageHandlers: Record<string, MessageHandler> = {
       ctx.diagnosticsService.handleFixAction(msg.action as string, ctx.postMessage);
     }
   },
+
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

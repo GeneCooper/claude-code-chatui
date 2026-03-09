@@ -40,7 +40,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Initialize diagnostics service
   const diagnosticsService = new DiagnosticsService(mcpService, usageService);
-
   // Create panel manager for multi-panel support
   const panelManager = new PanelManager(
     context.extensionUri,

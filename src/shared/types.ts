@@ -301,7 +301,9 @@ export type WebviewToExtensionMessage =
 
   // Diagnostics
   | { type: "runDiagnostics" }
-  | { type: "diagnosticFixAction"; action: string; checkId: string };
+  | { type: "diagnosticFixAction"; action: string; checkId: string }
+
+;
 
 // ============================================================================
 // Diagnostics types
@@ -324,6 +326,7 @@ export interface DiagnosticsResult {
   checks: DiagnosticCheck[];
   summary: { pass: number; fail: number; warn: number };
 }
+
 
 export interface ToolUseData {
   toolInfo: string;

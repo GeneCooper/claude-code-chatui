@@ -278,7 +278,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 // UI Store
 // ============================================================================
 
-type ActiveView = "chat" | "history" | "settings" | "diagnostics";
+type ActiveView = "chat" | "history" | "settings";
 type NotificationType = "info" | "success" | "warning" | "error";
 
 interface Notification {
@@ -392,3 +392,4 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ notifications: get().notifications.filter((n) => n.id !== id) });
   },
 }));
+
