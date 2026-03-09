@@ -310,7 +310,7 @@ export function MCPPanel() {
                 marginBottom: '20px',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(237, 110, 29, 0.06)'
+                e.currentTarget.style.background = 'rgba(99, 102, 241, 0.06)'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent'

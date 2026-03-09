@@ -16,7 +16,6 @@ import { createModuleLogger } from '../shared/logger';
 import { AGENT_SYSTEM_PROMPT } from '../shared/constants';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
-import type { DiagnosticsService } from './diagnostics';
 
 const log = createModuleLogger('PanelProvider');
 
@@ -131,7 +130,6 @@ export class PanelProvider {
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
-    private readonly _diagnosticsService?: DiagnosticsService,
   ) {
     log.info('PanelProvider initialized');
 
@@ -185,14 +183,6 @@ export class PanelProvider {
 
   get messageProcessor(): ClaudeMessageProcessor { return this._messageProcessor; }
   get stateManager(): SessionStateManager { return this._stateManager; }
-
-  /** Trigger diagnostics view from command palette */
-  postDiagnosticsView(): void {
-    this._postMessage({ type: 'showDiagnostics' });
-    if (this._diagnosticsService) {
-      void this._diagnosticsService.runAllChecks((msg) => this._postMessage(msg));
-    }
-  }
 
   show(column: vscode.ViewColumn | vscode.Uri = vscode.ViewColumn.Two, preserveFocus = false): void {
     const actualColumn = column instanceof vscode.Uri ? vscode.ViewColumn.Two : column;
@@ -394,7 +384,6 @@ export class PanelProvider {
         this._handleSendMessage(text, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
-      diagnosticsService: this._diagnosticsService,
     };
   }
 

@@ -2,10 +2,10 @@
 
 /* ===== Design Tokens ===== */
 :root {
-  --chatui-accent: #e74c3c;
-  --chatui-accent-dark: #c0392b;
-  --chatui-accent-glow: rgba(231, 76, 60, 0.25);
-  --chatui-accent-subtle: rgba(231, 76, 60, 0.12);
+  --chatui-accent: #6366f1;
+  --chatui-accent-dark: #4f46e5;
+  --chatui-accent-glow: rgba(99, 102, 241, 0.25);
+  --chatui-accent-subtle: rgba(99, 102, 241, 0.12);
   --chatui-glass-bg: rgba(30, 30, 30, 0.4);
   --chatui-glass-border: rgba(255, 255, 255, 0.08);
   --chatui-surface-1: rgba(255, 255, 255, 0.03);
@@ -32,8 +32,8 @@
   --color-vscode-sidebar-bg: var(--vscode-sideBar-background);
   --color-vscode-badge-bg: var(--vscode-badge-background);
   --color-vscode-badge-fg: var(--vscode-badge-foreground);
-  --color-accent: #ed6e1d;
-  --color-accent-dark: #de5513;
+  --color-accent: #6366f1;
+  --color-accent-dark: #4f46e5;
 }
 
 /* ===== Base ===== */
@@ -75,7 +75,7 @@ body {
 
 /* ===== Text Selection ===== */
 ::selection {
-  background: rgba(237, 110, 29, 0.3);
+  background: rgba(99, 102, 241, 0.3);
   color: white;
 }
 
@@ -243,7 +243,7 @@ body {
   height: 2px;
   width: 40%;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
-  background: linear-gradient(90deg, transparent, var(--chatui-accent, #ed6e1d), transparent);
+  background: linear-gradient(90deg, transparent, var(--chatui-accent, #6366f1), transparent);
   animation: marquee-slide 1.5s ease-in-out infinite;
   pointer-events: none;
   z-index: 2;

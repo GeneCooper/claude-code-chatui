@@ -4,7 +4,6 @@ import { ConversationService, UsageService, MCPService } from './storage';
 import { DiffContentProvider, MarkdownContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider, getWebviewHtml } from './panel';
 import { PanelManager } from './panelManager';
-import { DiagnosticsService } from './diagnostics';
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log('Claude Code ChatUI extension is being activated');
@@ -38,8 +37,6 @@ export function activate(context: vscode.ExtensionContext): void {
     new MarkdownContentProvider(),
   );
 
-  // Initialize diagnostics service
-  const diagnosticsService = new DiagnosticsService(mcpService, usageService);
   // Create panel manager for multi-panel support
   const panelManager = new PanelManager(
     context.extensionUri,
@@ -48,7 +45,6 @@ export function activate(context: vscode.ExtensionContext): void {
     mcpService,
     usageService,
     permissionService,
-    diagnosticsService,
   );
 
   // Sidebar gets its own dedicated ClaudeService + PanelProvider
@@ -56,7 +52,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const sidebarProvider = new PanelProvider(
     context.extensionUri, context, sidebarClaudeService,
     conversationService, mcpService, usageService, permissionService,
-    panelManager, diagnosticsService,
+    panelManager,
   );
 
   // Create sidebar webview provider
@@ -124,15 +120,6 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
-  // Register doctor command — opens diagnostics in sidebar
-  const doctorCmd = vscode.commands.registerCommand(
-    'claude-code-chatui.doctor',
-    () => {
-      // Post to sidebar webview to switch to diagnostics view
-      sidebarProvider.postDiagnosticsView();
-    },
-  );
-
   // Status bar item
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.text = '$(comment-discussion) Claude';
@@ -144,7 +131,6 @@ export function activate(context: vscode.ExtensionContext): void {
     openChatCmd,
     openChatWithFileCmd,
     loadConvCmd,
-    doctorCmd,
     panelSerializer,
     webviewProviderReg,
     diffProvider,

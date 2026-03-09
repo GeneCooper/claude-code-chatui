@@ -139,7 +139,7 @@ export function ThinkingIntensityModal({ enabled, onToggle }: Props) {
                     ? '1px solid var(--chatui-accent)'
                     : '1px solid transparent',
                   background: isSelected
-                    ? 'rgba(237, 110, 29, 0.1)'
+                    ? 'rgba(99, 102, 241, 0.1)'
                     : 'transparent',
                   transition: 'all 0.15s ease',
                 }}

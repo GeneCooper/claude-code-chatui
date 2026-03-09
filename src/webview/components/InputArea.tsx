@@ -410,8 +410,8 @@ export const InputArea = memo(function InputArea() {
             marginBottom: '6px',
             padding: '3px 8px',
             borderRadius: '6px',
-            background: 'rgba(237, 110, 29, 0.08)',
-            border: '1px solid rgba(237, 110, 29, 0.25)',
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
             fontSize: '11px',
             color: 'var(--chatui-accent)',
           }}
@@ -473,93 +473,6 @@ export const InputArea = memo(function InputArea() {
         </div>
       )}
 
-      {/* Mode toggles */}
-      <div className="flex items-center gap-2 pb-2" style={{ fontSize: '11px' }}>
-        {/* Think toggle */}
-        <button
-          onClick={() => useUIStore.getState().setShowIntensityModal(true)}
-          className="flex items-center gap-1 cursor-pointer border-none"
-          style={{
-            padding: '2px 10px',
-            borderRadius: '12px',
-            border: `1px solid ${thinkingMode ? 'var(--chatui-accent)' : 'var(--vscode-panel-border)'}`,
-            background: thinkingMode ? 'rgba(237, 110, 29, 0.1)' : 'transparent',
-            color: thinkingMode ? 'var(--chatui-accent)' : 'inherit',
-            opacity: thinkingMode ? 1 : 0.7,
-            transition: 'all 0.2s ease',
-          }}
-          title="Think mode"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v4l2 2" />
-          </svg>
-          <span>Think{thinkingMode ? ` · ${thinkingIntensity}` : ''}</span>
-        </button>
-
-        <button
-          onClick={() => {
-            const next = !yoloMode
-            postMessage({ type: 'updateSettings', settings: { yoloMode: next } })
-            useSettingsStore.getState().updateSettings({ yoloMode: next })
-          }}
-          className="flex items-center gap-1 cursor-pointer border-none"
-          style={{
-            padding: '2px 10px',
-            borderRadius: '12px',
-            border: `1px solid ${yoloMode ? '#ef4444' : 'var(--vscode-panel-border)'}`,
-            background: yoloMode ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-            color: yoloMode ? '#ef4444' : 'inherit',
-            opacity: yoloMode ? 1 : 0.7,
-            transition: 'all 0.2s ease',
-            boxShadow: yoloMode ? '0 0 8px rgba(239, 68, 68, 0.3)' : 'none',
-          }}
-          title="YOLO mode - Skip all permission checks (dangerous!)"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-          </svg>
-          <span>YOLO</span>
-        </button>
-
-        {/* CLAUDE.md generate button — shown only when no CLAUDE.md detected */}
-        {showClaudeMdBanner && (
-          <button
-            onClick={() => {
-              useUIStore.getState().setShowClaudeMdBanner(false)
-              const store = useChatStore.getState()
-              markOptimisticUserInput()
-              store.addMessage({ type: 'userInput', data: { text: GENERATE_CLAUDE_MD_PROMPT } })
-              store.setProcessing(true)
-              store.addMessage({ type: 'loading', data: 'Claude is working...' })
-              useUIStore.getState().setRequestStartTime(Date.now())
-              postMessage({ type: 'sendMessage', text: GENERATE_CLAUDE_MD_PROMPT })
-            }}
-            disabled={isProcessing}
-            className="flex items-center gap-1 cursor-pointer border-none"
-            style={{
-              padding: '2px 10px',
-              borderRadius: '12px',
-              border: '1px solid #10b981',
-              background: 'rgba(16, 185, 129, 0.1)',
-              color: '#10b981',
-              opacity: isProcessing ? 0.4 : 1,
-              cursor: isProcessing ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            title="No CLAUDE.md detected — click to generate one"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
-            <span>CLAUDE.md</span>
-          </button>
-        )}
-      </div>
-
       {/* Textarea container */}
       <div
         className="textarea-glow"
@@ -578,7 +491,7 @@ export const InputArea = memo(function InputArea() {
               inset: 0,
               zIndex: 10,
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(237, 110, 29, 0.08)',
+              background: 'rgba(99, 102, 241, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -646,6 +559,59 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
+            {/* Think toggle */}
+            <button
+              onClick={() => useUIStore.getState().setShowIntensityModal(true)}
+              className="cursor-pointer border-none flex items-center gap-1"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontWeight: 500,
+                opacity: thinkingMode ? 1 : 0.5,
+                color: thinkingMode ? 'var(--chatui-accent)' : 'inherit',
+                transition: 'all 0.2s ease',
+              }}
+              title="Think mode"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = thinkingMode ? '1' : '0.5' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4l2 2" />
+              </svg>
+              <span>Think{thinkingMode ? ` · ${thinkingIntensity}` : ''}</span>
+            </button>
+
+            <InputSep />
+
+            {/* YOLO toggle */}
+            <button
+              onClick={() => {
+                const next = !yoloMode
+                postMessage({ type: 'updateSettings', settings: { yoloMode: next } })
+                useSettingsStore.getState().updateSettings({ yoloMode: next })
+              }}
+              className="cursor-pointer border-none flex items-center gap-1"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontWeight: 500,
+                opacity: yoloMode ? 1 : 0.5,
+                color: yoloMode ? '#ef4444' : 'inherit',
+                transition: 'all 0.2s ease',
+              }}
+              title="YOLO mode - Skip all permission checks"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = yoloMode ? '1' : '0.5' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+              <span>YOLO</span>
+            </button>
+
+            <InputSep />
+
             {/* MCP button */}
             <button
               onClick={() => useUIStore.getState().setShowMCPModal(true)}
@@ -654,13 +620,13 @@ export const InputArea = memo(function InputArea() {
                 background: 'transparent',
                 padding: '2px 4px',
                 fontWeight: 500,
-                opacity: 0.7,
+                opacity: 0.5,
                 color: 'inherit',
                 transition: 'all 0.2s ease',
               }}
               title="Configure MCP servers"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.color = 'inherit' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'inherit' }}
             >
               MCP
             </button>
@@ -675,17 +641,58 @@ export const InputArea = memo(function InputArea() {
                 background: 'transparent',
                 padding: '2px 4px',
                 fontWeight: 500,
-                opacity: 0.7,
+                opacity: 0.5,
                 color: ctrlEnterSend ? 'var(--chatui-accent)' : 'inherit',
                 transition: 'all 0.2s ease',
                 fontSize: '10px',
               }}
               title={ctrlEnterSend ? 'Click to switch: Enter to send' : 'Click to switch: Ctrl+Enter to send'}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5' }}
             >
               {ctrlEnterSend ? 'Ctrl+⏎' : '⏎'}
             </button>
+
+            {/* CLAUDE.md generate button */}
+            {showClaudeMdBanner && (
+              <>
+                <InputSep />
+                <button
+                  onClick={() => {
+                    useUIStore.getState().setShowClaudeMdBanner(false)
+                    const store = useChatStore.getState()
+                    markOptimisticUserInput()
+                    store.addMessage({ type: 'userInput', data: { text: GENERATE_CLAUDE_MD_PROMPT } })
+                    store.setProcessing(true)
+                    store.addMessage({ type: 'loading', data: 'Claude is working...' })
+                    useUIStore.getState().setRequestStartTime(Date.now())
+                    postMessage({ type: 'sendMessage', text: GENERATE_CLAUDE_MD_PROMPT })
+                  }}
+                  disabled={isProcessing}
+                  className="cursor-pointer border-none flex items-center gap-1"
+                  style={{
+                    background: 'transparent',
+                    padding: '2px 4px',
+                    fontWeight: 500,
+                    opacity: isProcessing ? 0.3 : 0.7,
+                    color: '#10b981',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="No CLAUDE.md detected — click to generate one"
+                  onMouseEnter={(e) => { if (!isProcessing) e.currentTarget.style.opacity = '1' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = isProcessing ? '0.3' : '0.7' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  <span>CLAUDE.md</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Right controls */}

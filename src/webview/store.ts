@@ -4,7 +4,6 @@ import type {
   MCPServerConfig,
   TodoItem,
   ConversationIndexEntry,
-  DiagnosticsResult,
 } from "../shared/types";
 
 // Re-export so downstream consumers (hooks.ts, TodoDisplay.tsx) can keep importing from store
@@ -62,8 +61,6 @@ interface ChatState {
   processStatus: { status: string; detail?: string } | null;
 
   addMessage: (msg: Omit<ChatMessage, "id" | "timestamp">) => void;
-  appendToLastOutput: (text: string) => boolean;
-  updateLastOutput: (text: string) => void;
   clearMessages: () => void;
   removeLoading: () => void;
   setProcessing: (isProcessing: boolean) => void;
@@ -116,53 +113,6 @@ export const useChatStore = create<ChatState>((set) => ({
         },
       ],
     })),
-
-  appendToLastOutput: (text) => {
-    const state = useChatStore.getState();
-    const msgs = state.messages;
-    // Find the last output message (skip any loading messages at the end)
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i];
-      if (m.type === "loading") continue;
-      if (m.type === "output") {
-        // Merge text into existing output
-        const updated = [...msgs];
-        updated[i] = { ...m, data: String(m.data) + "\n\n" + text };
-        set({ messages: updated });
-        return true;
-      }
-      break; // Stop if we hit any non-loading, non-output message
-    }
-    return false;
-  },
-
-  updateLastOutput: (text) => {
-    set((state) => {
-      const msgs = state.messages;
-      // Find the last output message (skip loading messages)
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].type === "loading") continue;
-        if (msgs[i].type === "output") {
-          const updated = [...msgs];
-          updated[i] = { ...msgs[i], data: text };
-          return { messages: updated };
-        }
-        break;
-      }
-      // No existing output to update — add as new
-      return {
-        messages: [
-          ...msgs,
-          {
-            type: "output" as const,
-            data: text,
-            id: `msg-${++messageCounter}-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      };
-    });
-  },
 
   clearMessages: () => set({ messages: [], processStatus: null }),
 
@@ -279,16 +229,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 // ============================================================================
 
 type ActiveView = "chat" | "history" | "settings";
-type NotificationType = "info" | "success" | "warning" | "error";
-
-interface Notification {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message?: string;
-  timestamp: number;
-}
-
 export type RequestResult = "success" | "error" | null;
 
 interface UIState {
@@ -307,8 +247,6 @@ interface UIState {
   accountType: "pro" | "max" | undefined;
   platformInfo: { platform: string; isWindows: boolean } | null;
   showClaudeMdBanner: boolean;
-  notifications: Notification[];
-  diagnosticsResult: DiagnosticsResult | null;
 
   setActiveView: (view: ActiveView) => void;
   setShowIntensityModal: (show: boolean) => void;
@@ -328,19 +266,9 @@ interface UIState {
     info: { platform: string; isWindows: boolean } | null,
   ) => void;
   setShowClaudeMdBanner: (show: boolean) => void;
-  setDiagnosticsResult: (result: DiagnosticsResult | null) => void;
-  showNotification: (
-    type: NotificationType,
-    title: string,
-    message?: string,
-    timeout?: number,
-  ) => void;
-  dismissNotification: (id: string) => void;
 }
 
-let notifCounter = 0;
-
-export const useUIStore = create<UIState>((set, get) => ({
+export const useUIStore = create<UIState>((set) => ({
   activeView: "chat",
   showIntensityModal: false,
   showMCPModal: false,
@@ -356,8 +284,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   accountType: undefined,
   platformInfo: null,
   showClaudeMdBanner: false,
-  notifications: [],
-  diagnosticsResult: null,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowIntensityModal: (show) => set({ showIntensityModal: show }),
@@ -373,23 +299,5 @@ export const useUIStore = create<UIState>((set, get) => ({
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
   setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
-  setDiagnosticsResult: (result) => set({ diagnosticsResult: result }),
-
-  showNotification: (type, title, message, timeout = 5000) => {
-    const id = `notif-${++notifCounter}`;
-    const notification: Notification = {
-      id,
-      type,
-      title,
-      message,
-      timestamp: Date.now(),
-    };
-    set({ notifications: [...get().notifications, notification] });
-    if (timeout > 0) setTimeout(() => get().dismissNotification(id), timeout);
-  },
-
-  dismissNotification: (id) => {
-    set({ notifications: get().notifications.filter((n) => n.id !== id) });
-  },
 }));
 

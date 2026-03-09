@@ -183,26 +183,6 @@ export interface MCPConfig {
 }
 
 // ============================================================================
-// File picker types
-// ============================================================================
-
-export interface WorkspaceFile {
-  name: string;
-  path: string;
-  fsPath: string;
-}
-
-// ============================================================================
-// Slash command types
-// ============================================================================
-
-export interface SlashCommand {
-  command: string;
-  description: string;
-  category: "snippet" | "native";
-}
-
-// ============================================================================
 // Usage types
 // ============================================================================
 
@@ -299,34 +279,7 @@ export type WebviewToExtensionMessage =
   | { type: "showInfo"; data: string }
   | { type: "dismissClaudeMdBanner" }
 
-  // Diagnostics
-  | { type: "runDiagnostics" }
-  | { type: "diagnosticFixAction"; action: string; checkId: string }
-
 ;
-
-// ============================================================================
-// Diagnostics types
-// ============================================================================
-
-export type DiagnosticStatus = 'pass' | 'fail' | 'warn' | 'running' | 'skipped';
-
-export interface DiagnosticCheck {
-  id: string;
-  label: string;
-  category: 'cli' | 'auth' | 'network' | 'mcp' | 'config' | 'runtime';
-  status: DiagnosticStatus;
-  message: string;
-  detail?: string;
-  fixAction?: string;
-}
-
-export interface DiagnosticsResult {
-  timestamp: string;
-  checks: DiagnosticCheck[];
-  summary: { pass: number; fail: number; warn: number };
-}
-
 
 export interface ToolUseData {
   toolInfo: string;

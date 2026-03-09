@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.8.41",
+  "version": "0.8.42",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -42,11 +42,6 @@
         "title": "Chat with this file",
         "category": "Claude Code ChatUI",
         "icon": "media/icon.png"
-      },
-      {
-        "command": "claude-code-chatui.doctor",
-        "title": "Run Diagnostics (Doctor)",
-        "category": "Claude Code ChatUI"
       }
     ],
     "keybindings": [

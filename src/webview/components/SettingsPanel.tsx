@@ -209,6 +209,28 @@ function HooksEditor() {
   )
 }
 
+function HooksSection() {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="border-t border-(--vscode-panel-border) pt-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 w-full text-left cursor-pointer bg-transparent border-none text-inherit p-0"
+      >
+        <span className="text-[10px] opacity-50" style={{ transition: 'transform 0.2s', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
+        <span className="text-xs font-medium">Hooks</span>
+        <span className="text-[10px] opacity-40">Advanced</span>
+      </button>
+      {expanded && (
+        <div className="mt-2">
+          <HooksEditor />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ============================================================================
 // Main SettingsPanel
 // ============================================================================
@@ -232,13 +254,26 @@ export function SettingsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-(--vscode-panel-border)">
-        <span className="font-medium text-sm">Settings</span>
+      <div
+        className="flex items-center justify-between"
+        style={{
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Settings</h3>
         <button
           onClick={() => setActiveView('chat')}
-          className="text-xs opacity-60 hover:opacity-100 cursor-pointer bg-transparent border-none text-inherit"
+          className="cursor-pointer bg-transparent border-none text-inherit"
+          style={{
+            fontSize: '13px',
+            opacity: 0.6,
+            transition: 'opacity 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
         >
-          Back to Chat
+          {'←'} Back to Chat
         </button>
       </div>
 
@@ -328,29 +363,8 @@ export function SettingsPanel() {
           </div>
         </div>
 
-        {/* Hooks Configuration */}
-        <div className="border-t border-(--vscode-panel-border) pt-3">
-          <HooksEditor />
-        </div>
-
-        {/* Navigation shortcuts */}
-        <div className="border-t border-(--vscode-panel-border) pt-3">
-          <label className="text-xs font-medium block mb-2">Quick Links</label>
-          <div className="space-y-1.5">
-            <button
-              onClick={() => { useUIStore.getState().setShowMCPModal(true); setActiveView('chat') }}
-              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-(--vscode-list-hoverBackground) cursor-pointer bg-transparent border-none text-inherit"
-            >
-              MCP Server Management
-            </button>
-            <button
-              onClick={() => setActiveView('history')}
-              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-(--vscode-list-hoverBackground) cursor-pointer bg-transparent border-none text-inherit"
-            >
-              Conversation History
-            </button>
-          </div>
-        </div>
+        {/* Hooks Configuration (collapsed by default) */}
+        <HooksSection />
       </div>
     </div>
   )
