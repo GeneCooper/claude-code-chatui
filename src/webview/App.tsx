@@ -7,6 +7,7 @@ import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { MCPPanel } from './components/MCPPanel'
+import { SkillsPanel } from './components/SkillsPanel'
 import { InstallModal } from './components/InstallModal'
 import { LoginModal } from './components/LoginModal'
 
@@ -16,6 +17,7 @@ export default function App() {
 
   const activeView = useUIStore((s) => s.activeView)
   const showMCPModal = useUIStore((s) => s.showMCPModal)
+  const showSkillsModal = useUIStore((s) => s.showSkillsModal)
   const setDraftText = useUIStore((s) => s.setDraftText)
 
   const handleHintClick = (text: string) => {
@@ -35,6 +37,7 @@ export default function App() {
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
 {showMCPModal && <MCPPanel />}
+      {showSkillsModal && <SkillsPanel />}
       <InstallModal />
       <LoginModal />
     </div>

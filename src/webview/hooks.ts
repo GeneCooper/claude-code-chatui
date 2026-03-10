@@ -3,11 +3,12 @@ import { useChatStore, type ChatMessage, type TodoItem } from './store'
 import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
+import { useSkillStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
-import type { UsageData } from '../shared/types'
+import type { UsageData, SkillConfig } from '../shared/types'
 
 // ============================================================================
 // VS Code API Bridge
@@ -70,7 +71,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     const chatMessages = data.messages
       .filter((m) => {
         // Only include message types that go into the messages array
-        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest']
+        const validTypes = ['userInput', 'output', 'thinking', 'toolUse', 'toolResult', 'error', 'sessionInfo', 'compacting', 'compactBoundary', 'permissionRequest', 'diagnostics']
         return validTypes.includes(m.type)
       })
       .map((m) => ({
@@ -256,11 +257,9 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   diagnosticsAfterEdit: (msg) => {
-    const data = msg.data as { filePath: string; diagnostics: string[] }
+    const data = msg.data as { filePath: string; diagnostics: unknown[] }
     if (data?.diagnostics?.length) {
-      const fileName = data.filePath.replace(/.*[/\\]/, '')
-      const text = `${fileName}: ${data.diagnostics.length} problem(s)\n${data.diagnostics.join('\n')}`
-      useChatStore.getState().addMessage({ type: 'error', data: text })
+      useChatStore.getState().addMessage({ type: 'diagnostics', data })
     }
   },
 
@@ -296,8 +295,8 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   settingsData: (msg) => {
     const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string }
-    const validModes = ['fast', 'deep']
-    if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'fast'
+    const validModes = ['fast', 'deep', 'precise']
+    if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'deep'
     useSettingsStore.getState().updateSettings(data)
     if (data.selectedModel) {
       window.dispatchEvent(new CustomEvent('modelRestored', { detail: { model: data.selectedModel } }))
@@ -325,6 +324,14 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
   },
 
+  skillsList: (msg) => {
+    useSkillStore.getState().setSkills(msg.data as Record<string, SkillConfig>)
+  },
+
+  skillSaveError: (msg) => {
+    log.error('Skill save error:', { detail: String(msg.data ?? '') })
+  },
+
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
   usageError: () => {},
 
@@ -335,6 +342,32 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   platformInfo: (msg) => {
     useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
+  },
+
+  hooksStatus: (msg) => {
+    useUIStore.getState().setHooksStatus(msg.data as { activeCount: number; summary: string[] })
+  },
+
+  hookExecution: (msg) => {
+    const data = msg.data as { event: string; hook: string; status: 'running' | 'completed' | 'failed'; output?: string }
+    if (!data) return
+    const statusIcon = data.status === 'running' ? '⚡' : data.status === 'completed' ? '✓' : '✗'
+    const label = data.hook || data.event || 'hook'
+    const short = label.length > 50 ? label.slice(0, 50) + '...' : label
+    const text = `${statusIcon} Hook ${data.status}: ${short}${data.output ? `\n${data.output}` : ''}`
+    useChatStore.getState().setProcessStatus({
+      status: `hook-${data.status}`,
+      detail: text,
+    })
+    // Auto-clear after 3s for non-failures
+    if (data.status !== 'failed') {
+      setTimeout(() => {
+        const current = useChatStore.getState().processStatus
+        if (current?.status?.startsWith('hook-')) {
+          useChatStore.getState().setProcessStatus(null)
+        }
+      }, 3000)
+    }
   },
 
   imageFilePicked: (msg) => {

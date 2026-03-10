@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ClaudeService } from './claude';
-import { ConversationService, UsageService, MCPService } from './storage';
+import { ConversationService, UsageService, MCPService, SkillService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
@@ -127,6 +127,7 @@ export class PanelProvider {
     private readonly _claudeService: ClaudeService,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
+    private readonly _skillService: SkillService,
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
@@ -371,6 +372,7 @@ export class PanelProvider {
       claudeService: this._claudeService,
       conversationService: this._conversationService,
       mcpService: this._mcpService,
+      skillService: this._skillService,
       usageService: this._usageService,
       permissionService: this._permissionService,
       stateManager: this._stateManager,
@@ -380,7 +382,7 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, _thinkingMode?: boolean, images?: string[]) =>
+      handleSendMessage: (text: string, images?: string[]) =>
         this._handleSendMessage(text, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
@@ -434,7 +436,10 @@ export class PanelProvider {
     const processedText = this._preprocessFileReferences(text);
     const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
 
-    const systemPrompt = AGENT_SYSTEM_PROMPT;
+    const hooksInfo = this._getActiveHooksPrompt();
+    const systemPrompt = hooksInfo
+      ? `${AGENT_SYSTEM_PROMPT}\n\n${hooksInfo}`
+      : AGENT_SYSTEM_PROMPT;
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, yoloMode, effortLevel,
@@ -597,6 +602,35 @@ export class PanelProvider {
   }
 
   /**
+   * Read active hooks from ~/.claude/settings.json and build a system prompt fragment.
+   */
+  private _getActiveHooksPrompt(): string {
+    try {
+      const os = require('os') as typeof import('os');
+      const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+      if (!fs.existsSync(settingsPath)) return '';
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
+      const hooks = settings.hooks as Record<string, Array<{ matcher: string; hooks: Array<{ command: string }> }>> | undefined;
+      if (!hooks || Object.keys(hooks).length === 0) return '';
+
+      const lines: string[] = ['[Active Hooks]'];
+      for (const [event, matchers] of Object.entries(hooks)) {
+        if (!Array.isArray(matchers) || matchers.length === 0) continue;
+        for (const m of matchers) {
+          const cmds = m.hooks?.map(h => h.command).join('; ') || '';
+          lines.push(`- ${event} (${m.matcher}): ${cmds}`);
+        }
+      }
+      if (lines.length <= 1) return '';
+      lines.push('Hooks run automatically by the CLI. Do NOT re-run hook commands manually.');
+      lines.push('[/Active Hooks]');
+      return lines.join('\n');
+    } catch {
+      return '';
+    }
+  }
+
+  /**
    * Append git branch and dirty-file info by reading .git files directly (no child process).
    */
   private _appendGitContext(parts: string[], workspaceFolder?: vscode.WorkspaceFolder): void {
@@ -626,6 +660,10 @@ export class PanelProvider {
 
     this._claudeService.onProcessStatus((data) => {
       this._postMessage({ type: 'processStatus', data });
+    });
+
+    this._claudeService.onHookEvent((data) => {
+      this._postMessage({ type: 'hookExecution', data });
     });
 
     this._claudeService.onProcessEnd(() => {

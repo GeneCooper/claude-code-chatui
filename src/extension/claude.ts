@@ -142,6 +142,7 @@ export class ClaudeService implements vscode.Disposable {
   private _rateLimitEmitter = new EventEmitter();
   private _accountInfoEmitter = new EventEmitter();
   private _processStatusEmitter = new EventEmitter();
+  private _hookEventEmitter = new EventEmitter();
   private _stderrDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   private _inactivityTimer: ReturnType<typeof setTimeout> | undefined;
   private static readonly INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes with no activity
@@ -159,6 +160,7 @@ export class ClaudeService implements vscode.Disposable {
   onPermissionRequest(cb: (req: PermissionRequest) => void): void { this._permissionRequestEmitter.on('request', cb); }
   onRateLimitUpdate(cb: (data: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number }) => void): void { this._rateLimitEmitter.on('ratelimit', cb); }
   onProcessStatus(cb: (data: { status: string; detail?: string }) => void): void { this._processStatusEmitter.on('status', cb); }
+  onHookEvent(cb: (data: { event: string; hook: string; status: 'running' | 'completed' | 'failed'; output?: string }) => void): void { this._hookEventEmitter.on('hook', cb); }
 
   get sessionId(): string | undefined { return this._sessionId; }
   setSessionId(id: string | undefined): void { this._sessionId = id; }
@@ -295,6 +297,29 @@ export class ClaudeService implements vscode.Disposable {
       }
       clearTimeout(this._stderrDebounceTimer);
       this._stderrDebounceTimer = setTimeout(() => { this._stderrDebounceTimer = undefined; }, 500);
+      // Parse hook execution logs from stderr
+      if (chunk.includes('hook') || chunk.includes('Hook')) {
+        // Claude CLI debug output patterns for hooks:
+        // "Running hook command: ..." / "Hook completed" / "Hook failed" / "executing hook"
+        const hookRunMatch = chunk.match(/(?:Running|executing|Executing)\s+hook(?:\s+command)?[:\s]+["']?(.+?)["']?\s*$/im);
+        if (hookRunMatch) {
+          this._hookEventEmitter.emit('hook', { event: 'hook', hook: hookRunMatch[1].trim(), status: 'running' });
+        }
+        const hookDoneMatch = chunk.match(/Hook\s+(?:completed|succeeded|finished)(?:\s+(?:for|with))?\s*[:\s]*(.*)$/im);
+        if (hookDoneMatch) {
+          this._hookEventEmitter.emit('hook', { event: 'hook', hook: hookDoneMatch[1]?.trim() || '', status: 'completed' });
+        }
+        const hookFailMatch = chunk.match(/Hook\s+(?:failed|error)(?:\s+(?:for|with))?\s*[:\s]*(.*)$/im);
+        if (hookFailMatch) {
+          this._hookEventEmitter.emit('hook', { event: 'hook', hook: hookFailMatch[1]?.trim() || '', status: 'failed', output: chunk.trim() });
+        }
+        // Also detect our own hook echo markers: [hook:xxx]
+        const markerMatch = chunk.match(/\[hook:([^\]]+)\]\s*(.*)$/im);
+        if (markerMatch) {
+          const isFailure = markerMatch[2]?.includes('failed');
+          this._hookEventEmitter.emit('hook', { event: markerMatch[1], hook: markerMatch[1], status: isFailure ? 'failed' : 'completed', output: markerMatch[2]?.trim() });
+        }
+      }
       // Parse rate-limit headers from debug output in real-time
       if (chunk.includes('ratelimit') || chunk.includes('utilization')) {
         const rl: { session5h?: number; weekly7d?: number; reset5h?: number; reset7d?: number } = {};

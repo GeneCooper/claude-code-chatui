@@ -202,6 +202,38 @@ export interface TodoItem {
 }
 
 // ============================================================================
+// Skill types
+// ============================================================================
+
+export interface SkillConfig {
+  name: string;
+  description: string;
+  content: string;
+  filePath: string;
+  enabled: boolean;
+}
+
+// ============================================================================
+// Diagnostic types (compile error visualization)
+// ============================================================================
+
+export interface DiagnosticItem {
+  severity: 'error' | 'warning' | 'info' | 'hint';
+  message: string;
+  line: number;
+  column: number;
+  endLine?: number;
+  endColumn?: number;
+  source?: string;
+  code?: string | number;
+}
+
+export interface DiagnosticsData {
+  filePath: string;
+  diagnostics: DiagnosticItem[];
+}
+
+// ============================================================================
 // Webview communication types
 // ============================================================================
 
@@ -211,7 +243,6 @@ export type WebviewToExtensionMessage =
   | {
       type: "sendMessage";
       text: string;
-      thinkingMode?: boolean;
       model?: string;
       images?: string[];
     }
@@ -241,6 +272,7 @@ export type WebviewToExtensionMessage =
 
   // File & editor
   | { type: "openFile"; filePath: string }
+  | { type: "openFileAtLine"; filePath: string; line: number; column?: number }
   | { type: "openExternal"; url: string }
   | {
       type: "openDiff";
@@ -273,6 +305,11 @@ export type WebviewToExtensionMessage =
   // Hooks
   | { type: "loadHooks" }
   | { type: "saveHooks"; hooks: Record<string, unknown> }
+
+  // Skills
+  | { type: "loadSkills" }
+  | { type: "saveSkill"; name: string; content: string; description: string }
+  | { type: "deleteSkill"; name: string }
 
   // UI notifications
   | { type: "showWarning"; data: string }

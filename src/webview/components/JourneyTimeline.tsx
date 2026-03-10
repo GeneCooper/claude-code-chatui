@@ -6,6 +6,7 @@ import { ThinkingBlock } from './ThinkingBlock'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
+import { DiagnosticsBlock } from './DiagnosticsBlock'
 import { ErrorBoundary } from './ErrorBoundary'
 import { SUBAGENT_COLORS } from '../../shared/constants'
 
@@ -184,6 +185,15 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
         }
         break
       }
+      case 'diagnostics': {
+        // Attach diagnostics to the current plan (tool step context), don't flush
+        if (currentPlan) {
+          currentPlan.steps.push({ id: msg.id, toolResult: msg })
+        } else {
+          timeline.push({ kind: 'message', message: msg })
+        }
+        break
+      }
       case 'userInput':
       case 'error':
       case 'permissionRequest':
@@ -304,6 +314,9 @@ function LoadingIndicator() {
   const isActive = processStatus?.status === 'active'
   const isStale = secondsSinceActivity > 30
 
+  const isHookEvent = processStatus?.status?.startsWith('hook-')
+  const hookDetail = isHookEvent ? processStatus?.detail : null
+
   // Determine status label
   let statusLabel: string
   if (!processStatus) {
@@ -376,6 +389,24 @@ function LoadingIndicator() {
           No activity for {formatTime(secondsSinceActivity)} — process may be starting up
         </div>
       )}
+      {/* Hook execution feedback */}
+      {hookDetail && (
+        <div
+          style={{
+            marginTop: '4px',
+            marginLeft: '28px',
+            fontSize: '10px',
+            opacity: 0.7,
+            color: processStatus?.status === 'hook-failed'
+              ? 'var(--vscode-editorError-foreground, #e74c3c)'
+              : '#4ade80',
+            fontFamily: 'var(--vscode-editor-font-family, monospace)',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {hookDetail}
+        </div>
+      )}
     </div>
   )
 }
@@ -428,6 +459,8 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
     }
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
+    case 'diagnostics':
+      return <DiagnosticsBlock data={message.data as import('../../shared/types').DiagnosticsData} />
     default:
       return null
   }
@@ -481,7 +514,10 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle, p
         {!isCollapsed && (
           <div style={{ paddingLeft: '20px', borderLeft: `2px solid ${subagentColor}20`, marginLeft: '3px' }}>
             {step.toolUse && <ToolUseBlock data={step.toolUse.data as Record<string, unknown>} />}
-            {step.toolResult && <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />}
+            {step.toolResult && (step.toolResult.type === 'diagnostics'
+              ? <DiagnosticsBlock data={step.toolResult.data as import('../../shared/types').DiagnosticsData} />
+              : <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />
+            )}
           </div>
         )}
       </div>
@@ -528,7 +564,10 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle, p
       {!isCollapsed && (
         <div style={{ paddingLeft: '20px' }}>
           {step.toolUse && <ToolUseBlock data={step.toolUse.data as Record<string, unknown>} />}
-          {step.toolResult && <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />}
+          {step.toolResult && (step.toolResult.type === 'diagnostics'
+            ? <DiagnosticsBlock data={step.toolResult.data as import('../../shared/types').DiagnosticsData} />
+            : <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />
+          )}
         </div>
       )}
     </div>

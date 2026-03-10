@@ -1,18 +1,15 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore } from '../store'
+import { useChatStore, useSettingsStore } from '../store'
 import { useUIStore } from '../store'
-import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
 
-import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
 export const InputArea = memo(function InputArea() {
   const [text, setText] = useState('')
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
-  const [thinkingMode, setThinkingMode] = useState(true)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
@@ -24,7 +21,6 @@ export const InputArea = memo(function InputArea() {
   const isProcessing = useChatStore((s) => s.isProcessing)
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
-  const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showClaudeMdBanner = useUIStore((s) => s.showClaudeMdBanner)
   const draftText = useUIStore((s) => s.draftText)
   const setDraftText = useUIStore((s) => s.setDraftText)
@@ -33,10 +29,9 @@ export const InputArea = memo(function InputArea() {
 
 
   useEffect(() => {
-    const saved = getState<{ draft?: string; model?: string; thinkingMode?: boolean; ctrlEnterSend?: boolean }>()
+    const saved = getState<{ draft?: string; model?: string; ctrlEnterSend?: boolean }>()
     if (saved?.draft) setText(saved.draft)
     if (saved?.model) setSelectedModel(saved.model)
-    if (saved?.thinkingMode !== undefined) setThinkingMode(saved.thinkingMode)
     if (saved?.ctrlEnterSend !== undefined) setCtrlEnterSend(saved.ctrlEnterSend)
   }, [])
 
@@ -50,8 +45,8 @@ export const InputArea = memo(function InputArea() {
   }, [])
 
   useEffect(() => {
-    setState({ draft: text, model: selectedModel, thinkingMode, ctrlEnterSend, sessionId })
-  }, [text, selectedModel, thinkingMode, ctrlEnterSend, sessionId])
+    setState({ draft: text, model: selectedModel, ctrlEnterSend, sessionId })
+  }, [text, selectedModel, ctrlEnterSend, sessionId])
 
   useEffect(() => {
     debouncedSave(text)
@@ -179,7 +174,6 @@ export const InputArea = memo(function InputArea() {
       postMessage({
         type: 'sendMessage',
         text: trimmed,
-        thinkingMode,
         model: selectedModel !== 'default' ? selectedModel : undefined,
         images: imageData,
       })
@@ -196,7 +190,6 @@ export const InputArea = memo(function InputArea() {
       postMessage({
         type: 'sendMessage',
         text: trimmed,
-        thinkingMode,
         model: selectedModel !== 'default' ? selectedModel : undefined,
         images: imageData,
       })
@@ -394,7 +387,6 @@ export const InputArea = memo(function InputArea() {
       onDragLeave={handleDragLeave}
     >
       {/* Modals */}
-      <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
       <ModelSelectorModal
         show={showModelPicker}
         selectedModel={selectedModel}
@@ -559,38 +551,34 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
-            {/* Think toggle */}
+            {/* Think — navigate to settings */}
             <button
-              onClick={() => useUIStore.getState().setShowIntensityModal(true)}
+              onClick={() => useUIStore.getState().setActiveView('settings')}
               className="cursor-pointer border-none flex items-center gap-1"
               style={{
                 background: 'transparent',
                 padding: '2px 4px',
                 fontWeight: 500,
-                opacity: thinkingMode ? 1 : 0.5,
-                color: thinkingMode ? 'var(--chatui-accent)' : 'inherit',
+                opacity: 0.85,
+                color: 'var(--chatui-accent)',
                 transition: 'all 0.2s ease',
               }}
-              title="Think mode"
+              title="Think mode — open Settings"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = thinkingMode ? '1' : '0.5' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4l2 2" />
               </svg>
-              <span>Think{thinkingMode ? ` · ${thinkingIntensity}` : ''}</span>
+              <span>Think</span>
             </button>
 
             <InputSep />
 
-            {/* YOLO toggle */}
+            {/* YOLO — navigate to settings */}
             <button
-              onClick={() => {
-                const next = !yoloMode
-                postMessage({ type: 'updateSettings', settings: { yoloMode: next } })
-                useSettingsStore.getState().updateSettings({ yoloMode: next })
-              }}
+              onClick={() => useUIStore.getState().setActiveView('settings')}
               className="cursor-pointer border-none flex items-center gap-1"
               style={{
                 background: 'transparent',
@@ -600,14 +588,14 @@ export const InputArea = memo(function InputArea() {
                 color: yoloMode ? '#ef4444' : 'inherit',
                 transition: 'all 0.2s ease',
               }}
-              title="YOLO mode - Skip all permission checks"
+              title="YOLO mode — open Settings"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = yoloMode ? '1' : '0.5' }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
-              <span>YOLO</span>
+              <span>YOLO{yoloMode ? '' : ' · off'}</span>
             </button>
 
             <InputSep />
@@ -629,6 +617,27 @@ export const InputArea = memo(function InputArea() {
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'inherit' }}
             >
               MCP
+            </button>
+
+            <InputSep />
+
+            {/* Skills button */}
+            <button
+              onClick={() => useUIStore.getState().setShowSkillsModal(true)}
+              className="cursor-pointer border-none"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontWeight: 500,
+                opacity: 0.5,
+                color: 'inherit',
+                transition: 'all 0.2s ease',
+              }}
+              title="Manage Skills"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'inherit' }}
+            >
+              Skills
             </button>
 
             <InputSep />

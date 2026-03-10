@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   UsageData,
   MCPServerConfig,
+  SkillConfig,
   TodoItem,
   ConversationIndexEntry,
 } from "../shared/types";
@@ -27,7 +28,8 @@ export interface ChatMessage {
     | "compacting"
     | "compactBoundary"
     | "permissionRequest"
-    | "todosUpdate";
+    | "todosUpdate"
+    | "diagnostics";
   data: unknown;
   timestamp: string;
 }
@@ -198,6 +200,30 @@ export const useMCPStore = create<MCPState>((set) => ({
 }));
 
 // ============================================================================
+// Skills Store
+// ============================================================================
+
+interface SkillState {
+  skills: Record<string, SkillConfig>;
+  editingSkill: string | null;
+  setSkills: (skills: Record<string, SkillConfig>) => void;
+  setEditingSkill: (name: string | null) => void;
+  removeSkill: (name: string) => void;
+}
+
+export const useSkillStore = create<SkillState>((set) => ({
+  skills: {},
+  editingSkill: null,
+  setSkills: (skills) => set({ skills }),
+  setEditingSkill: (name) => set({ editingSkill: name }),
+  removeSkill: (name) =>
+    set((state) => {
+      const { [name]: _, ...rest } = state.skills;
+      return { skills: rest };
+    }),
+}));
+
+// ============================================================================
 // Settings Store
 // ============================================================================
 
@@ -217,7 +243,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  thinkingIntensity: "fast",
+  thinkingIntensity: "deep",
   yoloMode: true,
   maxTurns: 25,
   disallowedTools: [],
@@ -233,8 +259,8 @@ export type RequestResult = "success" | "error" | null;
 
 interface UIState {
   activeView: ActiveView;
-  showIntensityModal: boolean;
   showMCPModal: boolean;
+  showSkillsModal: boolean;
   showInstallModal: boolean;
   showLoginModal: boolean;
   loginErrorMessage: string;
@@ -246,11 +272,12 @@ interface UIState {
   usageData: UsageData | null;
   accountType: "pro" | "max" | undefined;
   platformInfo: { platform: string; isWindows: boolean } | null;
+  hooksStatus: { activeCount: number; summary: string[] } | null;
   showClaudeMdBanner: boolean;
 
   setActiveView: (view: ActiveView) => void;
-  setShowIntensityModal: (show: boolean) => void;
   setShowMCPModal: (show: boolean) => void;
+  setShowSkillsModal: (show: boolean) => void;
   setShowInstallModal: (show: boolean) => void;
   setShowLoginModal: (show: boolean) => void;
   setLoginErrorMessage: (msg: string) => void;
@@ -265,13 +292,16 @@ interface UIState {
   setPlatformInfo: (
     info: { platform: string; isWindows: boolean } | null,
   ) => void;
+  setHooksStatus: (
+    status: { activeCount: number; summary: string[] } | null,
+  ) => void;
   setShowClaudeMdBanner: (show: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   activeView: "chat",
-  showIntensityModal: false,
   showMCPModal: false,
+  showSkillsModal: false,
   showInstallModal: false,
   showLoginModal: false,
   loginErrorMessage: "",
@@ -283,11 +313,12 @@ export const useUIStore = create<UIState>((set) => ({
   usageData: null,
   accountType: undefined,
   platformInfo: null,
+  hooksStatus: null,
   showClaudeMdBanner: false,
 
   setActiveView: (view) => set({ activeView: view }),
-  setShowIntensityModal: (show) => set({ showIntensityModal: show }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
+  setShowSkillsModal: (show) => set({ showSkillsModal: show }),
   setShowInstallModal: (show) => set({ showInstallModal: show }),
   setShowLoginModal: (show) => set({ showLoginModal: show }),
   setLoginErrorMessage: (msg) => set({ loginErrorMessage: msg }),
@@ -298,6 +329,7 @@ export const useUIStore = create<UIState>((set) => ({
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
+  setHooksStatus: (status) => set({ hooksStatus: status }),
   setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
 }));
 
