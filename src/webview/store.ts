@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   UsageData,
   MCPServerConfig,
+  SkillConfig,
   TodoItem,
   ConversationIndexEntry,
 } from "../shared/types";
@@ -198,6 +199,30 @@ export const useMCPStore = create<MCPState>((set) => ({
 }));
 
 // ============================================================================
+// Skills Store
+// ============================================================================
+
+interface SkillState {
+  skills: Record<string, SkillConfig>;
+  editingSkill: string | null;
+  setSkills: (skills: Record<string, SkillConfig>) => void;
+  setEditingSkill: (name: string | null) => void;
+  removeSkill: (name: string) => void;
+}
+
+export const useSkillStore = create<SkillState>((set) => ({
+  skills: {},
+  editingSkill: null,
+  setSkills: (skills) => set({ skills }),
+  setEditingSkill: (name) => set({ editingSkill: name }),
+  removeSkill: (name) =>
+    set((state) => {
+      const { [name]: _, ...rest } = state.skills;
+      return { skills: rest };
+    }),
+}));
+
+// ============================================================================
 // Settings Store
 // ============================================================================
 
@@ -234,6 +259,7 @@ export type RequestResult = "success" | "error" | null;
 interface UIState {
   activeView: ActiveView;
   showMCPModal: boolean;
+  showSkillsModal: boolean;
   showInstallModal: boolean;
   showLoginModal: boolean;
   loginErrorMessage: string;
@@ -249,6 +275,7 @@ interface UIState {
 
   setActiveView: (view: ActiveView) => void;
   setShowMCPModal: (show: boolean) => void;
+  setShowSkillsModal: (show: boolean) => void;
   setShowInstallModal: (show: boolean) => void;
   setShowLoginModal: (show: boolean) => void;
   setLoginErrorMessage: (msg: string) => void;
@@ -269,6 +296,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   activeView: "chat",
   showMCPModal: false,
+  showSkillsModal: false,
   showInstallModal: false,
   showLoginModal: false,
   loginErrorMessage: "",
@@ -284,6 +312,7 @@ export const useUIStore = create<UIState>((set) => ({
 
   setActiveView: (view) => set({ activeView: view }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
+  setShowSkillsModal: (show) => set({ showSkillsModal: show }),
   setShowInstallModal: (show) => set({ showInstallModal: show }),
   setShowLoginModal: (show) => set({ showLoginModal: show }),
   setLoginErrorMessage: (msg) => set({ loginErrorMessage: msg }),

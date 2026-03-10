@@ -621,6 +621,27 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
+            {/* Skills button */}
+            <button
+              onClick={() => useUIStore.getState().setShowSkillsModal(true)}
+              className="cursor-pointer border-none"
+              style={{
+                background: 'transparent',
+                padding: '2px 4px',
+                fontWeight: 500,
+                opacity: 0.5,
+                color: 'inherit',
+                transition: 'all 0.2s ease',
+              }}
+              title="Manage Skills"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'inherit' }}
+            >
+              Skills
+            </button>
+
+            <InputSep />
+
             {/* Send mode toggle */}
             <button
               onClick={() => setCtrlEnterSend(!ctrlEnterSend)}

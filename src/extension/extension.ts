@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ClaudeService, PermissionService } from './claude';
-import { ConversationService, UsageService, MCPService } from './storage';
+import { ConversationService, UsageService, MCPService, SkillService } from './storage';
 import { DiffContentProvider, MarkdownContentProvider } from './handlers';
 import { PanelProvider, WebviewProvider, getWebviewHtml } from './panel';
 import { PanelManager } from './panelManager';
@@ -23,6 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Initialize shared services
   const conversationService = new ConversationService(context);
   const mcpService = new MCPService(context);
+  const skillService = new SkillService();
   const permissionService = new PermissionService(context);
   const outputChannel = vscode.window.createOutputChannel('Claude Code ChatUI');
   const usageService = new UsageService(outputChannel);
@@ -43,6 +44,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context,
     conversationService,
     mcpService,
+    skillService,
     usageService,
     permissionService,
   );
@@ -51,7 +53,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const sidebarClaudeService = new ClaudeService(context);
   const sidebarProvider = new PanelProvider(
     context.extensionUri, context, sidebarClaudeService,
-    conversationService, mcpService, usageService, permissionService,
+    conversationService, mcpService, skillService, usageService, permissionService,
     panelManager,
   );
 

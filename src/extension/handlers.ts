@@ -11,7 +11,7 @@ import type { PanelManager } from './panelManager';
 import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, UsageService, MCPService } from './storage';
+import type { ConversationService, UsageService, MCPService, SkillService } from './storage';
 
 // ============================================================================
 // DiffContentProvider
@@ -817,6 +817,7 @@ export interface MessageHandlerContext {
   claudeService: ClaudeService;
   conversationService: ConversationService;
   mcpService: MCPService;
+  skillService: SkillService;
   usageService: UsageService;
   permissionService: PermissionService;
   stateManager: SessionStateManager;
@@ -1164,6 +1165,28 @@ function writeClaudeSettings(settings: Record<string, unknown>): void {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
 }
 
+// ============================================================================
+// Skills handlers
+// ============================================================================
+
+const handleLoadSkills: MessageHandler = (_msg, ctx) => {
+  ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
+};
+
+const handleSaveSkill: MessageHandler = async (msg, ctx) => {
+  try {
+    await ctx.skillService.saveSkill(msg.name as string, msg.description as string, msg.content as string);
+    ctx.postMessage({ type: 'skillSaved' });
+  } catch {
+    ctx.postMessage({ type: 'error', data: 'Failed to save skill' });
+  }
+};
+
+const handleDeleteSkill: MessageHandler = async (msg, ctx) => {
+  await ctx.skillService.deleteSkill(msg.name as string);
+  ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
+};
+
 const handleLoadHooks: MessageHandler = (_msg, ctx) => {
   const settings = readClaudeSettings();
   const hooks = (settings.hooks || {}) as HooksConfig;
@@ -1218,6 +1241,9 @@ const messageHandlers: Record<string, MessageHandler> = {
   createNewPanel: handleCreateNewPanel,
   loadHooks: handleLoadHooks,
   saveHooks: handleSaveHooks,
+  loadSkills: handleLoadSkills,
+  saveSkill: handleSaveSkill,
+  deleteSkill: handleDeleteSkill,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },

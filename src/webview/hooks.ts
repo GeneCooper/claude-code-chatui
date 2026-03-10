@@ -3,11 +3,12 @@ import { useChatStore, type ChatMessage, type TodoItem } from './store'
 import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
+import { useSkillStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
-import type { UsageData } from '../shared/types'
+import type { UsageData, SkillConfig } from '../shared/types'
 
 // ============================================================================
 // VS Code API Bridge
@@ -324,6 +325,12 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   mcpServerError: (msg) => {
     useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
   },
+
+  skillsList: (msg) => {
+    useSkillStore.getState().setSkills(msg.data as Record<string, SkillConfig>)
+  },
+
+  skillSaved: () => { postMessage({ type: 'loadSkills' }) },
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
   usageError: () => {},

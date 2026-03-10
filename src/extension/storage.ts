@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 import { spawn, type ChildProcess } from 'child_process';
 import type {
   ConversationData, ConversationMessage, ConversationIndexEntry,
-  MCPServerConfig, MCPConfig, UsageData,
+  MCPServerConfig, MCPConfig, UsageData, SkillConfig,
 } from '../shared/types';
 
 // ============================================================================
@@ -134,6 +134,87 @@ export class MCPService {
 
   private async _writeConfigAsync(config: MCPConfig): Promise<void> {
     await fsp.writeFile(this._configPath, JSON.stringify(config, null, 2), 'utf8');
+  }
+}
+
+// ============================================================================
+// SkillService
+// ============================================================================
+
+export class SkillService {
+  private _skillsDir: string;
+
+  constructor() {
+    this._skillsDir = path.join(os.homedir(), '.claude', 'skills');
+    this._ensureDir();
+  }
+
+  private _ensureDir(): void {
+    if (!fs.existsSync(this._skillsDir)) {
+      fs.mkdirSync(this._skillsDir, { recursive: true });
+    }
+  }
+
+  /** Parse a SKILL.md file into SkillConfig */
+  private _parseSkillFile(filePath: string): SkillConfig | null {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      const fileName = path.basename(filePath, '.md');
+
+      // Parse YAML frontmatter between --- markers
+      let name = fileName;
+      let description = '';
+      let content = raw;
+
+      const fmMatch = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+      if (fmMatch) {
+        const frontmatter = fmMatch[1];
+        content = fmMatch[2].trim();
+
+        // Extract name from frontmatter
+        const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+        if (nameMatch) name = nameMatch[1].trim().replace(/^["']|["']$/g, '');
+
+        // Extract description from frontmatter
+        const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+        if (descMatch) description = descMatch[1].trim().replace(/^["']|["']$/g, '');
+      }
+
+      return { name, description, content, filePath, enabled: true };
+    } catch { return null; }
+  }
+
+  /** Load all skills from ~/.claude/skills/ */
+  loadSkills(): Record<string, SkillConfig> {
+    const result: Record<string, SkillConfig> = {};
+    try {
+      const files = fs.readdirSync(this._skillsDir).filter(f => f.endsWith('.md'));
+      for (const file of files) {
+        const skill = this._parseSkillFile(path.join(this._skillsDir, file));
+        if (skill) result[skill.name] = skill;
+      }
+    } catch { /* directory read failed */ }
+    return result;
+  }
+
+  /** Save a skill as a SKILL.md file */
+  async saveSkill(name: string, description: string, content: string): Promise<void> {
+    this._ensureDir();
+    const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+    const filePath = path.join(this._skillsDir, `${safeName}.md`);
+    const fileContent = `---\nname: ${name}\ndescription: ${description}\n---\n\n${content}`;
+    await fsp.writeFile(filePath, fileContent, 'utf8');
+  }
+
+  /** Delete a skill by name */
+  async deleteSkill(name: string): Promise<boolean> {
+    const skills = this.loadSkills();
+    const skill = skills[name];
+    if (!skill) return false;
+    try {
+      await fsp.unlink(skill.filePath);
+      return true;
+    } catch { return false; }
   }
 }
 
