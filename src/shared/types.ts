@@ -214,6 +214,26 @@ export interface SkillConfig {
 }
 
 // ============================================================================
+// Diagnostic types (compile error visualization)
+// ============================================================================
+
+export interface DiagnosticItem {
+  severity: 'error' | 'warning' | 'info' | 'hint';
+  message: string;
+  line: number;
+  column: number;
+  endLine?: number;
+  endColumn?: number;
+  source?: string;
+  code?: string | number;
+}
+
+export interface DiagnosticsData {
+  filePath: string;
+  diagnostics: DiagnosticItem[];
+}
+
+// ============================================================================
 // Webview communication types
 // ============================================================================
 
@@ -252,6 +272,7 @@ export type WebviewToExtensionMessage =
 
   // File & editor
   | { type: "openFile"; filePath: string }
+  | { type: "openFileAtLine"; filePath: string; line: number; column?: number }
   | { type: "openExternal"; url: string }
   | {
       type: "openDiff";

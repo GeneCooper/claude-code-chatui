@@ -532,19 +532,31 @@ export class ClaudeMessageProcessor {
               }
             }
 
-            // Collect diagnostics (errors only) after a brief delay for language services
+            // Collect diagnostics (errors + warnings) after a brief delay for language services
             // NOTE: Do NOT auto-format or save here — it causes race conditions when
             // Claude is still working on the file in the same turn (especially YOLO mode)
             try {
               await new Promise(r => setTimeout(r, 800));
               const diagnostics = vscode.languages.getDiagnostics(uri)
-                .filter(d => d.severity === vscode.DiagnosticSeverity.Error)
-                .slice(0, 10);
+                .filter(d => d.severity <= vscode.DiagnosticSeverity.Warning)
+                .slice(0, 20);
               if (diagnostics.length > 0) {
-                const items = diagnostics.map(d => {
-                  const src = d.source ? ` [${d.source}]` : '';
-                  return `Line ${d.range.start.line + 1}: ${d.message}${src}`;
-                });
+                const severityMap: Record<number, 'error' | 'warning' | 'info' | 'hint'> = {
+                  [vscode.DiagnosticSeverity.Error]: 'error',
+                  [vscode.DiagnosticSeverity.Warning]: 'warning',
+                  [vscode.DiagnosticSeverity.Information]: 'info',
+                  [vscode.DiagnosticSeverity.Hint]: 'hint',
+                };
+                const items = diagnostics.map(d => ({
+                  severity: severityMap[d.severity] || 'error',
+                  message: d.message,
+                  line: d.range.start.line + 1,
+                  column: d.range.start.character + 1,
+                  endLine: d.range.end.line + 1,
+                  endColumn: d.range.end.character + 1,
+                  source: d.source || undefined,
+                  code: typeof d.code === 'object' ? String(d.code?.value ?? '') : d.code !== undefined ? String(d.code) : undefined,
+                }));
                 this._poster.postMessage({
                   type: 'diagnosticsAfterEdit',
                   data: { filePath, diagnostics: items },
@@ -930,6 +942,17 @@ const handleOpenFile: MessageHandler = (msg) => {
   vscode.workspace.openTextDocument(uri).then((doc) => { vscode.window.showTextDocument(doc, { preview: true }); });
 };
 
+const handleOpenFileAtLine: MessageHandler = (msg) => {
+  const uri = vscode.Uri.file(msg.filePath as string);
+  const line = Math.max(0, (msg.line as number || 1) - 1);
+  const col = Math.max(0, (msg.column as number || 1) - 1);
+  const pos = new vscode.Position(line, col);
+  const sel = new vscode.Selection(pos, pos);
+  vscode.workspace.openTextDocument(uri).then((doc) => {
+    vscode.window.showTextDocument(doc, { preview: true, selection: sel });
+  });
+};
+
 const handleOpenExternal: MessageHandler = (msg) => { void vscode.env.openExternal(vscode.Uri.parse(msg.url as string)); };
 
 const handleOpenMarkdownArtifact: MessageHandler = async (msg) => {
@@ -1224,6 +1247,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   runInstallCommand: handleRunInstallCommand,
   saveInputText: handleSaveInputText,
   openFile: handleOpenFile,
+  openFileAtLine: handleOpenFileAtLine,
   openExternal: handleOpenExternal,
   openDiff: handleOpenDiff,
   openMarkdownArtifact: handleOpenMarkdownArtifact,

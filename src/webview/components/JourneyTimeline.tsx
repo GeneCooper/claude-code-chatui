@@ -6,6 +6,7 @@ import { ThinkingBlock } from './ThinkingBlock'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
+import { DiagnosticsBlock } from './DiagnosticsBlock'
 import { ErrorBoundary } from './ErrorBoundary'
 import { SUBAGENT_COLORS } from '../../shared/constants'
 
@@ -181,6 +182,15 @@ function buildTimelineItems(messages: ChatMessage[], isProcessing: boolean): Tim
             currentPlan = { id: msg.id, kind: 'plan', assistantMessage: msg, steps: [], status: 'executing' }
           }
           currentPlan.steps.push({ id: msg.id, toolResult: msg })
+        }
+        break
+      }
+      case 'diagnostics': {
+        // Attach diagnostics to the current plan (tool step context), don't flush
+        if (currentPlan) {
+          currentPlan.steps.push({ id: msg.id, toolResult: msg })
+        } else {
+          timeline.push({ kind: 'message', message: msg })
         }
         break
       }
@@ -428,6 +438,8 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
     }
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
+    case 'diagnostics':
+      return <DiagnosticsBlock data={message.data as import('../../shared/types').DiagnosticsData} />
     default:
       return null
   }
@@ -481,7 +493,10 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle, p
         {!isCollapsed && (
           <div style={{ paddingLeft: '20px', borderLeft: `2px solid ${subagentColor}20`, marginLeft: '3px' }}>
             {step.toolUse && <ToolUseBlock data={step.toolUse.data as Record<string, unknown>} />}
-            {step.toolResult && <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />}
+            {step.toolResult && (step.toolResult.type === 'diagnostics'
+              ? <DiagnosticsBlock data={step.toolResult.data as import('../../shared/types').DiagnosticsData} />
+              : <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />
+            )}
           </div>
         )}
       </div>
@@ -528,7 +543,10 @@ const ToolStepItem = memo(function ToolStepItem({ step, isCollapsed, onToggle, p
       {!isCollapsed && (
         <div style={{ paddingLeft: '20px' }}>
           {step.toolUse && <ToolUseBlock data={step.toolUse.data as Record<string, unknown>} />}
-          {step.toolResult && <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />}
+          {step.toolResult && (step.toolResult.type === 'diagnostics'
+            ? <DiagnosticsBlock data={step.toolResult.data as import('../../shared/types').DiagnosticsData} />
+            : <ToolResultBlock data={step.toolResult.data as Record<string, unknown>} />
+          )}
         </div>
       )}
     </div>
