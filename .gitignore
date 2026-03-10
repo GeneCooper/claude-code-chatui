@@ -5,9 +5,6 @@ node_modules/
 out/
 dist/
 
-# VSCode extension package
-*.vsix
-
 # VSCode test
 .vscode-test/
 
