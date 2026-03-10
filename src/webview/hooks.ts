@@ -331,7 +331,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   skillSaveError: (msg) => {
-    log.error('Skill save error:', msg.data)
+    log.error('Skill save error:', { detail: String(msg.data ?? '') })
   },
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
