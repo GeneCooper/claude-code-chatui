@@ -217,7 +217,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  thinkingIntensity: "fast",
+  thinkingIntensity: "deep",
   yoloMode: true,
   maxTurns: 25,
   disallowedTools: [],
@@ -233,7 +233,6 @@ export type RequestResult = "success" | "error" | null;
 
 interface UIState {
   activeView: ActiveView;
-  showIntensityModal: boolean;
   showMCPModal: boolean;
   showInstallModal: boolean;
   showLoginModal: boolean;
@@ -249,7 +248,6 @@ interface UIState {
   showClaudeMdBanner: boolean;
 
   setActiveView: (view: ActiveView) => void;
-  setShowIntensityModal: (show: boolean) => void;
   setShowMCPModal: (show: boolean) => void;
   setShowInstallModal: (show: boolean) => void;
   setShowLoginModal: (show: boolean) => void;
@@ -270,7 +268,6 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set) => ({
   activeView: "chat",
-  showIntensityModal: false,
   showMCPModal: false,
   showInstallModal: false,
   showLoginModal: false,
@@ -286,7 +283,6 @@ export const useUIStore = create<UIState>((set) => ({
   showClaudeMdBanner: false,
 
   setActiveView: (view) => set({ activeView: view }),
-  setShowIntensityModal: (show) => set({ showIntensityModal: show }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
   setShowInstallModal: (show) => set({ showInstallModal: show }),
   setShowLoginModal: (show) => set({ showLoginModal: show }),

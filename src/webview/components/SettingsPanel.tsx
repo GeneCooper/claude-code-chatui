@@ -143,12 +143,30 @@ function HooksStore() {
   const [customMatcher, setCustomMatcher] = useState('.*')
   const [customCommand, setCustomCommand] = useState('')
 
+  const DEFAULT_PRESET_IDS = ['auto-lint', 'type-check', 'notify-done']
+
   useEffect(() => {
     postMessage({ type: 'loadHooks' })
     const handleHooksData = (e: Event) => {
       const data = (e as CustomEvent).detail as HooksConfig
-      setHooks(data || {})
-      setLoaded(true)
+      const isEmpty = !data || Object.keys(data).length === 0
+      if (isEmpty) {
+        // First time: activate default presets
+        const defaults: HooksConfig = {}
+        for (const preset of HOOK_PRESETS) {
+          if (!DEFAULT_PRESET_IDS.includes(preset.id)) continue
+          for (const [event, matchers] of Object.entries(preset.config) as [HookEvent, HookMatcher[]][]) {
+            if (!defaults[event]) defaults[event] = []
+            defaults[event]!.push(...matchers)
+          }
+        }
+        setHooks(defaults)
+        setLoaded(true)
+        postMessage({ type: 'saveHooks', hooks: defaults })
+      } else {
+        setHooks(data)
+        setLoaded(true)
+      }
     }
     const handleHooksSaved = () => { setSaving(false) }
     window.addEventListener('hooksData', handleHooksData)
@@ -428,21 +446,9 @@ function HooksStore() {
 }
 
 function HooksSection() {
-  const [expanded, setExpanded] = useState(false)
-
   return (
     <div style={cardStyle}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left cursor-pointer bg-transparent border-none text-inherit p-0"
-      >
-        <span style={{
-          fontSize: '10px',
-          opacity: 0.6,
-          transition: 'transform 0.2s',
-          transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-          display: 'inline-block',
-        }}>&#9654;</span>
+      <div className="flex items-center gap-2">
         <span style={{ ...sectionTitleStyle, marginBottom: 0 }}>Hooks</span>
         <span style={{
           fontSize: '10px',
@@ -451,15 +457,72 @@ function HooksSection() {
           background: 'rgba(255,255,255,0.08)',
           opacity: 0.6,
         }}>Presets</span>
-      </button>
+      </div>
       <p style={{ fontSize: '10px', opacity: 0.5, margin: '6px 0 0', lineHeight: 1.4 }}>
         Run shell commands on Claude events. Click presets to toggle, or add custom hooks.
       </p>
-      {expanded && (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--chatui-glass-border, rgba(255,255,255,0.08))' }}>
-          <HooksStore />
-        </div>
-      )}
+      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--chatui-glass-border, rgba(255,255,255,0.08))' }}>
+        <HooksStore />
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Agent Mode Selector
+// ============================================================================
+
+const AGENT_MODES = [
+  { value: 'fast', label: 'Fast', desc: 'Minimal thinking, act immediately', icon: '\u26A1', color: 'var(--chatui-accent)' },
+  { value: 'deep', label: 'Deep', desc: 'Balanced reasoning and execution', icon: '\uD83E\uDDE0', color: '#22c55e' },
+  { value: 'precise', label: 'Precise', desc: 'Thorough analysis, verify before acting', icon: '\uD83C\uDFAF', color: '#f59e0b' },
+] as const
+
+function AgentModeSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: '8px' }}>
+      {AGENT_MODES.map((mode) => {
+        const selected = value === mode.value
+        return (
+          <button
+            key={mode.value}
+            onClick={() => onChange(mode.value)}
+            className="cursor-pointer border-none text-left"
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              borderRadius: '8px',
+              background: selected ? `color-mix(in srgb, ${mode.color} 12%, transparent)` : 'rgba(255,255,255,0.04)',
+              border: selected ? `1.5px solid color-mix(in srgb, ${mode.color} 50%, transparent)` : '1.5px solid transparent',
+              color: 'var(--vscode-editor-foreground)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!selected) {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!selected) {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                e.currentTarget.style.borderColor = 'transparent'
+              }
+            }}
+          >
+            <div style={{ fontSize: '18px', marginBottom: '6px' }}>{mode.icon}</div>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: selected ? mode.color : 'inherit',
+              marginBottom: '2px',
+            }}>
+              {mode.label}
+            </div>
+            <div style={{ fontSize: '10px', opacity: 0.55, lineHeight: 1.3 }}>{mode.desc}</div>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -516,28 +579,11 @@ export function SettingsPanel() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '16px 16px 48px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '16px 16px 120px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Agent Mode */}
         <div style={cardStyle}>
           <div style={sectionTitleStyle}>Agent Mode</div>
-          <select
-            value={thinkingIntensity}
-            onChange={(e) => updateSetting('thinking.intensity', e.target.value)}
-            className="w-full bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border)"
-            style={{ padding: '8px 10px', fontSize: '13px', borderRadius: '6px' }}
-          >
-            <option value="fast">Fast</option>
-            <option value="deep">Deep</option>
-            <option value="precise">Precise</option>
-          </select>
-          <p style={descStyle}>
-            Maps to CLI <span className="font-mono" style={{ opacity: 0.8 }}>--effort</span>.{' '}
-            <span style={{ color: 'var(--chatui-accent)', fontWeight: 500 }}>Fast</span> (low): minimal tokens
-            {' | '}
-            <span style={{ color: '#22c55e', fontWeight: 500 }}>Deep</span> (medium): balanced
-            {' | '}
-            <span style={{ color: '#f59e0b', fontWeight: 500 }}>Precise</span> (high): thorough reasoning
-          </p>
+          <AgentModeSelector value={thinkingIntensity} onChange={(v) => updateSetting('thinking.intensity', v)} />
         </div>
 
         {/* YOLO Mode */}

@@ -6,7 +6,6 @@ import { useSettingsStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
 
-import { ThinkingIntensityModal } from './ThinkingIntensityModal'
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
 export const InputArea = memo(function InputArea() {
@@ -24,7 +23,6 @@ export const InputArea = memo(function InputArea() {
   const isProcessing = useChatStore((s) => s.isProcessing)
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
-  const thinkingIntensity = useSettingsStore((s) => s.thinkingIntensity)
   const showClaudeMdBanner = useUIStore((s) => s.showClaudeMdBanner)
   const draftText = useUIStore((s) => s.draftText)
   const setDraftText = useUIStore((s) => s.setDraftText)
@@ -394,7 +392,6 @@ export const InputArea = memo(function InputArea() {
       onDragLeave={handleDragLeave}
     >
       {/* Modals */}
-      <ThinkingIntensityModal enabled={thinkingMode} onToggle={setThinkingMode} />
       <ModelSelectorModal
         show={showModelPicker}
         selectedModel={selectedModel}
@@ -561,7 +558,7 @@ export const InputArea = memo(function InputArea() {
 
             {/* Think toggle */}
             <button
-              onClick={() => useUIStore.getState().setShowIntensityModal(true)}
+              onClick={() => useUIStore.getState().setActiveView('settings')}
               className="cursor-pointer border-none flex items-center gap-1"
               style={{
                 background: 'transparent',
@@ -579,7 +576,7 @@ export const InputArea = memo(function InputArea() {
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 8v4l2 2" />
               </svg>
-              <span>Think{thinkingMode ? ` · ${thinkingIntensity}` : ''}</span>
+              <span>Think{thinkingMode ? '' : ' · off'}</span>
             </button>
 
             <InputSep />

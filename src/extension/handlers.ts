@@ -678,7 +678,7 @@ const DEFAULTS = {
   CLAUDE_MODEL: 'claude-sonnet-4-6',
   CLAUDE_EXECUTABLE: 'claude',
   THINKING_ENABLED: true,
-  THINKING_INTENSITY: 'fast',
+  THINKING_INTENSITY: 'deep',
   THINKING_SHOW_PROCESS: true,
   YOLO_MODE: true,
   AUTO_APPROVE_PATTERNS: [] as string[],
@@ -708,7 +708,7 @@ export class SettingsManager {
     return {
       selectedModel,
       thinkingMode: config.get<boolean>(CONFIG_KEYS.THINKING_ENABLED, DEFAULTS.THINKING_ENABLED),
-      thinkingIntensity: ['fast', 'deep'].includes(config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY))
+      thinkingIntensity: ['fast', 'deep', 'precise'].includes(config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY))
         ? config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY)
         : DEFAULTS.THINKING_INTENSITY,
       showThinkingProcess: config.get<boolean>(CONFIG_KEYS.THINKING_SHOW_PROCESS, DEFAULTS.THINKING_SHOW_PROCESS),
