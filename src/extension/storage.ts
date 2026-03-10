@@ -155,14 +155,12 @@ export class SkillService {
     }
   }
 
-  /** Parse a SKILL.md file into SkillConfig */
-  private _parseSkillFile(filePath: string): SkillConfig | null {
+  /** Parse a skill file (with optional YAML frontmatter) into SkillConfig */
+  private _parseSkillFile(filePath: string, fallbackName?: string): SkillConfig | null {
     try {
       const raw = fs.readFileSync(filePath, 'utf8');
-      const fileName = path.basename(filePath, '.md');
-
-      // Parse YAML frontmatter between --- markers
-      let name = fileName;
+      const baseName = path.basename(filePath);
+      let name = fallbackName ?? baseName.replace(/\.md$/, '');
       let description = '';
       let content = raw;
 
@@ -171,11 +169,9 @@ export class SkillService {
         const frontmatter = fmMatch[1];
         content = fmMatch[2].trim();
 
-        // Extract name from frontmatter
         const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
         if (nameMatch) name = nameMatch[1].trim().replace(/^["']|["']$/g, '');
 
-        // Extract description from frontmatter
         const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
         if (descMatch) description = descMatch[1].trim().replace(/^["']|["']$/g, '');
       }
@@ -184,14 +180,40 @@ export class SkillService {
     } catch { return null; }
   }
 
-  /** Load all skills from ~/.claude/skills/ */
+  /** Load all skills from ~/.claude/skills/ — supports 3 formats:
+   *  1. Flat .md files (our custom format)
+   *  2. Subdirectories containing SKILL.md (CLI plugin format)
+   *  3. Files without extension (CLI flat format with frontmatter)
+   */
   loadSkills(): Record<string, SkillConfig> {
     const result: Record<string, SkillConfig> = {};
     try {
-      const files = fs.readdirSync(this._skillsDir).filter(f => f.endsWith('.md'));
-      for (const file of files) {
-        const skill = this._parseSkillFile(path.join(this._skillsDir, file));
-        if (skill) result[skill.name] = skill;
+      const entries = fs.readdirSync(this._skillsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(this._skillsDir, entry.name);
+        // Resolve symlinks to get the real type
+        let isDir = entry.isDirectory();
+        let isFile = entry.isFile();
+        if (entry.isSymbolicLink()) {
+          try {
+            const stat = fs.statSync(fullPath);
+            isDir = stat.isDirectory();
+            isFile = stat.isFile();
+          } catch { continue; } // broken symlink
+        }
+
+        if (isDir) {
+          // Format 2: directory with SKILL.md inside
+          const skillMdPath = path.join(fullPath, 'SKILL.md');
+          if (fs.existsSync(skillMdPath)) {
+            const skill = this._parseSkillFile(skillMdPath, entry.name);
+            if (skill) result[skill.name] = skill;
+          }
+        } else if (isFile) {
+          // Format 1 (.md) and Format 3 (no extension)
+          const skill = this._parseSkillFile(fullPath, entry.name.replace(/\.md$/, ''));
+          if (skill) result[skill.name] = skill;
+        }
       }
     } catch { /* directory read failed */ }
     return result;
@@ -206,13 +228,19 @@ export class SkillService {
     await fsp.writeFile(filePath, fileContent, 'utf8');
   }
 
-  /** Delete a skill by name */
+  /** Delete a skill by name — handles all formats */
   async deleteSkill(name: string): Promise<boolean> {
     const skills = this.loadSkills();
     const skill = skills[name];
     if (!skill) return false;
     try {
-      await fsp.unlink(skill.filePath);
+      // For directory-based skills, filePath points to dir/SKILL.md — remove the parent dir
+      const parentDir = path.dirname(skill.filePath);
+      if (parentDir !== this._skillsDir) {
+        await fsp.rm(parentDir, { recursive: true });
+      } else {
+        await fsp.unlink(skill.filePath);
+      }
       return true;
     } catch { return false; }
   }
