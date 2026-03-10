@@ -875,6 +875,24 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
   ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 
+  // Send active hooks summary so webview can show indicator
+  try {
+    const hooksSettings = readClaudeSettings();
+    const hooks = (hooksSettings.hooks || {}) as HooksConfig;
+    const activeCount = Object.values(hooks).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+    const summary: string[] = [];
+    for (const [event, matchers] of Object.entries(hooks) as [string, HookMatcher[]][]) {
+      if (!matchers?.length) continue;
+      for (const m of matchers) {
+        const cmd = m.hooks?.[0]?.command || '';
+        // Extract short label from command
+        const short = cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
+        summary.push(`${event}(${m.matcher}): ${short}`);
+      }
+    }
+    ctx.postMessage({ type: 'hooksStatus', data: { activeCount, summary } });
+  } catch { /* non-critical */ }
+
   // Replay conversation to restore webview state
   const conversation = ctx.messageProcessor.currentConversation;
   if (conversation.length > 0) {
@@ -1220,7 +1238,35 @@ const handleDeleteSkill: MessageHandler = async (msg, ctx) => {
 
 const handleLoadHooks: MessageHandler = (_msg, ctx) => {
   const settings = readClaudeSettings();
-  const hooks = (settings.hooks || {}) as HooksConfig;
+  let hooks = (settings.hooks || {}) as HooksConfig;
+
+  // Migrate old Unix-only commands to cross-platform versions
+  let migrated = false;
+  const migrations: Record<string, string> = {
+    'npm run lint --fix 2>/dev/null || true': 'npm run lint --fix 2>&1 || echo "[hook:auto-lint] lint failed with exit code $?"',
+    'npm test 2>/dev/null || true': 'npm test 2>&1 || echo "[hook:auto-test] tests failed with exit code $?"',
+    'npx tsc --noEmit 2>/dev/null || true': 'npx tsc --noEmit 2>&1 || echo "[hook:type-check] type check failed with exit code $?"',
+    'git add -A && git commit -m "auto: agent checkpoint" 2>/dev/null || true': 'git add -A && git commit -m "auto: agent checkpoint" 2>&1 || echo "[hook:git-backup] commit failed"',
+    'echo "Claude task completed" | wall 2>/dev/null || echo "\\a"': 'echo "[hook:notify-done] Claude task completed"',
+    'echo "[$(date +%H:%M:%S)] Bash tool used" >> /tmp/claude-audit.log': 'echo "[$(date +%H:%M:%S)] Bash tool used" >> "${TMPDIR:-/tmp}/claude-audit.log"',
+  };
+  for (const matchers of Object.values(hooks)) {
+    if (!Array.isArray(matchers)) continue;
+    for (const matcher of matchers) {
+      for (const hook of matcher.hooks || []) {
+        const replacement = migrations[hook.command];
+        if (replacement) {
+          hook.command = replacement;
+          migrated = true;
+        }
+      }
+    }
+  }
+  if (migrated) {
+    settings.hooks = hooks;
+    writeClaudeSettings(settings);
+  }
+
   ctx.postMessage({ type: 'hooksData', data: hooks });
 };
 

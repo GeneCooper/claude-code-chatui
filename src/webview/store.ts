@@ -272,6 +272,7 @@ interface UIState {
   usageData: UsageData | null;
   accountType: "pro" | "max" | undefined;
   platformInfo: { platform: string; isWindows: boolean } | null;
+  hooksStatus: { activeCount: number; summary: string[] } | null;
   showClaudeMdBanner: boolean;
 
   setActiveView: (view: ActiveView) => void;
@@ -291,6 +292,9 @@ interface UIState {
   setPlatformInfo: (
     info: { platform: string; isWindows: boolean } | null,
   ) => void;
+  setHooksStatus: (
+    status: { activeCount: number; summary: string[] } | null,
+  ) => void;
   setShowClaudeMdBanner: (show: boolean) => void;
 }
 
@@ -309,6 +313,7 @@ export const useUIStore = create<UIState>((set) => ({
   usageData: null,
   accountType: undefined,
   platformInfo: null,
+  hooksStatus: null,
   showClaudeMdBanner: false,
 
   setActiveView: (view) => set({ activeView: view }),
@@ -324,6 +329,7 @@ export const useUIStore = create<UIState>((set) => ({
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
+  setHooksStatus: (status) => set({ hooksStatus: status }),
   setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
 }));
 

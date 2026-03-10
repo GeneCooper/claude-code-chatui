@@ -344,6 +344,32 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
   },
 
+  hooksStatus: (msg) => {
+    useUIStore.getState().setHooksStatus(msg.data as { activeCount: number; summary: string[] })
+  },
+
+  hookExecution: (msg) => {
+    const data = msg.data as { event: string; hook: string; status: 'running' | 'completed' | 'failed'; output?: string }
+    if (!data) return
+    const statusIcon = data.status === 'running' ? '⚡' : data.status === 'completed' ? '✓' : '✗'
+    const label = data.hook || data.event || 'hook'
+    const short = label.length > 50 ? label.slice(0, 50) + '...' : label
+    const text = `${statusIcon} Hook ${data.status}: ${short}${data.output ? `\n${data.output}` : ''}`
+    useChatStore.getState().setProcessStatus({
+      status: `hook-${data.status}`,
+      detail: text,
+    })
+    // Auto-clear after 3s for non-failures
+    if (data.status !== 'failed') {
+      setTimeout(() => {
+        const current = useChatStore.getState().processStatus
+        if (current?.status?.startsWith('hook-')) {
+          useChatStore.getState().setProcessStatus(null)
+        }
+      }, 3000)
+    }
+  },
+
   imageFilePicked: (msg) => {
     window.dispatchEvent(new CustomEvent('imageFilePicked', { detail: msg.data }))
   },

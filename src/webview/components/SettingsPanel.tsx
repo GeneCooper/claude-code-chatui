@@ -46,6 +46,8 @@ interface HookPreset {
   config: HooksConfig
 }
 
+// Platform-aware commands: Claude Code CLI always uses bash on all platforms (including Windows),
+// so we use bash-compatible commands everywhere.
 const HOOK_PRESETS: HookPreset[] = [
   {
     id: 'auto-lint',
@@ -53,7 +55,7 @@ const HOOK_PRESETS: HookPreset[] = [
     desc: 'Run linter after file edits',
     icon: '\u2728',
     config: {
-      PostToolUse: [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command: 'npm run lint --fix 2>/dev/null || true' }] }],
+      PostToolUse: [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command: 'npm run lint --fix 2>&1 || echo "[hook:auto-lint] lint failed with exit code $?"' }] }],
     },
   },
   {
@@ -62,7 +64,7 @@ const HOOK_PRESETS: HookPreset[] = [
     desc: 'Run tests after code changes',
     icon: '\u2705',
     config: {
-      PostToolUse: [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command: 'npm test 2>/dev/null || true' }] }],
+      PostToolUse: [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command: 'npm test 2>&1 || echo "[hook:auto-test] tests failed with exit code $?"' }] }],
     },
   },
   {
@@ -71,7 +73,7 @@ const HOOK_PRESETS: HookPreset[] = [
     desc: 'Auto-commit changes when agent stops',
     icon: '\uD83D\uDCBE',
     config: {
-      Stop: [{ matcher: '.*', hooks: [{ type: 'command', command: 'git add -A && git commit -m "auto: agent checkpoint" 2>/dev/null || true' }] }],
+      Stop: [{ matcher: '.*', hooks: [{ type: 'command', command: 'git add -A && git commit -m "auto: agent checkpoint" 2>&1 || echo "[hook:git-backup] commit failed"' }] }],
     },
   },
   {
@@ -80,7 +82,7 @@ const HOOK_PRESETS: HookPreset[] = [
     desc: 'Log all executed bash commands',
     icon: '\uD83D\uDCDD',
     config: {
-      PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo "[$(date +%H:%M:%S)] Bash tool used" >> /tmp/claude-audit.log' }] }],
+      PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo "[$(date +%H:%M:%S)] Bash tool used" >> "${TMPDIR:-/tmp}/claude-audit.log"' }] }],
     },
   },
   {
@@ -89,7 +91,7 @@ const HOOK_PRESETS: HookPreset[] = [
     desc: 'System notification when task finishes',
     icon: '\uD83D\uDD14',
     config: {
-      Stop: [{ matcher: '.*', hooks: [{ type: 'command', command: 'echo "Claude task completed" | wall 2>/dev/null || echo "\\a"' }] }],
+      Stop: [{ matcher: '.*', hooks: [{ type: 'command', command: 'echo "[hook:notify-done] Claude task completed"' }] }],
     },
   },
   {
@@ -98,7 +100,7 @@ const HOOK_PRESETS: HookPreset[] = [
     desc: 'Run TypeScript check after edits',
     icon: '\uD83D\uDD0D',
     config: {
-      PostToolUse: [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command: 'npx tsc --noEmit 2>/dev/null || true' }] }],
+      PostToolUse: [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command: 'npx tsc --noEmit 2>&1 || echo "[hook:type-check] type check failed with exit code $?"' }] }],
     },
   },
 ]

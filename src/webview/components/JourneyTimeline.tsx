@@ -314,6 +314,9 @@ function LoadingIndicator() {
   const isActive = processStatus?.status === 'active'
   const isStale = secondsSinceActivity > 30
 
+  const isHookEvent = processStatus?.status?.startsWith('hook-')
+  const hookDetail = isHookEvent ? processStatus?.detail : null
+
   // Determine status label
   let statusLabel: string
   if (!processStatus) {
@@ -384,6 +387,24 @@ function LoadingIndicator() {
           }}
         >
           No activity for {formatTime(secondsSinceActivity)} — process may be starting up
+        </div>
+      )}
+      {/* Hook execution feedback */}
+      {hookDetail && (
+        <div
+          style={{
+            marginTop: '4px',
+            marginLeft: '28px',
+            fontSize: '10px',
+            opacity: 0.7,
+            color: processStatus?.status === 'hook-failed'
+              ? 'var(--vscode-editorError-foreground, #e74c3c)'
+              : '#4ade80',
+            fontFamily: 'var(--vscode-editor-font-family, monospace)',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {hookDetail}
         </div>
       )}
     </div>
