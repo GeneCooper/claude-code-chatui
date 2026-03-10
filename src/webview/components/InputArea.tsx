@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore } from '../store'
+import { useChatStore, useSettingsStore } from '../store'
 import { useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
@@ -20,6 +20,7 @@ export const InputArea = memo(function InputArea() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isProcessing = useChatStore((s) => s.isProcessing)
   const sessionId = useChatStore((s) => s.sessionId)
+  const yoloMode = useSettingsStore((s) => s.yoloMode)
   const showClaudeMdBanner = useUIStore((s) => s.showClaudeMdBanner)
   const draftText = useUIStore((s) => s.draftText)
   const setDraftText = useUIStore((s) => s.setDraftText)
@@ -583,18 +584,18 @@ export const InputArea = memo(function InputArea() {
                 background: 'transparent',
                 padding: '2px 4px',
                 fontWeight: 500,
-                opacity: 0.7,
-                color: 'inherit',
+                opacity: yoloMode ? 1 : 0.5,
+                color: yoloMode ? '#ef4444' : 'inherit',
                 transition: 'all 0.2s ease',
               }}
               title="YOLO mode — open Settings"
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = yoloMode ? '1' : '0.5' }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
-              <span>YOLO</span>
+              <span>YOLO{yoloMode ? '' : ' · off'}</span>
             </button>
 
             <InputSep />
