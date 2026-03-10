@@ -632,9 +632,7 @@ export class ClaudeMessageProcessor {
 
 interface WebviewSettings {
   selectedModel: string;
-  thinkingMode: boolean;
   thinkingIntensity: string;
-  showThinkingProcess: boolean;
   yoloMode: boolean;
   autoApprovePatterns: string[];
   claudeExecutable: string;
@@ -655,9 +653,7 @@ interface WebviewSettings {
 const CONFIG_KEYS = {
   CLAUDE_MODEL: 'claude.model',
   CLAUDE_EXECUTABLE: 'claude.executable',
-  THINKING_ENABLED: 'thinking.enabled',
   THINKING_INTENSITY: 'thinking.intensity',
-  THINKING_SHOW_PROCESS: 'thinking.showProcess',
   PERMISSIONS_YOLO_MODE: 'permissions.yoloMode',
   PERMISSIONS_AUTO_APPROVE: 'permissions.autoApprove',
   CHAT_MAX_HISTORY_SIZE: 'chat.maxHistorySize',
@@ -677,9 +673,7 @@ const CONFIG_KEYS = {
 const DEFAULTS = {
   CLAUDE_MODEL: 'claude-sonnet-4-6',
   CLAUDE_EXECUTABLE: 'claude',
-  THINKING_ENABLED: true,
   THINKING_INTENSITY: 'deep',
-  THINKING_SHOW_PROCESS: true,
   YOLO_MODE: true,
   AUTO_APPROVE_PATTERNS: [] as string[],
   MAX_HISTORY_SIZE: 100,
@@ -707,11 +701,9 @@ export class SettingsManager {
     const config = this._getConfig();
     return {
       selectedModel,
-      thinkingMode: config.get<boolean>(CONFIG_KEYS.THINKING_ENABLED, DEFAULTS.THINKING_ENABLED),
       thinkingIntensity: ['fast', 'deep', 'precise'].includes(config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY))
         ? config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY)
         : DEFAULTS.THINKING_INTENSITY,
-      showThinkingProcess: config.get<boolean>(CONFIG_KEYS.THINKING_SHOW_PROCESS, DEFAULTS.THINKING_SHOW_PROCESS),
       yoloMode: config.get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE),
       autoApprovePatterns: config.get<string[]>(CONFIG_KEYS.PERMISSIONS_AUTO_APPROVE, DEFAULTS.AUTO_APPROVE_PATTERNS),
       claudeExecutable: config.get<string>(CONFIG_KEYS.CLAUDE_EXECUTABLE, DEFAULTS.CLAUDE_EXECUTABLE),
@@ -738,16 +730,10 @@ export class SettingsManager {
     const config = this._getConfig();
     if (!settings || typeof settings !== 'object') return;
 
-    // Thinking settings
-    if (typeof settings.thinkingMode === 'boolean') {
-      await config.update(CONFIG_KEYS.THINKING_ENABLED, settings.thinkingMode, vscode.ConfigurationTarget.Global);
-    }
+    // Thinking intensity
     const intensityValue = settings.thinkingIntensity ?? settings['thinking.intensity'];
     if (typeof intensityValue === 'string') {
       await config.update(CONFIG_KEYS.THINKING_INTENSITY, intensityValue, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.showThinkingProcess === 'boolean') {
-      await config.update(CONFIG_KEYS.THINKING_SHOW_PROCESS, settings.showThinkingProcess, vscode.ConfigurationTarget.Global);
     }
 
     // Permission settings
@@ -840,7 +826,7 @@ export interface MessageHandlerContext {
   postMessage(msg: Record<string, unknown>): void;
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
-  handleSendMessage(text: string, thinkingMode?: boolean, images?: string[]): void;
+  handleSendMessage(text: string, images?: string[]): void;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
 }
@@ -856,7 +842,6 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
   }
   ctx.handleSendMessage(
     msg.text as string,
-    msg.thinkingMode as boolean | undefined,
     msg.images as string[] | undefined,
   );
 };

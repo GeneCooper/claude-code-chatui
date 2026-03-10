@@ -380,7 +380,7 @@ export class PanelProvider {
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
       newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
-      handleSendMessage: (text: string, _thinkingMode?: boolean, images?: string[]) =>
+      handleSendMessage: (text: string, images?: string[]) =>
         this._handleSendMessage(text, images),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),

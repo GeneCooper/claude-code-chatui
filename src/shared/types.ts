@@ -211,7 +211,6 @@ export type WebviewToExtensionMessage =
   | {
       type: "sendMessage";
       text: string;
-      thinkingMode?: boolean;
       model?: string;
       images?: string[];
     }
