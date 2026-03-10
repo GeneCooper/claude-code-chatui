@@ -330,7 +330,9 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useSkillStore.getState().setSkills(msg.data as Record<string, SkillConfig>)
   },
 
-  skillSaved: () => { postMessage({ type: 'loadSkills' }) },
+  skillSaveError: (msg) => {
+    log.error('Skill save error:', msg.data)
+  },
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
   usageError: () => {},

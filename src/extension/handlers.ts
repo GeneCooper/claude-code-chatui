@@ -1176,15 +1176,23 @@ const handleLoadSkills: MessageHandler = (_msg, ctx) => {
 const handleSaveSkill: MessageHandler = async (msg, ctx) => {
   try {
     await ctx.skillService.saveSkill(msg.name as string, msg.description as string, msg.content as string);
-    ctx.postMessage({ type: 'skillSaved' });
-  } catch {
-    ctx.postMessage({ type: 'error', data: 'Failed to save skill' });
+    // Directly return the updated skills list — no extra round-trip
+    ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[SkillService] Failed to save skill:', msg.name, detail);
+    ctx.postMessage({ type: 'skillSaveError', data: detail });
   }
 };
 
 const handleDeleteSkill: MessageHandler = async (msg, ctx) => {
-  await ctx.skillService.deleteSkill(msg.name as string);
-  ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
+  try {
+    await ctx.skillService.deleteSkill(msg.name as string);
+    ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[SkillService] Failed to delete skill:', msg.name, detail);
+  }
 };
 
 const handleLoadHooks: MessageHandler = (_msg, ctx) => {

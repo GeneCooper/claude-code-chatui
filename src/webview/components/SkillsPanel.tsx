@@ -385,7 +385,19 @@ export function SkillsPanel() {
 
   const handleSave = () => {
     if (!name.trim() || !content.trim()) return
-    postMessage({ type: 'saveSkill', name: name.trim(), description: description.trim(), content: content.trim() })
+    const trimmedName = name.trim()
+    // Optimistic update
+    useSkillStore.getState().setSkills({
+      ...skills,
+      [trimmedName]: {
+        name: trimmedName,
+        description: description.trim(),
+        content: content.trim(),
+        filePath: '',
+        enabled: true,
+      },
+    })
+    postMessage({ type: 'saveSkill', name: trimmedName, description: description.trim(), content: content.trim() })
     resetForm()
   }
 
@@ -395,6 +407,17 @@ export function SkillsPanel() {
 
   const handleQuickAdd = (skill: (typeof POPULAR_SKILLS)[number]) => {
     if (skill.name in skills) return
+    // Optimistic update: show immediately in installed list
+    useSkillStore.getState().setSkills({
+      ...skills,
+      [skill.name]: {
+        name: skill.name,
+        description: skill.description,
+        content: skill.content,
+        filePath: '',
+        enabled: true,
+      },
+    })
     postMessage({ type: 'saveSkill', name: skill.name, description: skill.description, content: skill.content })
   }
 
