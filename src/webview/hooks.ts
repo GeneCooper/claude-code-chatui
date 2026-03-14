@@ -55,8 +55,6 @@ type WebviewMessageHandler = (msg: ExtensionMessage) => void
 let messageCounter = 0
 
 const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
-  ready: () => {},
-
   batchReplay: (msg) => {
     const data = msg.data as {
       messages: Array<{ type: string; data: unknown }>
@@ -333,7 +331,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
-  usageError: () => {},
 
   accountInfo: (msg) => {
     const info = msg.data as { subscriptionType: 'pro' | 'max' | undefined }

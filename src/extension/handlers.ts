@@ -492,13 +492,6 @@ export class ClaudeMessageProcessor {
         },
       });
 
-      // Emit tool error notification for extension-level handling
-      if (isError && toolName) {
-        const errorText = String(resultContent).replace(/<\/?tool_use_error>/g, '').trim();
-        const shortError = errorText.length > 120 ? errorText.substring(0, 120) + '...' : errorText;
-        this._poster.postMessage({ type: 'toolError', data: { toolName, error: shortError } });
-      }
-
       // Read file-after content asynchronously and send diff update
       if (FILE_EDIT_TOOLS.includes(toolName || '') && rawInput?.file_path && !isError) {
         const filePath = rawInput.file_path as string;
@@ -1048,40 +1041,8 @@ const handleDeleteMCPServer: MessageHandler = async (msg, ctx) => {
 
 const handleRefreshUsage: MessageHandler = (_msg, ctx) => { void ctx.usageService.fetchUsageData(); };
 
-const handleDeleteConversation: MessageHandler = async (msg, ctx) => {
-  const success = await ctx.conversationService.deleteConversation(msg.filename as string);
-  if (success) {
-    ctx.postMessage({ type: 'conversationList', data: ctx.conversationService.getConversationList() });
-  } else {
-    ctx.postMessage({ type: 'error', data: 'Failed to delete conversation' });
-  }
-};
-
 const handleSearchConversations: MessageHandler = (msg, ctx) => {
   ctx.postMessage({ type: 'conversationList', data: ctx.conversationService.searchConversations(msg.query as string) });
-};
-
-const handleExportConversation: MessageHandler = async (msg, ctx) => {
-  const json = await ctx.conversationService.exportConversation(msg.filename as string);
-  if (json) {
-    ctx.postMessage({ type: 'conversationExport', data: { filename: msg.filename, content: json } });
-  } else {
-    ctx.postMessage({ type: 'error', data: 'Failed to export conversation' });
-  }
-};
-
-const handleGetPermissions: MessageHandler = async (_msg, ctx) => {
-  ctx.postMessage({ type: 'permissions', data: await ctx.permissionService.getPermissions() });
-};
-
-const handleAddPermission: MessageHandler = async (msg, ctx) => {
-  await ctx.permissionService.addPermission(msg.toolName as string, msg.pattern as string);
-  ctx.postMessage({ type: 'permissions', data: await ctx.permissionService.getPermissions() });
-};
-
-const handleRemovePermission: MessageHandler = async (msg, ctx) => {
-  await ctx.permissionService.removePermission(msg.toolName as string, msg.pattern as string);
-  ctx.postMessage({ type: 'permissions', data: await ctx.permissionService.getPermissions() });
 };
 
 const handleRevertFile: MessageHandler = async (msg, ctx) => {
@@ -1091,7 +1052,6 @@ const handleRevertFile: MessageHandler = async (msg, ctx) => {
     await vscode.workspace.fs.writeFile(uri, content);
     const fileName = (msg.filePath as string).split(/[\\/]/).pop() || 'file';
     vscode.window.showInformationMessage(`Reverted: ${fileName}`);
-    ctx.postMessage({ type: 'fileReverted', data: { filePath: msg.filePath, success: true } });
   } catch {
     ctx.postMessage({ type: 'error', data: 'Failed to revert file' });
   }
@@ -1306,12 +1266,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   saveMCPServer: handleSaveMCPServer,
   deleteMCPServer: handleDeleteMCPServer,
   refreshUsage: handleRefreshUsage,
-  deleteConversation: handleDeleteConversation,
   searchConversations: handleSearchConversations,
-  exportConversation: handleExportConversation,
-  getPermissions: handleGetPermissions,
-  addPermission: handleAddPermission,
-  removePermission: handleRemovePermission,
   revertFile: handleRevertFile,
   openCCUsageTerminal: handleOpenCCUsageTerminal,
   getClipboardText: handleGetClipboard,

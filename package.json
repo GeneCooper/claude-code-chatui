@@ -118,11 +118,6 @@
           "default": false,
           "description": "Skip all permission checks (use with caution)"
         },
-        "claudeCodeChatUI.notifications.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a desktop notification when Claude finishes processing (only when the panel is not visible)"
-        },
         "claudeCodeChatUI.maxTurns": {
           "type": "number",
           "default": 0,
@@ -142,16 +137,6 @@
           "type": "boolean",
           "default": false,
           "description": "文件被 Claude 修改后自动在 VS Code 中打开 Diff 视图"
-        },
-        "claudeCodeChatUI.projectProfile.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Auto-detect project type (language, framework, tools) and inject best-practice prompts into system instructions"
-        },
-        "claudeCodeChatUI.intentAnalysis.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Analyze user message intent and generate MCP/tool usage hints to guide Claude toward the right tools"
         }
       }
     }

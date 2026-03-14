@@ -336,16 +336,6 @@ export class ConversationService {
     await this._context.globalState.update('claude.conversationIndex', sorted);
   }
 
-  async deleteConversation(filename: string): Promise<boolean> {
-    const filePath = path.join(this._conversationsDir, filename);
-    try {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
-      await this._context.globalState.update('claude.conversationIndex', index.filter((e) => e.filename !== filename));
-      return true;
-    } catch (err) { console.error('Failed to delete conversation:', err); return false; }
-  }
-
   searchConversations(query: string): ConversationIndexEntry[] {
     if (!query.trim()) return this.getConversationList();
     const lower = query.toLowerCase();
@@ -353,11 +343,6 @@ export class ConversationService {
       entry.firstUserMessage.toLowerCase().includes(lower) ||
       entry.lastUserMessage.toLowerCase().includes(lower),
     );
-  }
-
-  async exportConversation(filename: string): Promise<string | null> {
-    const conversation = await this.loadConversation(filename);
-    return conversation ? JSON.stringify(conversation, null, 2) : null;
   }
 
   getLatestSessionId(): string | undefined {

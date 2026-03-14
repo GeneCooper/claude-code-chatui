@@ -196,35 +196,6 @@ body {
   color: var(--chatui-accent);
 }
 
-/* ===== Mode Switch ===== */
-.mode-switch {
-  width: 26px;
-  height: 14px;
-  background: var(--vscode-panel-border);
-  border-radius: 8px;
-  cursor: pointer;
-  position: relative;
-  transition: background-color 0.2s ease;
-  flex-shrink: 0;
-}
-.mode-switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  background: white;
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-}
-.mode-switch.active {
-  background: var(--chatui-accent);
-}
-.mode-switch.active::after {
-  transform: translateX(12px);
-}
-
 /* ===== Textarea Focus Glow ===== */
 .textarea-glow {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -232,26 +203,6 @@ body {
 }
 .textarea-glow:focus-within {
   border-color: var(--chatui-accent) !important;
-}
-
-/* ===== AI Processing Marquee ===== */
-.textarea-glow.ai-processing::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: -40%;
-  height: 2px;
-  width: 40%;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  background: linear-gradient(90deg, transparent, var(--chatui-accent, #6366f1), transparent);
-  animation: marquee-slide 1.5s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 2;
-}
-
-@keyframes marquee-slide {
-  0% { left: -40%; }
-  100% { left: 100%; }
 }
 
 /* ===== Header Status Animations ===== */
