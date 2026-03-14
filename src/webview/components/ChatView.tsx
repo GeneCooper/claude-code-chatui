@@ -1,9 +1,10 @@
 import { useCallback, useState, useEffect, useRef, useMemo, memo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useChatStore, useUIStore } from '../store'
+import { useChatStore, useUIStore, useDiscussionStore } from '../store'
 import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
+import { DiscussionPanel } from './DiscussionPanel'
 
 interface ChatViewProps {
   onHintClick?: (text: string) => void
@@ -121,6 +122,9 @@ export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
             searchQuery={searchQuery}
           />
         )}
+
+        {/* Discussion panel — shown when discussion mode is active */}
+        <DiscussionPanelWrapper />
       </div>
 
       {/* Error jump banner */}
@@ -151,3 +155,10 @@ export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
     </div>
   )
 })
+
+/** Only renders DiscussionPanel when there are roles to show */
+function DiscussionPanelWrapper() {
+  const hasRoles = useDiscussionStore((s) => s.roles.length > 0)
+  if (!hasRoles) return null
+  return <DiscussionPanel />
+}

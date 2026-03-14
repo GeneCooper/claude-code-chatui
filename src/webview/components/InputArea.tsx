@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore, useSettingsStore } from '../store'
+import { useChatStore, useSettingsStore, useDiscussionStore } from '../store'
 import { useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
@@ -178,6 +178,19 @@ export const InputArea = memo(function InputArea() {
         images: imageData,
       })
       setEditingContext(null)
+    } else if (useDiscussionStore.getState().enabled) {
+      // Discussion mode: send to multi-agent discussion
+      const store = useChatStore.getState()
+      markOptimisticUserInput()
+      store.addMessage({ type: 'userInput', data: { text: trimmed, images: imageData } })
+      store.setProcessing(true)
+      useUIStore.getState().setRequestStartTime(Date.now())
+
+      postMessage({
+        type: 'sendDiscussionMessage',
+        text: trimmed,
+        model: selectedModel !== 'default' ? selectedModel : undefined,
+      })
     } else {
       // Normal mode: optimistic update for instant feedback
       const store = useChatStore.getState()
@@ -642,6 +655,11 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
+            {/* Discussion mode toggle */}
+            <DiscussionToggle />
+
+            <InputSep />
+
             {/* Send mode toggle */}
             <button
               onClick={() => setCtrlEnterSend(!ctrlEnterSend)}
@@ -783,5 +801,34 @@ function InputSep() {
         verticalAlign: 'middle',
       }}
     />
+  )
+}
+
+function DiscussionToggle() {
+  const enabled = useDiscussionStore((s) => s.enabled)
+  return (
+    <button
+      onClick={() => useDiscussionStore.getState().setEnabled(!enabled)}
+      className="cursor-pointer border-none flex items-center gap-1"
+      style={{
+        background: 'transparent',
+        padding: '2px 4px',
+        fontWeight: 500,
+        opacity: enabled ? 1 : 0.5,
+        color: enabled ? '#8b5cf6' : 'inherit',
+        transition: 'all 0.2s ease',
+      }}
+      title={enabled ? 'Discussion mode ON — click to disable' : 'Enable multi-agent discussion mode'}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = enabled ? '1' : '0.5' }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+        <path d="M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+      <span style={{ fontSize: '11px' }}>Discuss</span>
+    </button>
   )
 }

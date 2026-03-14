@@ -214,6 +214,37 @@ export interface SkillConfig {
 }
 
 // ============================================================================
+// Discussion mode types (multi-agent)
+// ============================================================================
+
+export interface DiscussionRole {
+  id: string;
+  name: string;
+  prompt: string;
+  color: string;
+}
+
+export interface DiscussionRoleResponse {
+  roleId: string;
+  roleName: string;
+  color: string;
+  text: string;
+  status: 'pending' | 'streaming' | 'complete' | 'error';
+  error?: string;
+}
+
+export interface DiscussionResult {
+  id: string;
+  userMessage: string;
+  roles: DiscussionRoleResponse[];
+  synthesis: {
+    text: string;
+    status: 'pending' | 'streaming' | 'complete' | 'error';
+  };
+  timestamp: string;
+}
+
+// ============================================================================
 // Diagnostic types (compile error visualization)
 // ============================================================================
 
@@ -315,6 +346,10 @@ export type WebviewToExtensionMessage =
   | { type: "showWarning"; data: string }
   | { type: "showInfo"; data: string }
   | { type: "dismissClaudeMdBanner" }
+
+  // Discussion mode
+  | { type: "sendDiscussionMessage"; text: string; model?: string }
+  | { type: "stopDiscussion" }
 
 ;
 

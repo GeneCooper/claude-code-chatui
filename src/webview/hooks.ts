@@ -5,6 +5,7 @@ import { useConversationStore } from './store'
 import { useMCPStore } from './store'
 import { useSkillStore } from './store'
 import { useUIStore } from './store'
+import { useDiscussionStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
@@ -413,6 +414,36 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     window.dispatchEvent(new CustomEvent('hooksSaved'))
   },
 
+  // Discussion mode handlers
+  discussionStarted: (msg) => {
+    const data = msg.data as { userMessage: string; roles: Array<{ roleId: string; roleName: string; color: string; text: string; status: string }> }
+    useDiscussionStore.getState().startDiscussion(data.userMessage, data.roles as import('../shared/types').DiscussionRoleResponse[])
+  },
+
+  discussionRoleOutput: (msg) => {
+    const { roleId, text } = msg.data as { roleId: string; text: string }
+    useDiscussionStore.getState().updateRoleOutput(roleId, text)
+  },
+
+  discussionRoleComplete: (msg) => {
+    const { roleId } = msg.data as { roleId: string }
+    useDiscussionStore.getState().completeRole(roleId)
+  },
+
+  discussionRoleError: (msg) => {
+    const { roleId, error } = msg.data as { roleId: string; error: string }
+    useDiscussionStore.getState().failRole(roleId, error)
+  },
+
+  discussionSynthesisOutput: (msg) => {
+    const { text } = msg.data as { text: string }
+    useDiscussionStore.getState().updateSynthesis(text)
+  },
+
+  discussionComplete: () => {
+    useDiscussionStore.getState().completeSynthesis()
+    useChatStore.getState().setProcessing(false)
+  },
 
 }
 

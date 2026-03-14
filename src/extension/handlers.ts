@@ -833,6 +833,8 @@ export interface MessageHandlerContext {
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
   handleSendMessage(text: string, images?: string[]): void;
+  handleSendDiscussionMessage?(text: string, model?: string): void;
+  stopDiscussion?(): Promise<void>;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
 }
@@ -1281,6 +1283,15 @@ const messageHandlers: Record<string, MessageHandler> = {
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
   dismissClaudeMdBanner: handleDismissClaudeMdBanner,
+  sendDiscussionMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => {
+    if (msg.model) {
+      ctx.stateManager.selectedModel = msg.model as string;
+    }
+    ctx.handleSendDiscussionMessage?.(msg.text as string, msg.model as string | undefined);
+  },
+  stopDiscussion: (_msg: WebviewMessage, ctx: MessageHandlerContext) => {
+    void ctx.stopDiscussion?.();
+  },
 
 };
 
