@@ -13,7 +13,6 @@ import {
   type WebviewMessage,
 } from './handlers';
 import { createModuleLogger } from '../shared/logger';
-import { AGENT_SYSTEM_PROMPT } from '../shared/constants';
 import type { ClaudeMessage, WebviewToExtensionMessage, ConversationMessage } from '../shared/types';
 import type { PanelManager } from './panelManager';
 
@@ -432,19 +431,18 @@ export class PanelProvider {
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
 
-    const contextPrefix = this._gatherIDEContext();
     const processedText = this._preprocessFileReferences(text);
-    const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
 
-    const hooksInfo = this._getActiveHooksPrompt();
-    const systemPrompt = hooksInfo
-      ? `${AGENT_SYSTEM_PROMPT}\n\n${hooksInfo}`
-      : AGENT_SYSTEM_PROMPT;
+    // Only inject IDE context and hooks info on the first message of a session
+    // to avoid wasting tokens on repeated context every turn
+    const isFirstMessage = !this._sessionId;
+    const contextPrefix = isFirstMessage ? this._gatherIDEContext() : '';
+    const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, yoloMode, effortLevel,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
-      mcpConfigPath, images, systemPrompt,
+      mcpConfigPath, images,
       disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
     });
   }
@@ -482,23 +480,18 @@ export class PanelProvider {
       } catch { continue; }
     }
 
-    // Read all valid files
+    // Replace @file references with lightweight hints — Claude CLI has its own Read tool
+    // to fetch file contents when needed, so inlining wastes tokens
     for (const { fullMatch, relativePath, absPath, ext } of validFiles) {
       try {
         const rawContent = fs.readFileSync(absPath, 'utf8');
         const lines = rawContent.split('\n');
         const lang = this._detectLanguage(ext);
         const declarations = this._extractDeclarations(rawContent, lang);
-        const parts: string[] = [`[File: ${relativePath} | ${lang} | ${lines.length} lines]`];
-        if (declarations.length > 0) parts.push('Declarations: ' + declarations.join(', '));
-        if (lines.length <= 500) {
-          parts.push('```' + lang, rawContent, '```');
-        } else {
-          parts.push('```' + lang + ' (first 50 lines)', lines.slice(0, 50).join('\n'), '```');
-          parts.push(`... (${lines.length - 50} more lines)`);
-        }
-        parts.push('[/File]');
-        result = result.replace(fullMatch, parts.join('\n'));
+        const hint = declarations.length > 0
+          ? `[File: ${relativePath} | ${lang} | ${lines.length} lines | Exports: ${declarations.slice(0, 10).join(', ')}]`
+          : `[File: ${relativePath} | ${lang} | ${lines.length} lines]`;
+        result = result.replace(fullMatch, hint);
       } catch { continue; }
     }
     return result;

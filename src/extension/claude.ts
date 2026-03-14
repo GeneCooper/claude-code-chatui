@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import type { ClaudeMessage, PermissionRequest } from '../shared/types';
-import { AGENT_SYSTEM_PROMPT } from '../shared/constants';
 
 // ============================================================================
 // PermissionService
@@ -115,7 +114,6 @@ interface SendMessageOptions {
   images?: string[];
   allowedTools?: string[];
   disallowedTools?: string[];
-  systemPrompt?: string;
 }
 
 interface PendingPermission {
@@ -166,15 +164,9 @@ export class ClaudeService implements vscode.Disposable {
   setSessionId(id: string | undefined): void { this._sessionId = id; }
 
   async sendMessage(message: string, options: SendMessageOptions): Promise<void> {
-    let actualMessage = message;
+    const actualMessage = message;
 
     const args = ['-p', '--output-format', 'stream-json', '--input-format', 'stream-json', '--verbose', '--include-partial-messages'];
-    // System prompt is prepended to the user message instead of using
-    // --append-system-prompt, because on Windows with shell:true cmd.exe
-    // interprets >, <, |, & inside CLI arguments as shell operators, which
-    // silently redirects stdout to rogue files (e.g. ">8" creates file "8").
-    const sysPrompt = options.systemPrompt || AGENT_SYSTEM_PROMPT;
-    actualMessage = `${sysPrompt}\n\n${actualMessage}`;
 
     if (options.yoloMode) {
       args.push('--dangerously-skip-permissions');
