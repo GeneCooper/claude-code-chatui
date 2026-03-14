@@ -21,53 +21,12 @@ const markdownComponents = {
   pre: ({ children }: ComponentPropsWithoutRef<'pre'>) => <>{children}</>,
   a: LinkComponent,
   p: ParagraphWithPaths,
-  table: ({ children, ...props }: ComponentPropsWithoutRef<'table'>) => (
-    <div style={{ overflowX: 'auto', margin: '8px 0', borderRadius: '6px', border: '1px solid var(--vscode-panel-border)' }}>
-      <table
-        {...props}
-        style={{
-          width: '100%',
-          borderCollapse: 'separate',
-          borderSpacing: 0,
-          fontSize: '12px',
-          tableLayout: 'auto',
-        }}
-      >
-        {children}
-      </table>
-    </div>
-  ),
-  th: ({ children, ...props }: ComponentPropsWithoutRef<'th'>) => (
-    <th
-      {...props}
-      style={{
-        padding: '6px 10px',
-        textAlign: 'left',
-        fontWeight: 600,
-        borderBottom: '1px solid var(--vscode-panel-border)',
-        borderRight: '1px solid rgba(128, 128, 128, 0.15)',
-        background: 'rgba(128, 128, 128, 0.1)',
-        whiteSpace: 'normal',
-        wordBreak: 'break-word',
-      }}
-    >
-      {children}
-    </th>
-  ),
-  td: ({ children, ...props }: ComponentPropsWithoutRef<'td'>) => (
-    <td
-      {...props}
-      style={{
-        padding: '5px 10px',
-        borderBottom: '1px solid rgba(128, 128, 128, 0.1)',
-        borderRight: '1px solid rgba(128, 128, 128, 0.08)',
-        whiteSpace: 'normal',
-        wordBreak: 'break-word',
-      }}
-    >
-      {children}
-    </td>
-  ),
+  table: TableComponent,
+  thead: TableHead,
+  tbody: TableBody,
+  tr: TableRow,
+  th: TableHeaderCell,
+  td: TableDataCell,
 }
 
 /**
@@ -393,5 +352,47 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
     >
       {children}
     </code>
+  )
+}
+
+// ============================================================================
+// Table Components — CLI-quality table rendering
+// ============================================================================
+
+function TableComponent({ children, ...props }: ComponentPropsWithoutRef<'table'>) {
+  return (
+    <div className="md-table-wrapper">
+      <table {...props} className="md-table">
+        {children}
+      </table>
+    </div>
+  )
+}
+
+function TableHead({ children, ...props }: ComponentPropsWithoutRef<'thead'>) {
+  return <thead {...props} className="md-thead">{children}</thead>
+}
+
+function TableBody({ children, ...props }: ComponentPropsWithoutRef<'tbody'>) {
+  return <tbody {...props} className="md-tbody">{children}</tbody>
+}
+
+function TableRow({ children, ...props }: ComponentPropsWithoutRef<'tr'>) {
+  return <tr {...props} className="md-tr">{children}</tr>
+}
+
+function TableHeaderCell({ children, style, ...props }: ComponentPropsWithoutRef<'th'>) {
+  return (
+    <th {...props} className="md-th" style={style}>
+      {children}
+    </th>
+  )
+}
+
+function TableDataCell({ children, style, ...props }: ComponentPropsWithoutRef<'td'>) {
+  return (
+    <td {...props} className="md-td" style={style}>
+      {children}
+    </td>
   )
 }
