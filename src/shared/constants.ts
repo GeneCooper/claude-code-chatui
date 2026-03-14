@@ -2,8 +2,8 @@
 // Shared Constants (only exports that are actually used)
 // ============================================================================
 
-/** Default discussion roles for multi-agent mode */
-export const DEFAULT_DISCUSSION_ROLES: Array<{ id: string; name: string; prompt: string; color: string }> = [
+/** All available discussion role presets for multi-agent mode */
+export const DISCUSSION_ROLE_PRESETS: Array<{ id: string; name: string; prompt: string; color: string }> = [
     {
         id: 'architect',
         name: '架构师',
@@ -22,7 +22,40 @@ export const DEFAULT_DISCUSSION_ROLES: Array<{ id: string; name: string; prompt:
         prompt: '你是一位性能工程师。请从运行效率、内存使用、算法复杂度、缓存机会和潜在瓶颈的角度来分析。重点关注性能优化空间。',
         color: '#f59e0b',
     },
+    {
+        id: 'reviewer',
+        name: '代码审查员',
+        prompt: '你是一位严格的代码审查员。请从代码质量、命名规范、可读性、错误处理、边界条件和最佳实践的角度来审查。指出具体的问题并给出改进建议。',
+        color: '#8b5cf6',
+    },
+    {
+        id: 'devops',
+        name: 'DevOps 工程师',
+        prompt: '你是一位 DevOps 工程师。请从部署、CI/CD、容器化、监控、日志、可观测性和运维便利性的角度来分析。重点关注生产环境的可靠性。',
+        color: '#06b6d4',
+    },
+    {
+        id: 'frontend',
+        name: '前端专家',
+        prompt: '你是一位前端专家。请从用户体验、响应式设计、可访问性、浏览器兼容性、组件设计和前端性能的角度来分析。重点关注用户交互体验。',
+        color: '#ec4899',
+    },
+    {
+        id: 'backend',
+        name: '后端专家',
+        prompt: '你是一位后端专家。请从 API 设计、数据库建模、并发处理、错误恢复、数据一致性和服务可靠性的角度来分析。重点关注系统的健壮性。',
+        color: '#10b981',
+    },
+    {
+        id: 'testing',
+        name: '测试工程师',
+        prompt: '你是一位测试工程师。请从测试覆盖率、测试策略、边界情况、回归风险、可测试性和测试自动化的角度来分析。重点关注质量保证。',
+        color: '#f97316',
+    },
 ];
+
+/** Default discussion roles (first 3 presets) */
+export const DEFAULT_DISCUSSION_ROLES = DISCUSSION_ROLE_PRESETS.slice(0, 3);
 
 /** Subagent type badge colors — shared between JourneyTimeline and ToolUseBlock */
 export const SUBAGENT_COLORS: Record<string, string> = {

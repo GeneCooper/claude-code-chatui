@@ -167,14 +167,22 @@ export class DiscussionService implements vscode.Disposable {
         }
       });
 
-      proc.stderr?.on('data', () => { /* ignore debug output */ });
+      let stderrOutput = '';
+      proc.stderr?.on('data', (data: Buffer) => {
+        stderrOutput += data.toString();
+        log.info(`[${role.id}] stderr`, { output: data.toString().trim() });
+      });
 
-      proc.on('close', () => {
+      proc.on('close', (code) => {
         this._roleProcesses.delete(role.id);
+        log.info(`[${role.id}] process closed`, { code, hasOutput: !!accumulated, stderrLength: stderrOutput.length });
         if (accumulated) {
           this._roleCompleteEmitter.emit('complete', role.id);
         } else {
-          this._errorEmitter.emit('error', role.id, 'No response received');
+          const errorDetail = stderrOutput.trim()
+            ? `Process exited (code ${code}): ${stderrOutput.trim().slice(0, 200)}`
+            : 'No response received';
+          this._errorEmitter.emit('error', role.id, errorDetail);
         }
         resolve();
       });
@@ -275,14 +283,18 @@ ${expertSections}
         }
       });
 
-      proc.stderr?.on('data', () => {});
+      proc.stderr?.on('data', (data: Buffer) => {
+        log.info('[synthesis] stderr', { output: data.toString().trim() });
+      });
 
-      proc.on('close', () => {
+      proc.on('close', (code) => {
+        log.info('[synthesis] process closed', { code });
         this._synthesizerProcess = undefined;
         resolve();
       });
 
-      proc.on('error', () => {
+      proc.on('error', (error) => {
+        log.info('[synthesis] process error', { error: error.message });
         this._synthesizerProcess = undefined;
         resolve();
       });

@@ -655,8 +655,8 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
-            {/* Discussion mode toggle */}
-            <DiscussionToggle />
+            {/* Agents mode toggle */}
+            <AgentsToggle />
 
             <InputSep />
 
@@ -804,11 +804,21 @@ function InputSep() {
   )
 }
 
-function DiscussionToggle() {
+function AgentsToggle() {
   const enabled = useDiscussionStore((s) => s.enabled)
+  const setActiveView = useUIStore((s) => s.setActiveView)
   return (
     <button
-      onClick={() => useDiscussionStore.getState().setEnabled(!enabled)}
+      onClick={() => {
+        if (enabled) {
+          // Already enabled — click to disable
+          useDiscussionStore.getState().setEnabled(false)
+          postMessage({ type: 'updateSettings', settings: { agentsEnabled: false } })
+        } else {
+          // Navigate to settings to configure agents
+          setActiveView('settings')
+        }
+      }}
       className="cursor-pointer border-none flex items-center gap-1"
       style={{
         background: 'transparent',
@@ -818,17 +828,15 @@ function DiscussionToggle() {
         color: enabled ? '#8b5cf6' : 'inherit',
         transition: 'all 0.2s ease',
       }}
-      title={enabled ? 'Discussion mode ON — click to disable' : 'Enable multi-agent discussion mode'}
+      title={enabled ? 'Agents mode ON — click to disable' : 'Configure multi-agent discussion'}
       onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
       onMouseLeave={(e) => { e.currentTarget.style.opacity = enabled ? '1' : '0.5' }}
     >
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
       </svg>
-      <span style={{ fontSize: '11px' }}>Discuss</span>
+      <span style={{ fontSize: '11px' }}>Agents</span>
     </button>
   )
 }

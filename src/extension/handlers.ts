@@ -8,7 +8,7 @@ import type {
   MCPServerConfig,
 } from '../shared/types';
 import type { PanelManager } from './panelManager';
-import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
+import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS, DEFAULT_DISCUSSION_ROLES } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
 import type { ConversationService, UsageService, MCPService, SkillService } from './storage';
@@ -653,6 +653,8 @@ interface WebviewSettings {
   maxContextLines: number;
   maxTurns: number;
   disallowedTools: string[];
+  discussionRoles: Array<{ id: string; name: string; prompt: string; color: string }>;
+  agentsEnabled: boolean;
 }
 
 const CONFIG_KEYS = {
@@ -673,6 +675,8 @@ const CONFIG_KEYS = {
   CONTEXT_MAX_LINES: 'context.maxContextLines',
   MAX_TURNS: 'maxTurns',
   DISALLOWED_TOOLS: 'disallowedTools',
+  DISCUSSION_ROLES: 'discussion.roles',
+  DISCUSSION_ENABLED: 'discussion.enabled',
 } as const;
 
 const DEFAULTS = {
@@ -693,7 +697,9 @@ const DEFAULTS = {
   MAX_CONTEXT_LINES: 500,
   MAX_TURNS: 25,
   DISALLOWED_TOOLS: [] as string[],
-} as const;
+  DISCUSSION_ROLES: DEFAULT_DISCUSSION_ROLES,
+  DISCUSSION_ENABLED: false,
+};
 
 export class SettingsManager {
   private readonly _configSection = 'claudeCodeChatUI';
@@ -724,6 +730,8 @@ export class SettingsManager {
       maxContextLines: config.get<number>(CONFIG_KEYS.CONTEXT_MAX_LINES, DEFAULTS.MAX_CONTEXT_LINES),
       maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
       disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
+      discussionRoles: config.get(CONFIG_KEYS.DISCUSSION_ROLES, DEFAULTS.DISCUSSION_ROLES),
+      agentsEnabled: config.get<boolean>(CONFIG_KEYS.DISCUSSION_ENABLED, DEFAULTS.DISCUSSION_ENABLED),
     };
   }
 
@@ -798,6 +806,16 @@ export class SettingsManager {
     // Disallowed tools
     if (Array.isArray(settings.disallowedTools)) {
       await config.update(CONFIG_KEYS.DISALLOWED_TOOLS, settings.disallowedTools, vscode.ConfigurationTarget.Global);
+    }
+
+    // Discussion roles
+    if (Array.isArray(settings.discussionRoles)) {
+      await config.update(CONFIG_KEYS.DISCUSSION_ROLES, settings.discussionRoles, vscode.ConfigurationTarget.Global);
+    }
+
+    // Discussion enabled
+    if (typeof settings.agentsEnabled === 'boolean') {
+      await config.update(CONFIG_KEYS.DISCUSSION_ENABLED, settings.agentsEnabled, vscode.ConfigurationTarget.Global);
     }
   }
 

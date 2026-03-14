@@ -292,10 +292,13 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   settingsData: (msg) => {
-    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string }
+    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string; agentsEnabled?: boolean; discussionRoles?: Array<{ id: string; name: string; prompt: string; color: string }> }
     const validModes = ['fast', 'deep', 'precise']
     if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'deep'
     useSettingsStore.getState().updateSettings(data)
+    if (typeof data.agentsEnabled === 'boolean') {
+      useDiscussionStore.getState().setEnabled(data.agentsEnabled)
+    }
     if (data.selectedModel) {
       window.dispatchEvent(new CustomEvent('modelRestored', { detail: { model: data.selectedModel } }))
     }

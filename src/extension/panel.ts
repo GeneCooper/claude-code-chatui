@@ -461,9 +461,12 @@ export class PanelProvider {
     const intensityToEffort: Record<string, string> = { fast: 'low', deep: 'medium', precise: 'high' };
     const effortLevel = intensityToEffort[settings.thinkingIntensity] || 'medium';
 
-    // Notify webview that discussion is starting
+    // Use roles from settings, fall back to defaults
     const { DEFAULT_DISCUSSION_ROLES } = require('../shared/constants');
-    const roles = DEFAULT_DISCUSSION_ROLES.map((r: { id: string; name: string; color: string }) => ({
+    const activeRoles = settings.discussionRoles?.length > 0 ? settings.discussionRoles : DEFAULT_DISCUSSION_ROLES;
+
+    // Notify webview that discussion is starting
+    const roles = activeRoles.map((r: { id: string; name: string; color: string }) => ({
       roleId: r.id,
       roleName: r.name,
       color: r.color,
@@ -472,7 +475,7 @@ export class PanelProvider {
     }));
     this._postMessage({ type: 'discussionStarted', data: { userMessage: text, roles } });
 
-    void this._discussionService.startDiscussion(text, undefined, {
+    void this._discussionService.startDiscussion(text, activeRoles, {
       cwd,
       model: model || (this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined),
       effortLevel,

@@ -234,12 +234,14 @@ interface SettingsState {
   yoloMode: boolean;
   maxTurns: number;
   disallowedTools: string[];
+  discussionRoles: DiscussionRole[];
   updateSettings: (
     settings: Partial<{
       thinkingIntensity: string;
       yoloMode: boolean;
       maxTurns: number;
       disallowedTools: string[];
+      discussionRoles: DiscussionRole[];
     }>,
   ) => void;
 }
@@ -249,6 +251,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   yoloMode: true,
   maxTurns: 25,
   disallowedTools: [],
+  discussionRoles: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
 }));
 
