@@ -74,7 +74,7 @@ const markdownComponents = {
  * Debounce markdown rendering during streaming — only re-render every 150ms
  * to avoid expensive markdown parsing on every character.
  */
-function useDebouncedText(text: string, isStreaming: boolean, delayMs = 150): string {
+function useDebouncedText(text: string, isStreaming: boolean, delayMs = 80): string {
   const [debouncedText, setDebouncedText] = useState(text)
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 

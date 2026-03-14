@@ -23,8 +23,8 @@ function guessLanguage(toolName?: string, content?: string): string | undefined 
 }
 
 export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
-  const [expanded, setExpanded] = useState(false)
   const isError = data.isError as boolean
+  const [expanded, setExpanded] = useState(isError)
   const rawContent = String(data.content || '')
   // Clean up XML-like tags from error messages (e.g. <tool_use_error>...</tool_use_error>)
   const content = isError
@@ -39,8 +39,8 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
   const startLines = data.startLines as number[] | undefined
 
   const hasDiff = fileContentBefore !== undefined && fileContentAfter !== undefined && filePath !== undefined
-  const isLong = content.length > 300
-  const displayContent = expanded ? content : content.substring(0, 300)
+  const isLong = content.length > 1000
+  const displayContent = expanded ? content : content.substring(0, 1000)
   const language = guessLanguage(toolName, content)
 
   const yoloMode = useSettingsStore((s) => s.yoloMode)

@@ -230,8 +230,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   toolResult: (msg) => {
-    const result = msg.data as { hidden?: boolean }
-    if (!result.hidden) useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
+    useChatStore.getState().addMessage({ type: 'toolResult', data: msg.data })
   },
 
   toolResultDiffUpdate: (msg) => {

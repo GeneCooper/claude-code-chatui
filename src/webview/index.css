@@ -205,6 +205,12 @@ body {
   border-color: var(--chatui-accent) !important;
 }
 
+/* ===== Marquee Slide ===== */
+@keyframes marquee-slide {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
 /* ===== Header Status Animations ===== */
 
 /* Success: bar fills from left then fades out */

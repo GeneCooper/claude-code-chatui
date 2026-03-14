@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState, useMemo, memo } from 'react'
 
 interface Props {
   text: string
@@ -13,6 +13,15 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
+
+  // Preview: first 3 lines
+  const preview = useMemo(() => {
+    const lines = text.split('\n').filter(l => l.trim())
+    if (lines.length <= 3) return null
+    return lines.slice(0, 3).join('\n')
+  }, [text])
+
+  const wordCount = text.length > 100 ? `${Math.ceil(text.length / 4)} words` : ''
 
   return (
     <div
@@ -37,10 +46,28 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
       >
         <span className={`transition-transform ${expanded ? 'rotate-90' : ''}`} style={{ fontSize: '10px' }}>&#9654;</span>
         <span style={{ fontStyle: 'italic' }}>Thinking...</span>
-        <span className="ml-auto text-[10px] opacity-50">
-          {text.length > 100 ? `${Math.ceil(text.length / 4)} words` : ''}
-        </span>
+        <span className="ml-auto text-[10px] opacity-50">{wordCount}</span>
       </button>
+
+      {/* Preview (when collapsed and text is long enough) */}
+      {!expanded && preview && (
+        <div
+          className="text-xs whitespace-pre-wrap cursor-pointer"
+          style={{
+            padding: '6px 12px',
+            opacity: 0.4,
+            fontStyle: 'italic',
+            maxHeight: '60px',
+            overflow: 'hidden',
+            borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+          }}
+          onClick={() => setExpanded(true)}
+        >
+          {preview}...
+        </div>
+      )}
+
+      {/* Full content */}
       {expanded && (
         <div className="relative" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           <button
