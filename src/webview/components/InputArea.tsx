@@ -656,10 +656,8 @@ export const InputArea = memo(function InputArea() {
             <InputSep />
 
             {/* Snippets button */}
-            <div style={{ position: 'relative' }}>
-              <SnippetButton onClick={() => setShowSnippetPicker(!showSnippetPicker)} />
-              {showSnippetPicker && <SnippetDropdown onClose={() => setShowSnippetPicker(false)} />}
-            </div>
+            <SnippetButton onClick={() => setShowSnippetPicker(!showSnippetPicker)} />
+            {showSnippetPicker && <SnippetDropdown onClose={() => setShowSnippetPicker(false)} />}
 
             <InputSep />
 
