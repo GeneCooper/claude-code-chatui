@@ -8,7 +8,7 @@ import type {
   MCPServerConfig,
 } from '../shared/types';
 import type { PanelManager } from './panelManager';
-import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS, DEFAULT_DISCUSSION_ROLES } from '../shared/constants';
+import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS, ROLE_PRESETS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
 import type { ConversationService, UsageService, MCPService, SkillService } from './storage';
@@ -653,8 +653,7 @@ interface WebviewSettings {
   maxContextLines: number;
   maxTurns: number;
   disallowedTools: string[];
-  discussionRoles: Array<{ id: string; name: string; prompt: string; color: string }>;
-  agentsEnabled: boolean;
+  selectedRoleId: string | null;
 }
 
 const CONFIG_KEYS = {
@@ -675,8 +674,7 @@ const CONFIG_KEYS = {
   CONTEXT_MAX_LINES: 'context.maxContextLines',
   MAX_TURNS: 'maxTurns',
   DISALLOWED_TOOLS: 'disallowedTools',
-  DISCUSSION_ROLES: 'discussion.roles',
-  DISCUSSION_ENABLED: 'discussion.enabled',
+  SELECTED_ROLE: 'role.selectedId',
 } as const;
 
 const DEFAULTS = {
@@ -697,8 +695,7 @@ const DEFAULTS = {
   MAX_CONTEXT_LINES: 500,
   MAX_TURNS: 25,
   DISALLOWED_TOOLS: [] as string[],
-  DISCUSSION_ROLES: DEFAULT_DISCUSSION_ROLES,
-  DISCUSSION_ENABLED: false,
+  SELECTED_ROLE: null as string | null,
 };
 
 export class SettingsManager {
@@ -730,8 +727,7 @@ export class SettingsManager {
       maxContextLines: config.get<number>(CONFIG_KEYS.CONTEXT_MAX_LINES, DEFAULTS.MAX_CONTEXT_LINES),
       maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
       disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
-      discussionRoles: config.get(CONFIG_KEYS.DISCUSSION_ROLES, DEFAULTS.DISCUSSION_ROLES),
-      agentsEnabled: config.get<boolean>(CONFIG_KEYS.DISCUSSION_ENABLED, DEFAULTS.DISCUSSION_ENABLED),
+      selectedRoleId: config.get<string | null>(CONFIG_KEYS.SELECTED_ROLE, DEFAULTS.SELECTED_ROLE),
     };
   }
 
@@ -808,14 +804,9 @@ export class SettingsManager {
       await config.update(CONFIG_KEYS.DISALLOWED_TOOLS, settings.disallowedTools, vscode.ConfigurationTarget.Global);
     }
 
-    // Discussion roles
-    if (Array.isArray(settings.discussionRoles)) {
-      await config.update(CONFIG_KEYS.DISCUSSION_ROLES, settings.discussionRoles, vscode.ConfigurationTarget.Global);
-    }
-
-    // Discussion enabled
-    if (typeof settings.agentsEnabled === 'boolean') {
-      await config.update(CONFIG_KEYS.DISCUSSION_ENABLED, settings.agentsEnabled, vscode.ConfigurationTarget.Global);
+    // Selected role
+    if ('selectedRoleId' in settings) {
+      await config.update(CONFIG_KEYS.SELECTED_ROLE, settings.selectedRoleId ?? null, vscode.ConfigurationTarget.Global);
     }
   }
 
@@ -829,6 +820,13 @@ export class SettingsManager {
 
   isYoloModeEnabled(): boolean {
     return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
+  }
+
+  getSelectedRolePrompt(): string | undefined {
+    const roleId = this._getConfig().get<string | null>(CONFIG_KEYS.SELECTED_ROLE, null);
+    if (!roleId) return undefined;
+    const role = ROLE_PRESETS.find(r => r.id === roleId);
+    return role?.prompt;
   }
 }
 
@@ -851,8 +849,6 @@ export interface MessageHandlerContext {
   newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
   handleSendMessage(text: string, images?: string[]): void;
-  handleSendDiscussionMessage?(text: string, model?: string): void;
-  stopDiscussion?(): Promise<void>;
   panelManager?: PanelManager;
   rewindToMessage(userInputIndex: number): void;
 }
@@ -886,7 +882,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
 
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel, selectedRoleId: settings.selectedRoleId } });
 
   // Send active hooks summary so webview can show indicator
   try {
@@ -1025,7 +1021,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel, selectedRoleId: settings.selectedRoleId } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {
@@ -1301,16 +1297,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
   dismissClaudeMdBanner: handleDismissClaudeMdBanner,
-  sendDiscussionMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => {
-    if (msg.model) {
-      ctx.stateManager.selectedModel = msg.model as string;
-    }
-    ctx.handleSendDiscussionMessage?.(msg.text as string, msg.model as string | undefined);
-  },
-  stopDiscussion: (_msg: WebviewMessage, ctx: MessageHandlerContext) => {
-    void ctx.stopDiscussion?.();
-  },
-
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

@@ -147,6 +147,7 @@ export interface ConversationData {
   };
   messages: ConversationMessage[];
   filename: string;
+  workspacePath?: string;
 }
 
 export interface ConversationMessage {
@@ -164,6 +165,7 @@ export interface ConversationIndexEntry {
   totalCost: number;
   firstUserMessage: string;
   lastUserMessage: string;
+  workspacePath?: string;
 }
 
 // ============================================================================
@@ -214,34 +216,14 @@ export interface SkillConfig {
 }
 
 // ============================================================================
-// Discussion mode types (multi-agent)
+// Role persona types (single-role selection for session)
 // ============================================================================
 
-export interface DiscussionRole {
+export interface RolePersona {
   id: string;
   name: string;
   prompt: string;
   color: string;
-}
-
-export interface DiscussionRoleResponse {
-  roleId: string;
-  roleName: string;
-  color: string;
-  text: string;
-  status: 'pending' | 'streaming' | 'complete' | 'error';
-  error?: string;
-}
-
-export interface DiscussionResult {
-  id: string;
-  userMessage: string;
-  roles: DiscussionRoleResponse[];
-  synthesis: {
-    text: string;
-    status: 'pending' | 'streaming' | 'complete' | 'error';
-  };
-  timestamp: string;
 }
 
 // ============================================================================
@@ -346,10 +328,6 @@ export type WebviewToExtensionMessage =
   | { type: "showWarning"; data: string }
   | { type: "showInfo"; data: string }
   | { type: "dismissClaudeMdBanner" }
-
-  // Discussion mode
-  | { type: "sendDiscussionMessage"; text: string; model?: string }
-  | { type: "stopDiscussion" }
 
 ;
 

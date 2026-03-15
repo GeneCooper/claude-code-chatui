@@ -56,7 +56,7 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
 
   return (
     <div
-      className="overflow-hidden text-xs"
+      className="relative z-10 overflow-hidden text-xs"
       style={{
         border: isError
           ? '1px solid rgba(231, 76, 60, 0.15)'

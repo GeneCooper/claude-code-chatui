@@ -252,10 +252,12 @@ export class SkillService {
 
 export class ConversationService {
   private _conversationsDir: string;
+  private _workspacePath: string | undefined;
 
   constructor(private readonly _context: vscode.ExtensionContext) {
     this._conversationsDir = path.join(_context.globalStorageUri.fsPath, 'conversations');
     if (!fs.existsSync(this._conversationsDir)) fs.mkdirSync(this._conversationsDir, { recursive: true });
+    this._workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   }
 
   async saveConversation(
@@ -274,6 +276,7 @@ export class ConversationService {
       messageCount: messages.length, totalCost,
       totalTokens: { input: totalTokensInput, output: totalTokensOutput },
       messages, filename,
+      workspacePath: this._workspacePath,
     };
 
     try {
@@ -294,9 +297,13 @@ export class ConversationService {
     // Auto-rebuild entries with missing firstUserMessage (one-time migration)
     const needsRebuild = index.some((e) => !e.firstUserMessage);
     if (needsRebuild) { void this._rebuildIndex(); }
+    // Filter by current workspace
+    const filtered = this._workspacePath
+      ? index.filter((e) => e.workspacePath === this._workspacePath)
+      : index;
     // Deduplicate by sessionId (keep latest endTime), then sort
     const seen = new Map<string, ConversationIndexEntry>();
-    for (const entry of index) {
+    for (const entry of filtered) {
       const existing = seen.get(entry.sessionId);
       if (!existing || new Date(entry.endTime).getTime() > new Date(existing.endTime).getTime()) {
         seen.set(entry.sessionId, entry);
@@ -329,6 +336,7 @@ export class ConversationService {
           messageCount: data.messageCount, totalCost: data.totalCost,
           firstUserMessage: firstUserMessage.substring(0, 100),
           lastUserMessage: lastUserMessage.substring(0, 100),
+          workspacePath: data.workspacePath,
         });
       } catch { /* skip corrupted files */ }
     }
@@ -383,6 +391,7 @@ export class ConversationService {
       messageCount: data.messageCount, totalCost: data.totalCost,
       firstUserMessage: firstUserMessage.substring(0, 100),
       lastUserMessage: lastUserMessage.substring(0, 100),
+      workspacePath: data.workspacePath,
     });
     const trimmed = filtered
       .sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())

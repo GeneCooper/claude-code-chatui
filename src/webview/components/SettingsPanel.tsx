@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { postMessage } from '../hooks'
-import { useSettingsStore, useDiscussionStore } from '../store'
+import { useSettingsStore } from '../store'
 import { useUIStore } from '../store'
-import type { DiscussionRole } from '../../shared/types'
-import { DISCUSSION_ROLE_PRESETS } from '../../shared/constants'
+import { ROLE_PRESETS } from '../../shared/constants'
 
 // ============================================================================
 // Hooks Types
@@ -532,122 +531,60 @@ function AgentModeSelector({ value, onChange }: { value: string; onChange: (v: s
 }
 
 // ============================================================================
-// Discussion Agents Section
+// Role Persona Section
 // ============================================================================
 
-function DiscussionAgentsSection() {
-  const { discussionRoles } = useSettingsStore()
-  const agentsEnabled = useDiscussionStore((s) => s.enabled)
-  const [showCustom, setShowCustom] = useState(false)
-  const [customName, setCustomName] = useState('')
-  const [customPrompt, setCustomPrompt] = useState('')
-  const [customColor, setCustomColor] = useState('#6366f1')
+function RolePersonaSection() {
+  const selectedRoleId = useSettingsStore((s) => s.selectedRoleId)
 
-  // Active role IDs — either from settings or default first 3 presets
-  const activeRoleIds = new Set(
-    discussionRoles.length > 0
-      ? discussionRoles.map((r) => r.id)
-      : DISCUSSION_ROLE_PRESETS.slice(0, 3).map((r) => r.id),
-  )
-
-  // Merge presets + any custom roles from settings
-  const customRoles = discussionRoles.filter(
-    (r) => !DISCUSSION_ROLE_PRESETS.some((p) => p.id === r.id),
-  )
-
-  const saveRoles = (roles: DiscussionRole[]) => {
-    useSettingsStore.getState().updateSettings({ discussionRoles: roles })
-    postMessage({ type: 'updateSettings', settings: { discussionRoles: roles } })
+  const selectRole = (roleId: string | null) => {
+    useSettingsStore.getState().updateSettings({ selectedRoleId: roleId })
+    postMessage({ type: 'updateSettings', settings: { selectedRoleId: roleId } })
   }
-
-  const togglePresetRole = (preset: DiscussionRole) => {
-    const currentRoles = discussionRoles.length > 0
-      ? [...discussionRoles]
-      : DISCUSSION_ROLE_PRESETS.slice(0, 3).map((r) => ({ ...r }))
-
-    const idx = currentRoles.findIndex((r) => r.id === preset.id)
-    if (idx >= 0) {
-      // Remove — but keep at least 1 role
-      if (currentRoles.length <= 1) return
-      currentRoles.splice(idx, 1)
-    } else {
-      currentRoles.push({ ...preset })
-    }
-    saveRoles(currentRoles)
-  }
-
-  const handleAddCustom = () => {
-    if (!customName.trim() || !customPrompt.trim()) return
-    const id = `custom_${Date.now()}`
-    const currentRoles = discussionRoles.length > 0
-      ? [...discussionRoles]
-      : DISCUSSION_ROLE_PRESETS.slice(0, 3).map((r) => ({ ...r }))
-    currentRoles.push({ id, name: customName.trim(), prompt: customPrompt.trim(), color: customColor })
-    saveRoles(currentRoles)
-    setCustomName('')
-    setCustomPrompt('')
-    setShowCustom(false)
-  }
-
-  const handleRemoveCustom = (id: string) => {
-    const currentRoles = discussionRoles.filter((r) => r.id !== id)
-    if (currentRoles.length === 0) return
-    saveRoles(currentRoles)
-  }
-
-  const CUSTOM_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#14b8a6', '#f43f5e', '#d946ef', '#78716c']
 
   return (
     <div style={cardStyle}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span style={{ ...sectionTitleStyle, marginBottom: 0 }}>Agents</span>
-          <span style={{
-            fontSize: '10px',
-            padding: '1px 6px',
-            borderRadius: '4px',
-            background: 'rgba(139, 92, 246, 0.15)',
-            color: '#8b5cf6',
-            fontWeight: 600,
-          }}>{activeRoleIds.size} selected</span>
+          <span style={{ ...sectionTitleStyle, marginBottom: 0 }}>Role Persona</span>
+          {selectedRoleId && (
+            <span style={{
+              fontSize: '10px',
+              padding: '1px 6px',
+              borderRadius: '4px',
+              background: `color-mix(in srgb, ${ROLE_PRESETS.find(r => r.id === selectedRoleId)?.color || '#8b5cf6'} 15%, transparent)`,
+              color: ROLE_PRESETS.find(r => r.id === selectedRoleId)?.color || '#8b5cf6',
+              fontWeight: 600,
+            }}>{ROLE_PRESETS.find(r => r.id === selectedRoleId)?.name}</span>
+          )}
         </div>
-        {/* Enable / Disable toggle */}
-        <div
-          onClick={() => {
-            const next = !agentsEnabled
-            useDiscussionStore.getState().setEnabled(next)
-            postMessage({ type: 'updateSettings', settings: { agentsEnabled: next } })
-          }}
-          className="cursor-pointer flex items-center gap-2"
-        >
-          <span style={{ fontSize: '11px', opacity: 0.7 }}>{agentsEnabled ? 'ON' : 'OFF'}</span>
-          <div style={{
-            width: '36px', height: '20px', borderRadius: '10px',
-            background: agentsEnabled ? '#8b5cf6' : 'rgba(255,255,255,0.15)',
-            position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-          }}>
-            <div style={{
-              width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
-              position: 'absolute', top: '2px',
-              left: agentsEnabled ? '18px' : '2px',
-              transition: 'left 0.2s',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }} />
-          </div>
-        </div>
+        {selectedRoleId && (
+          <button
+            onClick={() => selectRole(null)}
+            className="cursor-pointer border-none"
+            style={{
+              fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+              background: 'rgba(255,255,255,0.1)', color: 'var(--vscode-editor-foreground)',
+              opacity: 0.7, transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+          >
+            Clear
+          </button>
+        )}
       </div>
       <p style={{ fontSize: '10px', opacity: 0.5, margin: '6px 0 0', lineHeight: 1.4 }}>
-        Enable multi-agent mode. Your message will be analyzed by selected experts in parallel, then synthesized.
+        Select a role to shape Claude's perspective for this project. The role prompt is injected at the start of each new session.
       </p>
 
-      {/* Preset agents grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-        {DISCUSSION_ROLE_PRESETS.map((preset) => {
-          const active = activeRoleIds.has(preset.id)
+        {ROLE_PRESETS.map((preset) => {
+          const active = selectedRoleId === preset.id
           return (
             <button
               key={preset.id}
-              onClick={() => togglePresetRole(preset)}
+              onClick={() => selectRole(active ? null : preset.id)}
               className="cursor-pointer border-none text-left"
               style={{
                 padding: '10px 12px',
@@ -667,11 +604,9 @@ function DiscussionAgentsSection() {
                   {preset.name}
                 </span>
                 {active && (
-                  <span style={{
-                    fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
-                    background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e',
-                    fontWeight: 700, marginLeft: 'auto',
-                  }}>ON</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto' }}>
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
                 )}
               </div>
               <div style={{ fontSize: '10px', opacity: 0.55, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -681,136 +616,6 @@ function DiscussionAgentsSection() {
           )
         })}
       </div>
-
-      {/* Custom roles list */}
-      {customRoles.length > 0 && (
-        <div style={{ marginTop: '12px' }}>
-          <div style={{ fontSize: '11px', opacity: 0.6, marginBottom: '6px', fontWeight: 500 }}>Custom Agents</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {customRoles.map((role) => (
-              <div
-                key={role.id}
-                className="flex items-center gap-2"
-                style={{
-                  padding: '6px 10px', borderRadius: '6px',
-                  background: 'var(--chatui-surface-1, rgba(255,255,255,0.03))',
-                  border: '1px solid var(--chatui-glass-border, rgba(255,255,255,0.08))',
-                  fontSize: '11px',
-                }}
-              >
-                <span style={{
-                  width: '8px', height: '8px', borderRadius: '50%',
-                  background: role.color, flexShrink: 0,
-                }} />
-                <span style={{ fontWeight: 600 }}>{role.name}</span>
-                <span className="truncate flex-1" style={{ opacity: 0.5, fontSize: '10px' }}>
-                  {role.prompt.slice(0, 40)}...
-                </span>
-                <button
-                  onClick={() => handleRemoveCustom(role.id)}
-                  className="cursor-pointer bg-transparent border-none"
-                  style={{
-                    padding: '1px 5px', fontSize: '10px', opacity: 0.4,
-                    color: 'var(--vscode-errorForeground)', borderRadius: '3px',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4' }}
-                >
-                  x
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Add custom agent */}
-      {showCustom ? (
-        <div style={{
-          marginTop: '12px', padding: '12px',
-          borderRadius: '8px',
-          background: 'var(--chatui-surface-1, rgba(255,255,255,0.03))',
-          border: '1px solid var(--chatui-glass-border, rgba(255,255,255,0.08))',
-        }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '10px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600 }}>New Agent</span>
-            <button
-              onClick={() => setShowCustom(false)}
-              className="cursor-pointer border-none"
-              style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: 'var(--vscode-editor-foreground)' }}
-            >
-              Cancel
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div>
-              <label style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '3px' }}>Name</label>
-              <input
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="e.g. DBA Expert"
-                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '3px' }}>System Prompt</label>
-              <textarea
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="You are a ... expert. Please analyze from the perspective of ..."
-                rows={3}
-                className="w-full px-2 py-1 text-xs bg-(--vscode-input-background) text-(--vscode-input-foreground) border border-(--vscode-input-border) rounded"
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '3px' }}>Color</label>
-              <div className="flex gap-1">
-                {CUSTOM_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCustomColor(c)}
-                    className="cursor-pointer border-none"
-                    style={{
-                      width: '22px', height: '22px', borderRadius: '50%',
-                      background: c,
-                      border: customColor === c ? '2px solid #fff' : '2px solid transparent',
-                      transition: 'border 0.15s',
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={handleAddCustom}
-              disabled={!customName.trim() || !customPrompt.trim()}
-              className="cursor-pointer border-none disabled:opacity-50"
-              style={{
-                padding: '5px 14px', fontSize: '12px', borderRadius: '4px',
-                background: 'var(--chatui-accent)', color: '#fff', alignSelf: 'flex-start',
-              }}
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setShowCustom(true)}
-          className="cursor-pointer border-none w-full"
-          style={{
-            marginTop: '10px', padding: '8px', borderRadius: '6px',
-            background: 'transparent',
-            border: '1px dashed rgba(255,255,255,0.15)',
-            color: 'var(--vscode-editor-foreground)',
-            fontSize: '11px', opacity: 0.5, transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5' }}
-        >
-          + Add Custom Agent
-        </button>
-      )}
     </div>
   )
 }
@@ -970,8 +775,8 @@ export function SettingsPanel() {
           </div>
         </div>
 
-        {/* Discussion Agents */}
-        <DiscussionAgentsSection />
+        {/* Role Persona */}
+        <RolePersonaSection />
 
         {/* Hooks Configuration */}
         <HooksSection />

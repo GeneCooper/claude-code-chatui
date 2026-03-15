@@ -2,8 +2,8 @@
 // Shared Constants (only exports that are actually used)
 // ============================================================================
 
-/** All available discussion role presets for multi-agent mode */
-export const DISCUSSION_ROLE_PRESETS: Array<{ id: string; name: string; prompt: string; color: string }> = [
+/** Available role persona presets — user picks one to shape Claude's perspective for the session */
+export const ROLE_PRESETS: Array<{ id: string; name: string; prompt: string; color: string }> = [
     {
         id: 'architect',
         name: '架构师',
@@ -53,9 +53,6 @@ export const DISCUSSION_ROLE_PRESETS: Array<{ id: string; name: string; prompt: 
         color: '#f97316',
     },
 ];
-
-/** Default discussion roles (first 3 presets) */
-export const DEFAULT_DISCUSSION_ROLES = DISCUSSION_ROLE_PRESETS.slice(0, 3);
 
 /** Subagent type badge colors — shared between JourneyTimeline and ToolUseBlock */
 export const SUBAGENT_COLORS: Record<string, string> = {

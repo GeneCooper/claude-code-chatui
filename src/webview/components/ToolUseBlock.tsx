@@ -48,7 +48,7 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
   if (isSubagent) {
     return (
       <div
-        className="overflow-hidden text-xs"
+        className="relative z-10 overflow-hidden text-xs"
         style={{
           border: `1px solid ${subagentColor}30`,
           borderRadius: 'var(--radius-md)',

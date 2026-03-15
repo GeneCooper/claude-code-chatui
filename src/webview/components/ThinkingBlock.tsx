@@ -25,7 +25,7 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
 
   return (
     <div
-      className="overflow-hidden"
+      className="relative z-10 overflow-hidden"
       style={{
         border: '1px solid rgba(255, 255, 255, 0.06)',
         borderRadius: 'var(--radius-md)',

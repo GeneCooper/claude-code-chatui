@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore, useSettingsStore, useDiscussionStore } from '../store'
+import { useChatStore, useSettingsStore } from '../store'
 import { useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
+import { ROLE_PRESETS } from '../../shared/constants'
 
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
@@ -178,19 +179,6 @@ export const InputArea = memo(function InputArea() {
         images: imageData,
       })
       setEditingContext(null)
-    } else if (useDiscussionStore.getState().enabled) {
-      // Discussion mode: send to multi-agent discussion
-      const store = useChatStore.getState()
-      markOptimisticUserInput()
-      store.addMessage({ type: 'userInput', data: { text: trimmed, images: imageData } })
-      store.setProcessing(true)
-      useUIStore.getState().setRequestStartTime(Date.now())
-
-      postMessage({
-        type: 'sendDiscussionMessage',
-        text: trimmed,
-        model: selectedModel !== 'default' ? selectedModel : undefined,
-      })
     } else {
       // Normal mode: optimistic update for instant feedback
       const store = useChatStore.getState()
@@ -655,8 +643,8 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
-            {/* Agents mode toggle */}
-            <AgentsToggle />
+            {/* Role persona indicator */}
+            <RoleIndicator />
 
             <InputSep />
 
@@ -804,18 +792,18 @@ function InputSep() {
   )
 }
 
-function AgentsToggle() {
-  const enabled = useDiscussionStore((s) => s.enabled)
+function RoleIndicator() {
+  const selectedRoleId = useSettingsStore((s) => s.selectedRoleId)
   const setActiveView = useUIStore((s) => s.setActiveView)
+  const role = selectedRoleId ? ROLE_PRESETS.find((r) => r.id === selectedRoleId) : null
   return (
     <button
       onClick={() => {
-        if (enabled) {
-          // Already enabled — click to disable
-          useDiscussionStore.getState().setEnabled(false)
-          postMessage({ type: 'updateSettings', settings: { agentsEnabled: false } })
+        if (role) {
+          // Clear role
+          useSettingsStore.getState().updateSettings({ selectedRoleId: null })
+          postMessage({ type: 'updateSettings', settings: { selectedRoleId: null } })
         } else {
-          // Navigate to settings to configure agents
           setActiveView('settings')
         }
       }}
@@ -824,19 +812,19 @@ function AgentsToggle() {
         background: 'transparent',
         padding: '2px 4px',
         fontWeight: 500,
-        opacity: enabled ? 1 : 0.5,
-        color: enabled ? '#8b5cf6' : 'inherit',
+        opacity: role ? 1 : 0.5,
+        color: role ? role.color : 'inherit',
         transition: 'all 0.2s ease',
       }}
-      title={enabled ? 'Agents mode ON — click to disable' : 'Configure multi-agent discussion'}
+      title={role ? `${role.name} — click to clear` : 'Select a role persona'}
       onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = enabled ? '1' : '0.5' }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = role ? '1' : '0.5' }}
     >
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
       </svg>
-      <span style={{ fontSize: '11px' }}>Agents</span>
+      <span style={{ fontSize: '11px' }}>{role ? role.name : 'Role'}</span>
     </button>
   )
 }

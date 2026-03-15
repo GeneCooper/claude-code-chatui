@@ -4,7 +4,6 @@ import * as path from 'path';
 import { ClaudeService } from './claude';
 import { ConversationService, UsageService, MCPService, SkillService } from './storage';
 import { PermissionService } from './claude';
-import { DiscussionService } from './discussion';
 import {
   ClaudeMessageProcessor,
   SessionStateManager,
@@ -119,7 +118,6 @@ export class PanelProvider {
   private _messageProcessor: ClaudeMessageProcessor;
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
-  private _discussionService: DiscussionService;
 
 
   constructor(
@@ -137,8 +135,6 @@ export class PanelProvider {
 
     this._stateManager = new SessionStateManager();
     this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
-    this._discussionService = new DiscussionService();
-    this._setupDiscussionHandlers();
 
     const poster: MessagePoster = {
       postMessage: (msg) => {
@@ -387,9 +383,6 @@ export class PanelProvider {
       loadConversation: (filename: string) => this.loadConversation(filename),
       handleSendMessage: (text: string, images?: string[]) =>
         this._handleSendMessage(text, images),
-      handleSendDiscussionMessage: (text: string, model?: string) =>
-        this._handleSendDiscussionMessage(text, model),
-      stopDiscussion: () => this._discussionService.stopDiscussion(),
       panelManager: this._panelManager,
       rewindToMessage: (userInputIndex: number) => this.rewindToMessage(userInputIndex),
     };
@@ -444,7 +437,10 @@ export class PanelProvider {
     // to avoid wasting tokens on repeated context every turn
     const isFirstMessage = !this._sessionId;
     const contextPrefix = isFirstMessage ? this._gatherIDEContext() : '';
-    const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
+    // Inject role persona prompt on first message if a role is selected
+    const rolePrompt = isFirstMessage ? this._settingsManager.getSelectedRolePrompt() : undefined;
+    const rolePrefix = rolePrompt ? `[Role Persona]\n${rolePrompt}\n请始终以此角色视角回答后续所有问题。\n[/Role Persona]` : '';
+    const enrichedText = [rolePrefix, contextPrefix, processedText].filter(Boolean).join('\n\n');
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, yoloMode, effortLevel,
@@ -454,51 +450,6 @@ export class PanelProvider {
     });
   }
 
-  private _handleSendDiscussionMessage(text: string, model?: string): void {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
-    const settings = this._settingsManager.getCurrentSettings(this._stateManager.selectedModel);
-    const intensityToEffort: Record<string, string> = { fast: 'low', deep: 'medium', precise: 'high' };
-    const effortLevel = intensityToEffort[settings.thinkingIntensity] || 'medium';
-
-    // Use roles from settings, fall back to defaults
-    const { DEFAULT_DISCUSSION_ROLES } = require('../shared/constants');
-    const activeRoles = settings.discussionRoles?.length > 0 ? settings.discussionRoles : DEFAULT_DISCUSSION_ROLES;
-
-    // Notify webview that discussion is starting
-    const roles = activeRoles.map((r: { id: string; name: string; color: string }) => ({
-      roleId: r.id,
-      roleName: r.name,
-      color: r.color,
-      text: '',
-      status: 'pending',
-    }));
-    this._postMessage({ type: 'discussionStarted', data: { userMessage: text, roles } });
-
-    void this._discussionService.startDiscussion(text, activeRoles, {
-      cwd,
-      model: model || (this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined),
-      effortLevel,
-    });
-  }
-
-  private _setupDiscussionHandlers(): void {
-    this._discussionService.onRoleOutput((roleId, text) => {
-      this._postMessage({ type: 'discussionRoleOutput', data: { roleId, text } });
-    });
-    this._discussionService.onRoleComplete((roleId) => {
-      this._postMessage({ type: 'discussionRoleComplete', data: { roleId } });
-    });
-    this._discussionService.onSynthesisOutput((text) => {
-      this._postMessage({ type: 'discussionSynthesisOutput', data: { text } });
-    });
-    this._discussionService.onDiscussionComplete(() => {
-      this._postMessage({ type: 'discussionComplete' });
-    });
-    this._discussionService.onError((roleId, error) => {
-      this._postMessage({ type: 'discussionRoleError', data: { roleId, error } });
-    });
-  }
 
   private _preprocessFileReferences(text: string): string {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];

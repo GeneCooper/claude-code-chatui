@@ -27,13 +27,11 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen">
       <Header />
-      {activeView === 'chat' && (
-        <>
+      <div className={`flex flex-col flex-1 min-h-0 ${activeView !== 'chat' ? 'hidden' : ''}`}>
           <ChatView onHintClick={handleHintClick} />
           <TodoDisplay />
           <InputArea />
-        </>
-      )}
+      </div>
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
 {showMCPModal && <MCPPanel />}

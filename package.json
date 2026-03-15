@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.8.49",
+  "version": "0.8.51",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -133,25 +133,10 @@
           "default": [],
           "description": "List of tool names to block (e.g. Bash, Write). Passed as --disallowedTools to CLI."
         },
-        "claudeCodeChatUI.discussion.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable multi-agent discussion mode. Messages will be analyzed by multiple expert agents in parallel."
-        },
-        "claudeCodeChatUI.discussion.roles": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "prompt": { "type": "string" },
-              "color": { "type": "string" }
-            },
-            "required": ["id", "name", "prompt", "color"]
-          },
-          "default": [],
-          "description": "Custom discussion agent roles for multi-agent mode. Empty = use default 3 (Architect, Security, Performance)."
+        "claudeCodeChatUI.role.selectedId": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Selected role persona ID (e.g. architect, security, performance). The role's prompt is injected at session start to shape Claude's perspective."
         },
         "claudeCodeChatUI.autoOpenDiff": {
           "type": "boolean",

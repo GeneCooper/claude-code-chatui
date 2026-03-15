@@ -5,8 +5,6 @@ import type {
   SkillConfig,
   TodoItem,
   ConversationIndexEntry,
-  DiscussionRole,
-  DiscussionRoleResponse,
 } from "../shared/types";
 
 // Re-export so downstream consumers (hooks.ts, TodoDisplay.tsx) can keep importing from store
@@ -234,14 +232,14 @@ interface SettingsState {
   yoloMode: boolean;
   maxTurns: number;
   disallowedTools: string[];
-  discussionRoles: DiscussionRole[];
+  selectedRoleId: string | null;
   updateSettings: (
     settings: Partial<{
       thinkingIntensity: string;
       yoloMode: boolean;
       maxTurns: number;
       disallowedTools: string[];
-      discussionRoles: DiscussionRole[];
+      selectedRoleId: string | null;
     }>,
   ) => void;
 }
@@ -251,80 +249,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   yoloMode: true,
   maxTurns: 25,
   disallowedTools: [],
-  discussionRoles: [],
+  selectedRoleId: null,
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
-}));
-
-// ============================================================================
-// Discussion Store (multi-agent mode)
-// ============================================================================
-
-interface DiscussionState {
-  enabled: boolean;
-  isDiscussing: boolean;
-  roles: DiscussionRoleResponse[];
-  userMessage: string;
-  synthesis: { text: string; status: 'pending' | 'streaming' | 'complete' | 'error' };
-
-  setEnabled: (enabled: boolean) => void;
-  startDiscussion: (userMessage: string, roles: DiscussionRoleResponse[]) => void;
-  updateRoleOutput: (roleId: string, text: string) => void;
-  completeRole: (roleId: string) => void;
-  failRole: (roleId: string, error: string) => void;
-  updateSynthesis: (text: string) => void;
-  completeSynthesis: () => void;
-  clearDiscussion: () => void;
-}
-
-export const useDiscussionStore = create<DiscussionState>((set) => ({
-  enabled: false,
-  isDiscussing: false,
-  roles: [],
-  userMessage: '',
-  synthesis: { text: '', status: 'pending' },
-
-  setEnabled: (enabled) => set({ enabled }),
-
-  startDiscussion: (userMessage, roles) => set({
-    isDiscussing: true,
-    userMessage,
-    roles,
-    synthesis: { text: '', status: 'pending' },
-  }),
-
-  updateRoleOutput: (roleId, text) => set((state) => ({
-    roles: state.roles.map(r =>
-      r.roleId === roleId ? { ...r, text, status: 'streaming' as const } : r,
-    ),
-  })),
-
-  completeRole: (roleId) => set((state) => ({
-    roles: state.roles.map(r =>
-      r.roleId === roleId ? { ...r, status: 'complete' as const } : r,
-    ),
-  })),
-
-  failRole: (roleId, error) => set((state) => ({
-    roles: state.roles.map(r =>
-      r.roleId === roleId ? { ...r, status: 'error' as const, error } : r,
-    ),
-  })),
-
-  updateSynthesis: (text) => set({
-    synthesis: { text, status: 'streaming' },
-  }),
-
-  completeSynthesis: () => set((state) => ({
-    synthesis: { ...state.synthesis, status: 'complete' },
-    isDiscussing: false,
-  })),
-
-  clearDiscussion: () => set({
-    isDiscussing: false,
-    roles: [],
-    userMessage: '',
-    synthesis: { text: '', status: 'pending' },
-  }),
 }));
 
 // ============================================================================
