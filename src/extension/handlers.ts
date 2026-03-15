@@ -8,7 +8,7 @@ import type {
   MCPServerConfig,
 } from '../shared/types';
 import type { PanelManager } from './panelManager';
-import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS, ROLE_PRESETS } from '../shared/constants';
+import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
 import type { ConversationService, UsageService, MCPService, SkillService } from './storage';
@@ -653,7 +653,8 @@ interface WebviewSettings {
   maxContextLines: number;
   maxTurns: number;
   disallowedTools: string[];
-  selectedRoleId: string | null;
+  customSnippets: Array<{ id: string; name: string; prompt: string; color: string }>;
+  selectedSnippetIds: string[];
 }
 
 const CONFIG_KEYS = {
@@ -674,7 +675,8 @@ const CONFIG_KEYS = {
   CONTEXT_MAX_LINES: 'context.maxContextLines',
   MAX_TURNS: 'maxTurns',
   DISALLOWED_TOOLS: 'disallowedTools',
-  SELECTED_ROLE: 'role.selectedId',
+  SNIPPETS_CUSTOM: 'promptSnippets.custom',
+  SNIPPETS_SELECTED: 'promptSnippets.selectedIds',
 } as const;
 
 const DEFAULTS = {
@@ -695,7 +697,8 @@ const DEFAULTS = {
   MAX_CONTEXT_LINES: 500,
   MAX_TURNS: 25,
   DISALLOWED_TOOLS: [] as string[],
-  SELECTED_ROLE: null as string | null,
+  SNIPPETS_CUSTOM: [] as Array<{ id: string; name: string; prompt: string; color: string }>,
+  SNIPPETS_SELECTED: [] as string[],
 };
 
 export class SettingsManager {
@@ -727,7 +730,8 @@ export class SettingsManager {
       maxContextLines: config.get<number>(CONFIG_KEYS.CONTEXT_MAX_LINES, DEFAULTS.MAX_CONTEXT_LINES),
       maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
       disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
-      selectedRoleId: config.get<string | null>(CONFIG_KEYS.SELECTED_ROLE, DEFAULTS.SELECTED_ROLE),
+      customSnippets: config.get<Array<{ id: string; name: string; prompt: string; color: string }>>(CONFIG_KEYS.SNIPPETS_CUSTOM, DEFAULTS.SNIPPETS_CUSTOM),
+      selectedSnippetIds: config.get<string[]>(CONFIG_KEYS.SNIPPETS_SELECTED, DEFAULTS.SNIPPETS_SELECTED),
     };
   }
 
@@ -804,10 +808,14 @@ export class SettingsManager {
       await config.update(CONFIG_KEYS.DISALLOWED_TOOLS, settings.disallowedTools, vscode.ConfigurationTarget.Global);
     }
 
-    // Selected role
-    if ('selectedRoleId' in settings) {
-      await config.update(CONFIG_KEYS.SELECTED_ROLE, settings.selectedRoleId ?? null, vscode.ConfigurationTarget.Global);
+    // Prompt snippets
+    if (Array.isArray(settings.customSnippets)) {
+      await config.update(CONFIG_KEYS.SNIPPETS_CUSTOM, settings.customSnippets, vscode.ConfigurationTarget.Global);
     }
+    if (Array.isArray(settings.selectedSnippetIds)) {
+      await config.update(CONFIG_KEYS.SNIPPETS_SELECTED, settings.selectedSnippetIds, vscode.ConfigurationTarget.Global);
+    }
+
   }
 
   getDisallowedTools(): string[] {
@@ -822,12 +830,6 @@ export class SettingsManager {
     return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
   }
 
-  getSelectedRolePrompt(): string | undefined {
-    const roleId = this._getConfig().get<string | null>(CONFIG_KEYS.SELECTED_ROLE, null);
-    if (!roleId) return undefined;
-    const role = ROLE_PRESETS.find(r => r.id === roleId);
-    return role?.prompt;
-  }
 }
 
 // ============================================================================
@@ -882,7 +884,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
 
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel, selectedRoleId: settings.selectedRoleId } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds } });
 
   // Send active hooks summary so webview can show indicator
   try {
@@ -1021,7 +1023,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel, selectedRoleId: settings.selectedRoleId } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {

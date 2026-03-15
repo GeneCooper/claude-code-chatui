@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore, useSettingsStore } from '../store'
+import { useChatStore, useSettingsStore, useSnippetStore } from '../store'
 import { useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
 import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
-import { ROLE_PRESETS } from '../../shared/constants'
+import { PROMPT_SNIPPET_PRESETS } from '../../shared/constants'
+import { SnippetButton, SnippetDropdown } from './SnippetSelector'
 
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
@@ -13,6 +14,7 @@ export const InputArea = memo(function InputArea() {
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
+  const [showSnippetPicker, setShowSnippetPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -165,6 +167,16 @@ export const InputArea = memo(function InputArea() {
     const trimmed = text.trim()
     if ((!trimmed && images.length === 0) || isProcessing) return
 
+    // Build the final text with snippet prefixes
+    const snippetState = useSnippetStore.getState()
+    const allSnippets = [...PROMPT_SNIPPET_PRESETS, ...snippetState.customSnippets]
+    const selectedPrompts = allSnippets
+      .filter((s) => snippetState.selectedIds.includes(s.id))
+      .map((s) => s.prompt)
+    const finalText = selectedPrompts.length > 0
+      ? `${selectedPrompts.join('\n\n')}\n\n---\n\n${trimmed}`
+      : trimmed
+
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
     const currentEditingContext = useUIStore.getState().editingContext
@@ -174,13 +186,13 @@ export const InputArea = memo(function InputArea() {
       postMessage({ type: 'rewindToMessage', userInputIndex: currentEditingContext.userInputIndex })
       postMessage({
         type: 'sendMessage',
-        text: trimmed,
+        text: finalText,
         model: selectedModel !== 'default' ? selectedModel : undefined,
         images: imageData,
       })
       setEditingContext(null)
     } else {
-      // Normal mode: optimistic update for instant feedback
+      // Normal mode: optimistic update shows user's original text (without snippet prefix)
       const store = useChatStore.getState()
       markOptimisticUserInput()
       store.addMessage({ type: 'userInput', data: { text: trimmed, images: imageData } })
@@ -190,7 +202,7 @@ export const InputArea = memo(function InputArea() {
 
       postMessage({
         type: 'sendMessage',
-        text: trimmed,
+        text: finalText,
         model: selectedModel !== 'default' ? selectedModel : undefined,
         images: imageData,
       })
@@ -643,8 +655,11 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
-            {/* Role persona indicator */}
-            <RoleIndicator />
+            {/* Snippets button */}
+            <div style={{ position: 'relative' }}>
+              <SnippetButton onClick={() => setShowSnippetPicker(!showSnippetPicker)} />
+              {showSnippetPicker && <SnippetDropdown onClose={() => setShowSnippetPicker(false)} />}
+            </div>
 
             <InputSep />
 
@@ -792,39 +807,3 @@ function InputSep() {
   )
 }
 
-function RoleIndicator() {
-  const selectedRoleId = useSettingsStore((s) => s.selectedRoleId)
-  const setActiveView = useUIStore((s) => s.setActiveView)
-  const role = selectedRoleId ? ROLE_PRESETS.find((r) => r.id === selectedRoleId) : null
-  return (
-    <button
-      onClick={() => {
-        if (role) {
-          // Clear role
-          useSettingsStore.getState().updateSettings({ selectedRoleId: null })
-          postMessage({ type: 'updateSettings', settings: { selectedRoleId: null } })
-        } else {
-          setActiveView('settings')
-        }
-      }}
-      className="cursor-pointer border-none flex items-center gap-1"
-      style={{
-        background: 'transparent',
-        padding: '2px 4px',
-        fontWeight: 500,
-        opacity: role ? 1 : 0.5,
-        color: role ? role.color : 'inherit',
-        transition: 'all 0.2s ease',
-      }}
-      title={role ? `${role.name} — click to clear` : 'Select a role persona'}
-      onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = role ? '1' : '0.5' }}
-    >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-      <span style={{ fontSize: '11px' }}>{role ? role.name : 'Role'}</span>
-    </button>
-  )
-}

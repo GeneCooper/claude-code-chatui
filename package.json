@@ -2,7 +2,7 @@
   "name": "genecooper-claude-code-chatui",
   "displayName": "Claude Code Chat UI",
   "description": "A GUI wrapper for Claude Code CLI inside VS Code",
-  "version": "0.8.51",
+  "version": "0.8.52",
   "publisher": "GeneCooper",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -133,10 +133,25 @@
           "default": [],
           "description": "List of tool names to block (e.g. Bash, Write). Passed as --disallowedTools to CLI."
         },
-        "claudeCodeChatUI.role.selectedId": {
-          "type": ["string", "null"],
-          "default": null,
-          "description": "Selected role persona ID (e.g. architect, security, performance). The role's prompt is injected at session start to shape Claude's perspective."
+        "claudeCodeChatUI.promptSnippets.custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "prompt": { "type": "string" },
+              "color": { "type": "string" }
+            }
+          },
+          "default": [],
+          "description": "Custom prompt snippets that get prepended to messages when selected."
+        },
+        "claudeCodeChatUI.promptSnippets.selectedIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "IDs of currently selected prompt snippets."
         },
         "claudeCodeChatUI.autoOpenDiff": {
           "type": "boolean",

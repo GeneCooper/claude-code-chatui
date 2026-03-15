@@ -437,10 +437,7 @@ export class PanelProvider {
     // to avoid wasting tokens on repeated context every turn
     const isFirstMessage = !this._sessionId;
     const contextPrefix = isFirstMessage ? this._gatherIDEContext() : '';
-    // Inject role persona prompt on first message if a role is selected
-    const rolePrompt = isFirstMessage ? this._settingsManager.getSelectedRolePrompt() : undefined;
-    const rolePrefix = rolePrompt ? `[Role Persona]\n${rolePrompt}\n请始终以此角色视角回答后续所有问题。\n[/Role Persona]` : '';
-    const enrichedText = [rolePrefix, contextPrefix, processedText].filter(Boolean).join('\n\n');
+    const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, yoloMode, effortLevel,

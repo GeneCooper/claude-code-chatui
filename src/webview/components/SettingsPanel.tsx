@@ -2,8 +2,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { postMessage } from '../hooks'
 import { useSettingsStore } from '../store'
 import { useUIStore } from '../store'
-import { ROLE_PRESETS } from '../../shared/constants'
-
 // ============================================================================
 // Hooks Types
 // ============================================================================
@@ -531,96 +529,6 @@ function AgentModeSelector({ value, onChange }: { value: string; onChange: (v: s
 }
 
 // ============================================================================
-// Role Persona Section
-// ============================================================================
-
-function RolePersonaSection() {
-  const selectedRoleId = useSettingsStore((s) => s.selectedRoleId)
-
-  const selectRole = (roleId: string | null) => {
-    useSettingsStore.getState().updateSettings({ selectedRoleId: roleId })
-    postMessage({ type: 'updateSettings', settings: { selectedRoleId: roleId } })
-  }
-
-  return (
-    <div style={cardStyle}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span style={{ ...sectionTitleStyle, marginBottom: 0 }}>Role Persona</span>
-          {selectedRoleId && (
-            <span style={{
-              fontSize: '10px',
-              padding: '1px 6px',
-              borderRadius: '4px',
-              background: `color-mix(in srgb, ${ROLE_PRESETS.find(r => r.id === selectedRoleId)?.color || '#8b5cf6'} 15%, transparent)`,
-              color: ROLE_PRESETS.find(r => r.id === selectedRoleId)?.color || '#8b5cf6',
-              fontWeight: 600,
-            }}>{ROLE_PRESETS.find(r => r.id === selectedRoleId)?.name}</span>
-          )}
-        </div>
-        {selectedRoleId && (
-          <button
-            onClick={() => selectRole(null)}
-            className="cursor-pointer border-none"
-            style={{
-              fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
-              background: 'rgba(255,255,255,0.1)', color: 'var(--vscode-editor-foreground)',
-              opacity: 0.7, transition: 'opacity 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      <p style={{ fontSize: '10px', opacity: 0.5, margin: '6px 0 0', lineHeight: 1.4 }}>
-        Select a role to shape Claude's perspective for this project. The role prompt is injected at the start of each new session.
-      </p>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-        {ROLE_PRESETS.map((preset) => {
-          const active = selectedRoleId === preset.id
-          return (
-            <button
-              key={preset.id}
-              onClick={() => selectRole(active ? null : preset.id)}
-              className="cursor-pointer border-none text-left"
-              style={{
-                padding: '10px 12px',
-                borderRadius: '8px',
-                background: active ? `color-mix(in srgb, ${preset.color} 12%, transparent)` : 'var(--chatui-surface-1, rgba(255,255,255,0.03))',
-                border: `1px solid ${active ? `color-mix(in srgb, ${preset.color} 35%, transparent)` : 'var(--chatui-glass-border, rgba(255,255,255,0.08))'}`,
-                transition: 'all 0.15s',
-                color: 'var(--vscode-editor-foreground)',
-              }}
-            >
-              <div className="flex items-center gap-2" style={{ marginBottom: '4px' }}>
-                <span style={{
-                  width: '8px', height: '8px', borderRadius: '50%',
-                  background: preset.color, flexShrink: 0,
-                }} />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: active ? preset.color : 'inherit' }}>
-                  {preset.name}
-                </span>
-                {active && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto' }}>
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                )}
-              </div>
-              <div style={{ fontSize: '10px', opacity: 0.55, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                {preset.prompt.slice(0, 60)}...
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ============================================================================
 // Main SettingsPanel
 // ============================================================================
 
@@ -774,9 +682,6 @@ export function SettingsPanel() {
             })}
           </div>
         </div>
-
-        {/* Role Persona */}
-        <RolePersonaSection />
 
         {/* Hooks Configuration */}
         <HooksSection />

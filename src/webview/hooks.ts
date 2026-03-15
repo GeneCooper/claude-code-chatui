@@ -4,6 +4,7 @@ import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
 import { useSkillStore } from './store'
+import { useSnippetStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { parseUsageLimitTimestamp } from './utils'
@@ -291,12 +292,18 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   settingsData: (msg) => {
-    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string; selectedRoleId?: string | null }
+    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string; customSnippets?: Array<{ id: string; name: string; prompt: string; color: string }>; selectedSnippetIds?: string[] }
     const validModes = ['fast', 'deep', 'precise']
     if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'deep'
     useSettingsStore.getState().updateSettings(data)
     if (data.selectedModel) {
       window.dispatchEvent(new CustomEvent('modelRestored', { detail: { model: data.selectedModel } }))
+    }
+    if (data.customSnippets) {
+      useSnippetStore.getState().setCustomSnippets(data.customSnippets)
+    }
+    if (data.selectedSnippetIds) {
+      useSnippetStore.getState().setSelectedIds(data.selectedSnippetIds)
     }
   },
 

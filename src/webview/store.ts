@@ -224,6 +224,54 @@ export const useSkillStore = create<SkillState>((set) => ({
 }));
 
 // ============================================================================
+// Snippet Store
+// ============================================================================
+
+export interface CustomSnippet {
+  id: string;
+  name: string;
+  prompt: string;
+  color: string;
+}
+
+interface SnippetState {
+  selectedIds: string[];
+  customSnippets: CustomSnippet[];
+  toggleSnippet: (id: string) => void;
+  setSelectedIds: (ids: string[]) => void;
+  addCustomSnippet: (snippet: CustomSnippet) => void;
+  removeCustomSnippet: (id: string) => void;
+  updateCustomSnippet: (id: string, updates: Partial<CustomSnippet>) => void;
+  setCustomSnippets: (snippets: CustomSnippet[]) => void;
+}
+
+export const useSnippetStore = create<SnippetState>((set) => ({
+  selectedIds: [],
+  customSnippets: [],
+  toggleSnippet: (id) =>
+    set((state) => ({
+      selectedIds: state.selectedIds.includes(id)
+        ? state.selectedIds.filter((i) => i !== id)
+        : [...state.selectedIds, id],
+    })),
+  setSelectedIds: (ids) => set({ selectedIds: ids }),
+  addCustomSnippet: (snippet) =>
+    set((state) => ({ customSnippets: [...state.customSnippets, snippet] })),
+  removeCustomSnippet: (id) =>
+    set((state) => ({
+      customSnippets: state.customSnippets.filter((s) => s.id !== id),
+      selectedIds: state.selectedIds.filter((i) => i !== id),
+    })),
+  updateCustomSnippet: (id, updates) =>
+    set((state) => ({
+      customSnippets: state.customSnippets.map((s) =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
+    })),
+  setCustomSnippets: (snippets) => set({ customSnippets: snippets }),
+}));
+
+// ============================================================================
 // Settings Store
 // ============================================================================
 
@@ -232,14 +280,12 @@ interface SettingsState {
   yoloMode: boolean;
   maxTurns: number;
   disallowedTools: string[];
-  selectedRoleId: string | null;
   updateSettings: (
     settings: Partial<{
       thinkingIntensity: string;
       yoloMode: boolean;
       maxTurns: number;
       disallowedTools: string[];
-      selectedRoleId: string | null;
     }>,
   ) => void;
 }
@@ -249,7 +295,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   yoloMode: true,
   maxTurns: 25,
   disallowedTools: [],
-  selectedRoleId: null,
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
 }));
 
