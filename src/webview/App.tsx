@@ -10,6 +10,7 @@ import { MCPPanel } from './components/MCPPanel'
 import { SkillsPanel } from './components/SkillsPanel'
 import { InstallModal } from './components/InstallModal'
 import { LoginModal } from './components/LoginModal'
+import { TaskChainDrawer } from './components/TaskChainDrawer'
 
 export default function App() {
   // Connect to VS Code extension host
@@ -18,6 +19,8 @@ export default function App() {
   const activeView = useUIStore((s) => s.activeView)
   const showMCPModal = useUIStore((s) => s.showMCPModal)
   const showSkillsModal = useUIStore((s) => s.showSkillsModal)
+  const showTaskChainDrawer = useUIStore((s) => s.showTaskChainDrawer)
+  const setShowTaskChainDrawer = useUIStore((s) => s.setShowTaskChainDrawer)
   const setDraftText = useUIStore((s) => s.setDraftText)
 
   const handleHintClick = (text: string) => {
@@ -38,6 +41,7 @@ export default function App() {
       {showSkillsModal && <SkillsPanel />}
       <InstallModal />
       <LoginModal />
+      <TaskChainDrawer isOpen={showTaskChainDrawer} onClose={() => setShowTaskChainDrawer(false)} />
     </div>
   )
 }

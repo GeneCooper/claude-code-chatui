@@ -338,6 +338,7 @@ interface UIState {
   platformInfo: { platform: string; isWindows: boolean } | null;
   hooksStatus: { activeCount: number; summary: string[] } | null;
   showClaudeMdBanner: boolean;
+  showTaskChainDrawer: boolean;
 
   setActiveView: (view: ActiveView) => void;
   setShowMCPModal: (show: boolean) => void;
@@ -360,6 +361,7 @@ interface UIState {
     status: { activeCount: number; summary: string[] } | null,
   ) => void;
   setShowClaudeMdBanner: (show: boolean) => void;
+  setShowTaskChainDrawer: (show: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -379,6 +381,7 @@ export const useUIStore = create<UIState>((set) => ({
   platformInfo: null,
   hooksStatus: null,
   showClaudeMdBanner: false,
+  showTaskChainDrawer: false,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
@@ -395,5 +398,6 @@ export const useUIStore = create<UIState>((set) => ({
   setPlatformInfo: (info) => set({ platformInfo: info }),
   setHooksStatus: (status) => set({ hooksStatus: status }),
   setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
+  setShowTaskChainDrawer: (show) => set({ showTaskChainDrawer: show }),
 }));
 

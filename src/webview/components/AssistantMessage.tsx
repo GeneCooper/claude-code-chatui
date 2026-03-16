@@ -3,8 +3,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { CopyButton } from './CopyButton'
-import { FlowChainBlock, isFlowChain } from './FlowChainBlock'
-import { TreeBlock, isTreeStructure } from './TreeBlock'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
 
@@ -55,32 +53,6 @@ function useDebouncedText(text: string, isStreaming: boolean, delayMs = 80): str
   return debouncedText
 }
 
-/**
- * Detect tree-like structures (using box-drawing chars or ASCII pipes with ├──/└──)
- * that remarkGfm would misinterpret as tables.
- * Now marks them with a special fence so they can be rendered as visual tree components.
- */
-function escapeTreeStructures(md: string): string {
-  // Split into code-fenced vs non-code sections to avoid double-wrapping
-  const parts = md.split(/(```[\s\S]*?```)/g)
-  return parts.map((part) => {
-    if (part.startsWith('```')) return part // already a code block
-    // Match consecutive lines that look like tree output:
-    // lines containing box-drawing chars (│├└─┌┐┘┤┬┴┼) or ASCII tree patterns (|  ├── etc.)
-    return part.replace(
-      /(?:^|\n)((?:[ \t]*[│├└┌┐┘┤┬┴┼─|].*\n?){2,})/g,
-      (match, treeBlock: string) => {
-        // Only process if the block contains actual tree connectors (├── or └──)
-        if (/[├└┌┐┘┤┬┴┼]/.test(treeBlock) || /\|[\s]*[├└]/.test(treeBlock)) {
-          const trimmed = treeBlock.replace(/\n$/, '')
-          // Use a special marker fence so we can intercept it in rendering
-          return match.replace(treeBlock, `\`\`\`tree\n${trimmed}\n\`\`\`\n`)
-        }
-        return match
-      },
-    )
-  }).join('')
-}
 
 /** Heuristic: message is artifact-worthy if it has markdown headers and is long enough */
 function isArtifactWorthy(text: string): boolean {
@@ -116,82 +88,12 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // Memoize tree-structure escaping separately, then markdown rendering
-  const escapedText = useMemo(() => escapeTreeStructures(displayText), [displayText])
-
-  // Split text into segments: regular markdown vs flow chains vs tree blocks
-  const renderedContent = useMemo(() => {
-    // Split by code fences (including our special ```tree fences)
-    const parts = escapedText.split(/(```[\s\S]*?```)/g)
-    const segments: { type: 'md' | 'flow' | 'tree'; text: string }[] = []
-
-    for (const part of parts) {
-      // Detect ```tree fenced blocks (from escapeTreeStructures)
-      const treeMatch = part.match(/^```tree\n([\s\S]*)\n```$/)
-      if (treeMatch) {
-        segments.push({ type: 'tree', text: treeMatch[1] })
-        continue
-      }
-      if (part.startsWith('```')) {
-        // Regular code block — always markdown
-        segments.push({ type: 'md', text: part })
-        continue
-      }
-      // Split by lines and detect flow chains + inline tree structures
-      const lines = part.split('\n')
-      let mdBuffer: string[] = []
-
-      const flushMd = () => {
-        if (mdBuffer.length > 0) {
-          segments.push({ type: 'md', text: mdBuffer.join('\n') })
-          mdBuffer = []
-        }
-      }
-
-      for (const line of lines) {
-        if (isFlowChain(line)) {
-          flushMd()
-          segments.push({ type: 'flow', text: line })
-        } else if (isTreeStructure(line) && line.trim().length > 20) {
-          // Single-line tree structure (inline tree connectors)
-          flushMd()
-          segments.push({ type: 'tree', text: line })
-        } else {
-          mdBuffer.push(line)
-        }
-      }
-      flushMd()
-    }
-
-    // Merge adjacent md segments
-    const merged: typeof segments = []
-    for (const seg of segments) {
-      if (seg.type === 'md' && merged.length > 0 && merged[merged.length - 1].type === 'md') {
-        merged[merged.length - 1].text += '\n' + seg.text
-      } else {
-        merged.push(seg)
-      }
-    }
-
-    // Fast path: no special blocks detected
-    if (!merged.some(s => s.type !== 'md')) {
-      return (
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {escapedText}
-        </ReactMarkdown>
-      )
-    }
-
-    return merged.map((seg, i) => {
-      if (seg.type === 'flow') return <FlowChainBlock key={`flow-${i}`} text={seg.text} />
-      if (seg.type === 'tree') return <TreeBlock key={`tree-${i}`} text={seg.text} />
-      return (
-        <ReactMarkdown key={`md-${i}`} remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {seg.text}
-        </ReactMarkdown>
-      )
-    })
-  }, [escapedText])
+  // Render markdown directly — no special block splitting
+  const renderedContent = useMemo(() => (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      {displayText}
+    </ReactMarkdown>
+  ), [displayText])
 
   return (
     <div
