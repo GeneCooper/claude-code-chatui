@@ -975,7 +975,15 @@ const handleSaveInputText: MessageHandler = (msg, ctx) => { ctx.stateManager.dra
 
 const handleOpenFile: MessageHandler = (msg) => {
   const uri = vscode.Uri.file(msg.filePath as string);
-  vscode.workspace.openTextDocument(uri).then((doc) => { vscode.window.showTextDocument(doc, { preview: true }); });
+  const line = msg.line as number | undefined;
+  vscode.workspace.openTextDocument(uri).then((doc) => {
+    const opts: vscode.TextDocumentShowOptions = { preview: true };
+    if (line && line > 0) {
+      const pos = new vscode.Position(line - 1, 0);
+      opts.selection = new vscode.Selection(pos, pos);
+    }
+    vscode.window.showTextDocument(doc, opts);
+  });
 };
 
 const handleOpenFileAtLine: MessageHandler = (msg) => {

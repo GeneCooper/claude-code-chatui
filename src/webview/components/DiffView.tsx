@@ -278,15 +278,19 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
         </svg>
 
         <button
-          className="font-mono cursor-pointer border-none bg-transparent text-inherit p-0 hover:underline"
-          style={{ fontSize: 'inherit', fontWeight: 'inherit', opacity: 0.85 }}
+          className="font-mono cursor-pointer border-none bg-transparent text-inherit p-0"
+          style={{
+            fontSize: 'inherit', fontWeight: 'inherit', opacity: 0.85,
+            textDecoration: 'none', transition: 'opacity 0.15s, text-decoration 0.15s',
+          }}
           onClick={(e) => { e.stopPropagation(); handleOpenFile() }}
-          title={filePath}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.textDecoration = 'underline' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.textDecoration = 'none' }}
+          title={`Open ${filePath}`}
         >
           {fileName}
+          {startLine ? <span style={{ opacity: 0.45, fontSize: '10px' }}>:{startLine}</span> : null}
         </button>
-
-        {startLine && <span style={{ opacity: 0.35, fontSize: '10px' }}>:{startLine}</span>}
 
         {/* Stats badge */}
         <span style={{

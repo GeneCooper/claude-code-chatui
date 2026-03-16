@@ -251,13 +251,48 @@ export class SkillService {
 // ============================================================================
 
 export class ConversationService {
+  /** Max conversations to keep on disk. Older ones are auto-deleted. */
+  private static readonly MAX_CONVERSATIONS = 100;
   private _conversationsDir: string;
   private _workspacePath: string | undefined;
+  /** Maps sessionId → filename for dedup (same session overwrites same file) */
+  private _sessionFileMap = new Map<string, string>();
 
   constructor(private readonly _context: vscode.ExtensionContext) {
     this._conversationsDir = path.join(_context.globalStorageUri.fsPath, 'conversations');
     if (!fs.existsSync(this._conversationsDir)) fs.mkdirSync(this._conversationsDir, { recursive: true });
     this._workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    this._buildSessionFileMap();
+  }
+
+  /** Scan existing files to populate the sessionId → filename map */
+  private _buildSessionFileMap(): void {
+    try {
+      const deletedFiles = new Set<string>();
+      const files = fs.readdirSync(this._conversationsDir).filter((f) => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const raw = fs.readFileSync(path.join(this._conversationsDir, file), 'utf8');
+          const data = JSON.parse(raw) as ConversationData;
+          if (data.sessionId) {
+            const existing = this._sessionFileMap.get(data.sessionId);
+            if (existing) {
+              // Keep the newer file, delete the older one
+              try { fs.unlinkSync(path.join(this._conversationsDir, existing)); deletedFiles.add(existing); } catch {}
+            }
+            this._sessionFileMap.set(data.sessionId, file);
+          }
+        } catch { /* skip corrupted */ }
+      }
+      // Sync index: remove entries pointing to deleted duplicate files
+      if (deletedFiles.size > 0) {
+        const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
+        const cleaned = index.filter((e) => !deletedFiles.has(e.filename));
+        if (cleaned.length !== index.length) {
+          void this._context.globalState.update('claude.conversationIndex', cleaned);
+        }
+      }
+    } catch { /* dir read failed */ }
   }
 
   async saveConversation(
@@ -265,8 +300,14 @@ export class ConversationService {
     totalCost: number, totalTokensInput: number, totalTokensOutput: number,
   ): Promise<void> {
     if (!sessionId || messages.length === 0) return;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `conversation-${timestamp}.json`;
+
+    // Reuse existing filename for same session, or create new one
+    let filename = this._sessionFileMap.get(sessionId);
+    if (!filename) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      filename = `conversation-${timestamp}.json`;
+      this._sessionFileMap.set(sessionId, filename);
+    }
     const filePath = path.join(this._conversationsDir, filename);
     const startTime = messages[0]?.timestamp;
     const endTime = messages[messages.length - 1]?.timestamp || new Date().toISOString();
@@ -280,9 +321,39 @@ export class ConversationService {
     };
 
     try {
-      await fsp.writeFile(filePath, JSON.stringify(conversationData, null, 2), 'utf8');
+      // Write without pretty-print to save ~30% disk space
+      await fsp.writeFile(filePath, JSON.stringify(conversationData), 'utf8');
       await this._updateConversationIndex(conversationData);
+      // Auto-cleanup old conversations beyond the limit
+      void this._cleanupOldConversations();
     } catch (err) { console.error('Failed to save conversation:', err); }
+  }
+
+  /** Remove oldest conversation files when exceeding MAX_CONVERSATIONS */
+  private async _cleanupOldConversations(): Promise<void> {
+    try {
+      const files = (await fsp.readdir(this._conversationsDir)).filter((f) => f.endsWith('.json'));
+      if (files.length <= ConversationService.MAX_CONVERSATIONS) return;
+
+      // Sort by filename (contains timestamp) — oldest first
+      files.sort();
+      const toDelete = new Set(files.slice(0, files.length - ConversationService.MAX_CONVERSATIONS));
+      for (const file of toDelete) {
+        try {
+          await fsp.unlink(path.join(this._conversationsDir, file));
+          // Remove from session map
+          for (const [sid, fname] of this._sessionFileMap) {
+            if (fname === file) { this._sessionFileMap.delete(sid); break; }
+          }
+        } catch { /* ignore */ }
+      }
+      // Sync the index: remove entries whose files were deleted
+      const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
+      const cleaned = index.filter((e) => !toDelete.has(e.filename));
+      if (cleaned.length !== index.length) {
+        await this._context.globalState.update('claude.conversationIndex', cleaned);
+      }
+    } catch { /* ignore */ }
   }
 
   async loadConversation(filename: string): Promise<ConversationData | null> {
