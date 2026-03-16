@@ -10,26 +10,10 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
   const [showInput, setShowInput] = useState(false)
   const toolName = data.toolName as string
   const rawInput = data.rawInput as Record<string, unknown> | undefined
-  const fileContentBefore = data.fileContentBefore as string | undefined
-  const filePath = rawInput?.file_path as string | undefined
-
   const isSubagent = toolName === 'Task'
   const subagentType = isSubagent ? (rawInput?.subagent_type as string) || 'Agent' : ''
   const subagentDesc = isSubagent ? (rawInput?.description as string) || '' : ''
   const subagentColor = SUBAGENT_COLORS[subagentType] || '#6366f1'
-
-  const canPreviewDiff = FILE_EDIT_TOOLS.includes(toolName) && fileContentBefore && filePath && rawInput
-
-  const handlePreviewDiff = () => {
-    if (!canPreviewDiff) return
-    let expectedContent = fileContentBefore
-    if (toolName === 'Write' && rawInput.content) {
-      expectedContent = String(rawInput.content)
-    } else if (toolName === 'Edit' && rawInput.old_string != null && rawInput.new_string != null) {
-      expectedContent = fileContentBefore.replace(String(rawInput.old_string), String(rawInput.new_string))
-    }
-    postMessage({ type: 'openDiff', oldContent: fileContentBefore, newContent: expectedContent, filePath })
-  }
 
   const getToolSummary = () => {
     if (!rawInput) return ''
@@ -149,19 +133,7 @@ export const ToolUseBlock = memo(function ToolUseBlock({ data }: Props) {
         {summary && (
           <span className="opacity-40 truncate flex-1 font-mono text-[11px]">{summary}</span>
         )}
-        {canPreviewDiff && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handlePreviewDiff()
-            }}
-            aria-label="Preview file diff"
-            className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
-          >
-            Preview Diff
-          </button>
-        )}
-        {rawInput?.file_path != null && (
+        {rawInput?.file_path != null && !FILE_EDIT_TOOLS.includes(toolName) && (
           <button
             onClick={(e) => {
               e.stopPropagation()

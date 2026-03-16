@@ -8,8 +8,8 @@ import { PROMPT_SNIPPET_PRESETS } from '../../shared/constants'
 // ---------------------------------------------------------------------------
 
 function persistSnippetState() {
-  const { selectedIds, customSnippets } = useSnippetStore.getState()
-  postMessage({ type: 'updateSettings', settings: { selectedSnippetIds: selectedIds, customSnippets } })
+  const { selectedIds, customSnippets, snippetMode } = useSnippetStore.getState()
+  postMessage({ type: 'updateSettings', settings: { selectedSnippetIds: selectedIds, customSnippets, snippetMode } })
 }
 
 /** Inject a <style> block once for keyframes & scrollbar */
@@ -496,11 +496,13 @@ const EditForm = memo(function EditForm({
 export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onClose: () => void }) {
   const selectedIds = useSnippetStore((s) => s.selectedIds)
   const customSnippets = useSnippetStore((s) => s.customSnippets)
+  const snippetMode = useSnippetStore((s) => s.snippetMode)
   const toggleSnippet = useSnippetStore((s) => s.toggleSnippet)
   const addCustomSnippet = useSnippetStore((s) => s.addCustomSnippet)
   const removeCustomSnippet = useSnippetStore((s) => s.removeCustomSnippet)
   const updateCustomSnippet = useSnippetStore((s) => s.updateCustomSnippet)
   const setSelectedIds = useSnippetStore((s) => s.setSelectedIds)
+  const setSnippetMode = useSnippetStore((s) => s.setSnippetMode)
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [newName, setNewName] = useState('')
@@ -673,8 +675,36 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                 fontSize: '10px',
                 color: 'rgba(255,255,255,0.35)',
                 marginTop: '1px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
               }}>
-                Attach to every message you send
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const newMode = snippetMode === 'single' ? 'multi' : 'single'
+                    setSnippetMode(newMode)
+                    setTimeout(persistSnippetState, 0)
+                  }}
+                  style={{
+                    background: snippetMode === 'single' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                    border: `1px solid ${snippetMode === 'single' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                    cursor: 'pointer',
+                    padding: '1px 5px',
+                    borderRadius: '3px',
+                    fontSize: '9px',
+                    fontWeight: 600,
+                    color: snippetMode === 'single' ? '#10b981' : '#f59e0b',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={snippetMode === 'single'
+                    ? 'Single mode (recommended): One focused role per message for best results. Click to switch to multi-select.'
+                    : 'Multi mode: Multiple roles at once (may reduce focus). Click to switch to single-select.'
+                  }
+                >
+                  {snippetMode === 'single' ? '● Single' : '◆ Multi'}
+                </button>
+                <span>{snippetMode === 'single' ? 'One role, maximum focus' : 'Multiple roles combined'}</span>
               </div>
             </div>
           </div>

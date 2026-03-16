@@ -170,12 +170,22 @@ export const InputArea = memo(function InputArea() {
     // Build the final text with snippet prefixes
     const snippetState = useSnippetStore.getState()
     const allSnippets = [...PROMPT_SNIPPET_PRESETS, ...snippetState.customSnippets]
-    const selectedPrompts = allSnippets
+    const selectedSnippets = allSnippets
       .filter((s) => snippetState.selectedIds.includes(s.id))
-      .map((s) => s.prompt)
-    const finalText = selectedPrompts.length > 0
-      ? `${selectedPrompts.join('\n\n')}\n\n---\n\n${trimmed}`
-      : trimmed
+
+    let finalText: string
+    if (selectedSnippets.length === 1) {
+      // Single role: clean structured format for maximum model focus
+      finalText = `<role>\n${selectedSnippets[0].prompt}\n</role>\n\n${trimmed}`
+    } else if (selectedSnippets.length > 1) {
+      // Multiple roles: numbered for clarity
+      const roleBlock = selectedSnippets
+        .map((s, i) => `${i + 1}. **${s.name}**: ${s.prompt}`)
+        .join('\n')
+      finalText = `<roles>\nAnalyze from these perspectives:\n${roleBlock}\n</roles>\n\n${trimmed}`
+    } else {
+      finalText = trimmed
+    }
 
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 

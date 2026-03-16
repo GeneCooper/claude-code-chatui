@@ -90,30 +90,6 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
             letterSpacing: '0.5px',
           }}>OUT</span>
         )}
-        {content && (
-          <CopyButton
-            text={content}
-            className="opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
-            style={{ padding: 0, background: 'none', color: 'inherit', opacity: 0.4, fontSize: '10px' }}
-          />
-        )}
-        {hasDiff && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              postMessage({
-                type: 'openDiff',
-                oldContent: fileContentBefore,
-                newContent: fileContentAfter,
-                filePath: filePath,
-              })
-            }}
-            aria-label="Open diff view"
-            className="ml-auto opacity-40 hover:opacity-80 cursor-pointer bg-transparent border-none text-inherit text-[10px]"
-          >
-            Open Diff
-          </button>
-        )}
       </div>
 
       {hasDiff && (
@@ -158,36 +134,59 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
 
       {!hasDiff && content && content !== 'Tool executed successfully' && (
         <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          {language ? (
-            <LazySyntaxHighlighter
-              language={language}
-              PreTag="div"
-              customStyle={{
-                margin: 0,
-                padding: '6px 10px',
-                paddingLeft: '10px',
-                fontSize: '11px',
-                background: 'transparent',
-                maxHeight: expanded ? 'none' : '200px',
-                overflow: expanded ? 'visible' : 'auto',
-              }}
-            >
-              {displayContent + (isLong && !expanded ? '...' : '')}
-            </LazySyntaxHighlighter>
-          ) : (
-            <pre
-              className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0"
-              style={{
-                padding: '6px 10px',
-                paddingLeft: '10px',
-                maxHeight: expanded ? 'none' : '200px',
-                overflow: expanded ? 'visible' : 'auto',
-              }}
-            >
-              {displayContent}
-              {isLong && !expanded && '...'}
-            </pre>
-          )}
+          {/* Content box with Copy in top-right */}
+          <div style={{
+            margin: '4px 6px',
+            borderRadius: '4px',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            background: 'rgba(0, 0, 0, 0.15)',
+            overflow: 'hidden',
+          }}>
+            {/* Box header with Copy */}
+            <div className="flex items-center" style={{
+              padding: '2px 8px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+              background: 'rgba(255, 255, 255, 0.02)',
+            }}>
+              {language && (
+                <span className="text-[9px] opacity-30 font-mono uppercase">{language}</span>
+              )}
+              <CopyButton
+                text={content}
+                className="ml-auto cursor-pointer border-none text-inherit text-[10px]"
+                style={{ padding: '1px 4px', background: 'none', color: 'inherit', opacity: 0.4, fontSize: '10px' }}
+              />
+            </div>
+            {/* Content */}
+            {language ? (
+              <LazySyntaxHighlighter
+                language={language}
+                PreTag="div"
+                customStyle={{
+                  margin: 0,
+                  padding: '6px 10px',
+                  fontSize: '11px',
+                  background: 'transparent',
+                  maxHeight: expanded ? 'none' : '200px',
+                  overflow: expanded ? 'visible' : 'auto',
+                }}
+              >
+                {displayContent + (isLong && !expanded ? '...' : '')}
+              </LazySyntaxHighlighter>
+            ) : (
+              <pre
+                className="whitespace-pre-wrap font-mono text-[11px] opacity-70 m-0"
+                style={{
+                  padding: '6px 10px',
+                  maxHeight: expanded ? 'none' : '200px',
+                  overflow: expanded ? 'visible' : 'auto',
+                }}
+              >
+                {displayContent}
+                {isLong && !expanded && '...'}
+              </pre>
+            )}
+          </div>
           {isLong && (
             <button
               onClick={() => setExpanded(!expanded)}

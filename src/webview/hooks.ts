@@ -292,7 +292,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   settingsData: (msg) => {
-    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string; customSnippets?: Array<{ id: string; name: string; prompt: string; color: string }>; selectedSnippetIds?: string[] }
+    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string; customSnippets?: Array<{ id: string; name: string; prompt: string; color: string }>; selectedSnippetIds?: string[]; snippetMode?: string }
     const validModes = ['fast', 'deep', 'precise']
     if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'deep'
     useSettingsStore.getState().updateSettings(data)
@@ -304,6 +304,9 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     }
     if (data.selectedSnippetIds) {
       useSnippetStore.getState().setSelectedIds(data.selectedSnippetIds)
+    }
+    if (data.snippetMode && (data.snippetMode === 'single' || data.snippetMode === 'multi')) {
+      useSnippetStore.getState().setSnippetMode(data.snippetMode)
     }
   },
 

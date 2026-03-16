@@ -8,7 +8,8 @@ import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { DiagnosticsBlock } from './DiagnosticsBlock'
 import { ErrorBoundary } from './ErrorBoundary'
-import { SUBAGENT_COLORS } from '../../shared/constants'
+import { DiffView } from './DiffView'
+import { SUBAGENT_COLORS, FILE_EDIT_TOOLS } from '../../shared/constants'
 import type { DiagnosticsData } from '../../shared/types'
 
 // ============================================================================
@@ -276,8 +277,9 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
   const iconColor = isError ? '#e74c3c' : hasResult ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.4)'
   const isExecuting = !hasResult
 
-  // Auto-expand errors
-  const effectiveExpanded = isError || isExpanded
+  // Auto-expand errors and edit tools with diffs (always show diff content)
+  const isEditWithDiff = FILE_EDIT_TOOLS.includes(toolName) && resultData?.fileContentBefore !== undefined && resultData?.fileContentAfter !== undefined
+  const effectiveExpanded = isError || isExpanded || isEditWithDiff
 
   // Duration display
   const durationStr = item.duration != null ? `${item.duration}s` : null
@@ -331,6 +333,21 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
             )}
           </div>
         )}
+      </div>
+    )
+  }
+
+  // Edit tool with diff — render DiffView directly, no wrapper layers
+  if (isEditWithDiff && hasResult && resultData) {
+    return (
+      <div data-error={isError || undefined} style={{ marginBottom: '2px' }}>
+        <DiffView
+          oldContent={resultData.fileContentBefore as string}
+          newContent={resultData.fileContentAfter as string}
+          filePath={(rawInput?.file_path as string) || ''}
+          startLine={resultData.startLine as number | undefined}
+          startLines={resultData.startLines as number[] | undefined}
+        />
       </div>
     )
   }

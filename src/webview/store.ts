@@ -237,24 +237,40 @@ export interface CustomSnippet {
 interface SnippetState {
   selectedIds: string[];
   customSnippets: CustomSnippet[];
+  snippetMode: 'single' | 'multi';
   toggleSnippet: (id: string) => void;
   setSelectedIds: (ids: string[]) => void;
+  setSnippetMode: (mode: 'single' | 'multi') => void;
   addCustomSnippet: (snippet: CustomSnippet) => void;
   removeCustomSnippet: (id: string) => void;
   updateCustomSnippet: (id: string, updates: Partial<CustomSnippet>) => void;
   setCustomSnippets: (snippets: CustomSnippet[]) => void;
 }
 
-export const useSnippetStore = create<SnippetState>((set) => ({
+export const useSnippetStore = create<SnippetState>((set, get) => ({
   selectedIds: [],
   customSnippets: [],
+  snippetMode: 'single',
   toggleSnippet: (id) =>
-    set((state) => ({
-      selectedIds: state.selectedIds.includes(id)
-        ? state.selectedIds.filter((i) => i !== id)
-        : [...state.selectedIds, id],
-    })),
+    set((state) => {
+      if (state.selectedIds.includes(id)) {
+        return { selectedIds: state.selectedIds.filter((i) => i !== id) };
+      }
+      // Single mode: replace selection; Multi mode: append
+      return {
+        selectedIds: state.snippetMode === 'single' ? [id] : [...state.selectedIds, id],
+      };
+    }),
   setSelectedIds: (ids) => set({ selectedIds: ids }),
+  setSnippetMode: (mode) => {
+    const state = get();
+    if (mode === 'single' && state.selectedIds.length > 1) {
+      // Keep only the last selected snippet when switching to single mode
+      set({ snippetMode: mode, selectedIds: [state.selectedIds[state.selectedIds.length - 1]] });
+    } else {
+      set({ snippetMode: mode });
+    }
+  },
   addCustomSnippet: (snippet) =>
     set((state) => ({ customSnippets: [...state.customSnippets, snippet] })),
   removeCustomSnippet: (id) =>

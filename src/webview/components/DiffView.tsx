@@ -192,18 +192,6 @@ const UnifiedIcon = () => (
   </svg>
 )
 
-const DiffEditorIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M2 3.5V2h5v1.5H2zm0 4V6h7v1.5H2zm0 4V10h5v1.5H2zm14-8V2H9v1.5h7zm0 4V6H9v1.5h7zm0 4V10H9v1.5h7z"/>
-  </svg>
-)
-
-const RevertIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M3.5 2v3.5H0V7h4.5a1 1 0 001-1V2H3.5zM8 3a5 5 0 110 10A5 5 0 018 3zm0 1.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"/>
-  </svg>
-)
-
 const CopyIcon = () => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
     <path d="M4 4h1V2h7v7h-2v1h3V1H4v3zm-1 1v9h9V5H3zm1 1h7v7H4V6z"/>
@@ -241,7 +229,6 @@ function ToolBtn({ onClick, title, active, children }: {
 // ===========================================================================
 export function DiffView({ oldContent, newContent, filePath, startLine }: Props) {
   const [collapsed, setCollapsed] = useState(false)
-  const [reverted, setReverted] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('unified')
   const [copied, setCopied] = useState(false)
 
@@ -268,17 +255,6 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
     postMessage({ type: 'openFile', filePath, line: startLine })
   }, [filePath, startLine])
 
-  const handleOpenDiff = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    postMessage({ type: 'openDiff', oldContent, newContent, filePath })
-  }, [oldContent, newContent, filePath])
-
-  const handleRevert = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    postMessage({ type: 'revertFile', filePath, oldContent })
-    setReverted(true)
-  }, [filePath, oldContent])
-
   const handleCopy = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     const text = diffLines
@@ -298,8 +274,6 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
       style={{
         border: '1px solid var(--vscode-panel-border)',
         borderRadius: '6px',
-        opacity: reverted ? 0.45 : 1,
-        transition: 'opacity 0.3s ease',
       }}
     >
       {/* ====================== HEADER ====================== */}
@@ -344,7 +318,7 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
         {/* Spacer */}
         <span className="flex-1" />
 
-        {/* Toolbar */}
+        {/* Toolbar — view toggle + copy only */}
         <span className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
           <ToolBtn onClick={() => setViewMode('unified')} title="Unified view" active={viewMode === 'unified'}>
             <UnifiedIcon />
@@ -361,16 +335,6 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
               : <CopyIcon />
             }
           </ToolBtn>
-          <ToolBtn onClick={handleOpenDiff} title="Open in VS Code diff editor">
-            <DiffEditorIcon />
-          </ToolBtn>
-          {!reverted ? (
-            <ToolBtn onClick={handleRevert} title="Revert changes">
-              <RevertIcon />
-            </ToolBtn>
-          ) : (
-            <span style={{ fontSize: '9px', opacity: 0.5, padding: '0 4px' }}>reverted</span>
-          )}
         </span>
       </div>
 

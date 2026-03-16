@@ -655,6 +655,7 @@ interface WebviewSettings {
   disallowedTools: string[];
   customSnippets: Array<{ id: string; name: string; prompt: string; color: string }>;
   selectedSnippetIds: string[];
+  snippetMode: string;
 }
 
 const CONFIG_KEYS = {
@@ -677,6 +678,7 @@ const CONFIG_KEYS = {
   DISALLOWED_TOOLS: 'disallowedTools',
   SNIPPETS_CUSTOM: 'promptSnippets.custom',
   SNIPPETS_SELECTED: 'promptSnippets.selectedIds',
+  SNIPPETS_MODE: 'promptSnippets.mode',
 } as const;
 
 const DEFAULTS = {
@@ -699,6 +701,7 @@ const DEFAULTS = {
   DISALLOWED_TOOLS: [] as string[],
   SNIPPETS_CUSTOM: [] as Array<{ id: string; name: string; prompt: string; color: string }>,
   SNIPPETS_SELECTED: [] as string[],
+  SNIPPETS_MODE: 'single' as string,
 };
 
 export class SettingsManager {
@@ -732,6 +735,7 @@ export class SettingsManager {
       disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
       customSnippets: config.get<Array<{ id: string; name: string; prompt: string; color: string }>>(CONFIG_KEYS.SNIPPETS_CUSTOM, DEFAULTS.SNIPPETS_CUSTOM),
       selectedSnippetIds: config.get<string[]>(CONFIG_KEYS.SNIPPETS_SELECTED, DEFAULTS.SNIPPETS_SELECTED),
+      snippetMode: config.get<string>(CONFIG_KEYS.SNIPPETS_MODE, DEFAULTS.SNIPPETS_MODE),
     };
   }
 
@@ -815,6 +819,9 @@ export class SettingsManager {
     if (Array.isArray(settings.selectedSnippetIds)) {
       await config.update(CONFIG_KEYS.SNIPPETS_SELECTED, settings.selectedSnippetIds, vscode.ConfigurationTarget.Global);
     }
+    if (typeof settings.snippetMode === 'string' && ['single', 'multi'].includes(settings.snippetMode)) {
+      await config.update(CONFIG_KEYS.SNIPPETS_MODE, settings.snippetMode, vscode.ConfigurationTarget.Global);
+    }
 
   }
 
@@ -884,7 +891,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
 
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds, snippetMode: settings.snippetMode } });
 
   // Send active hooks summary so webview can show indicator
   try {
@@ -1023,7 +1030,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds, snippetMode: settings.snippetMode } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {
