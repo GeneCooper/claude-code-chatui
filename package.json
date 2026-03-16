@@ -12,10 +12,20 @@
   },
   "keywords": [
     "claude",
+    "claude-code",
+    "claude-code-gui",
     "ai",
+    "ai-chat",
     "chat",
+    "chatui",
     "coding-assistant",
-    "claude-code"
+    "gui-wrapper",
+    "claude-terminal",
+    "anthropic",
+    "mcp",
+    "ai-pair-programming",
+    "code-generation",
+    "inline-diff"
   ],
   "engines": {
     "vscode": "^1.100.0"

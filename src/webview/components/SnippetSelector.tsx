@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo, useMemo, useCallback } from 'react'
 import { useSnippetStore, type CustomSnippet } from '../store'
 import { postMessage } from '../hooks'
 import { PROMPT_SNIPPET_PRESETS } from '../../shared/constants'
+import { t } from '../i18n'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -100,7 +101,7 @@ export const SnippetButton = memo(function SnippetButton({ onClick }: { onClick:
         <line x1="16" y1="17" x2="8" y2="17" />
       </svg>
 
-      {count === 0 && <span>提示词</span>}
+      {count === 0 && <span>{t('snippets')}</span>}
 
       {/* Selected snippet pills */}
       {selectedSnippets.length > 0 && (
@@ -287,7 +288,7 @@ const SnippetCard = memo(function SnippetCard({
                   alignItems: 'center',
                   transition: 'all 0.15s ease',
                 }}
-                title="Edit snippet"
+                title={t('snippets.edit')}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.12)'
                   e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
@@ -315,7 +316,7 @@ const SnippetCard = memo(function SnippetCard({
                   alignItems: 'center',
                   transition: 'all 0.15s ease',
                 }}
-                title="Delete snippet"
+                title={t('snippets.delete')}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'rgba(239,68,68,0.15)'
                   e.currentTarget.style.color = '#ef4444'
@@ -389,7 +390,7 @@ const EditForm = memo(function EditForm({
           autoFocus
           value={name}
           onChange={(e) => onChangeName(e.target.value)}
-          placeholder="Snippet name"
+          placeholder={t('snippets.namePlaceholder')}
           style={{
             width: '100%',
             padding: '8px 10px',
@@ -417,7 +418,7 @@ const EditForm = memo(function EditForm({
         <textarea
           value={prompt}
           onChange={(e) => onChangePrompt(e.target.value)}
-          placeholder="Enter the prompt content that will be prepended to your messages..."
+          placeholder={t('snippets.promptPlaceholder')}
           rows={4}
           style={{
             width: '100%',
@@ -464,7 +465,7 @@ const EditForm = memo(function EditForm({
             e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
           }}
         >
-          Cancel
+          {t('snippets.cancel')}
         </button>
         <button
           onClick={onSave}
@@ -669,7 +670,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                 color: 'var(--vscode-foreground)',
                 letterSpacing: '-0.1px',
               }}>
-                Prompt Snippets
+                {t('snippets.title')}
               </div>
               <div style={{
                 fontSize: '10px',
@@ -697,14 +698,11 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                     color: snippetMode === 'single' ? '#10b981' : '#f59e0b',
                     transition: 'all 0.15s ease',
                   }}
-                  title={snippetMode === 'single'
-                    ? 'Single mode (recommended): One focused role per message for best results. Click to switch to multi-select.'
-                    : 'Multi mode: Multiple roles at once (may reduce focus). Click to switch to single-select.'
-                  }
+                  title={snippetMode === 'single' ? t('snippets.singleTip') : t('snippets.multiTip')}
                 >
-                  {snippetMode === 'single' ? '● Single' : '◆ Multi'}
+                  {snippetMode === 'single' ? t('snippets.modeSingle') : t('snippets.modeMulti')}
                 </button>
-                <span>{snippetMode === 'single' ? 'One role, maximum focus' : 'Multiple roles combined'}</span>
+                <span>{snippetMode === 'single' ? t('snippets.singleDesc') : t('snippets.multiDesc')}</span>
               </div>
             </div>
           </div>
@@ -806,7 +804,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
               ref={searchRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search snippets..."
+              placeholder={t('snippets.search')}
               style={{
                 width: '100%',
                 padding: '7px 10px 7px 28px',
@@ -879,7 +877,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                 alignItems: 'center',
                 gap: '8px',
               }}>
-                <span>Built-in</span>
+                <span>{t('snippets.builtIn')}</span>
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.04)' }} />
                 <span style={{ fontWeight: 500, letterSpacing: '0', textTransform: 'none', fontSize: '9px' }}>
                   {filteredBuiltIn.length}
@@ -914,7 +912,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                 alignItems: 'center',
                 gap: '8px',
               }}>
-                <span>Custom</span>
+                <span>{t('snippets.custom')}</span>
                 <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.04)' }} />
                 <span style={{ fontWeight: 500, letterSpacing: '0', textTransform: 'none', fontSize: '9px' }}>
                   {filteredCustom.length}
@@ -931,7 +929,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                         onChangePrompt={setEditPrompt}
                         onSave={handleSaveEdit}
                         onCancel={() => setEditingId(null)}
-                        saveLabel="Save"
+                        saveLabel={t('snippets.save')}
                         color={snippet.color}
                       />
                     </div>
@@ -966,7 +964,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-              No snippets match "{searchQuery}"
+              {t('snippets.noMatch')} "{searchQuery}"
             </div>
           )}
         </div>
@@ -1016,7 +1014,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                   <line x1="8" y1="3" x2="8" y2="13" /><line x1="3" y1="8" x2="13" y2="8" />
                 </svg>
               </div>
-              Create custom snippet
+              {t('snippets.createCustom')}
             </button>
           ) : (
             <div style={{
@@ -1030,7 +1028,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                 textTransform: 'uppercase',
                 letterSpacing: '0.8px',
               }}>
-                New Snippet
+                {t('snippets.new')}
               </div>
               <EditForm
                 name={newName}
@@ -1039,7 +1037,7 @@ export const SnippetDropdown = memo(function SnippetDropdown({ onClose }: { onCl
                 onChangePrompt={setNewPrompt}
                 onSave={handleAdd}
                 onCancel={() => { setShowAddForm(false); setNewName(''); setNewPrompt('') }}
-                saveLabel="Create"
+                saveLabel={t('snippets.create')}
               />
             </div>
           )}

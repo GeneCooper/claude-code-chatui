@@ -29,8 +29,6 @@ export function UsageIndicator() {
   const hasTokenData = tokens.totalTokensInput > 0 || tokens.totalTokensOutput > 0
   const hasUsageData = !!usageData
 
-  if (!hasTokenData && !hasUsageData) return null
-
   const usageLabel = accountType === 'max' ? 'Max Plan Usage' : accountType === 'pro' ? 'Pro Plan Usage' : 'API Usage'
 
   const sessionPercent = usageData ? Math.round((usageData.currentSession.usageCost / usageData.currentSession.costLimit) * 100) : 0
@@ -66,13 +64,13 @@ export function UsageIndicator() {
           height: '28px',
           lineHeight: '28px',
         }}
-        title={hasUsageData ? `Usage: ${sessionPercent}% (5h) / ${weeklyPercent}% (7d)` : `Tokens: ${fmtTokens(tokens.totalTokensInput)} in / ${fmtTokens(tokens.totalTokensOutput)} out`}
+        title={hasUsageData ? `Usage: ${sessionPercent}% (5h) / ${weeklyPercent}% (7d)` : hasTokenData ? `Tokens: ${fmtTokens(tokens.totalTokensInput)} in / ${fmtTokens(tokens.totalTokensOutput)} out` : 'Usage'}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
           <circle cx="12" cy="12" r="4" />
         </svg>
-        {hasUsageData ? <span>{maxPercent}%</span> : <span>{fmtTokens(tokens.totalTokensInput + tokens.totalTokensOutput)}</span>}
+        {hasUsageData ? <span>{maxPercent}%</span> : hasTokenData ? <span>{fmtTokens(tokens.totalTokensInput + tokens.totalTokensOutput)}</span> : <span>--%</span>}
       </div>
 
       {/* Hover panel */}

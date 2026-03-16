@@ -8,6 +8,7 @@ import type {
   MCPServerConfig,
 } from '../shared/types';
 import type { PanelManager } from './panelManager';
+import { t } from './i18n';
 import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
@@ -577,7 +578,7 @@ export class ClaudeMessageProcessor {
       const sessionNotFound = allErrors.some((e) => e.includes('No conversation found with session ID'));
       if (sessionNotFound) {
         this._callbacks.onSessionNotFound?.();
-        this._poster.postMessage({ type: 'error', data: '会话已过期，请重新发送消息以开始新对话。' });
+        this._poster.postMessage({ type: 'error', data: t('error.sessionExpired') });
       } else {
         for (const err of allErrors) {
           this._poster.postMessage({ type: 'error', data: err });
@@ -884,7 +885,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   ctx.postMessage({ type: 'ready', data: 'Extension ready' });
   ctx.postMessage({
     type: 'platformInfo',
-    data: { platform: process.platform, isWindows: process.platform === 'win32' },
+    data: { platform: process.platform, isWindows: process.platform === 'win32', locale: vscode.env.language },
   });
   checkCliAvailable(ctx);
   checkClaudeMdExists(ctx);
@@ -910,6 +911,9 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     }
     ctx.postMessage({ type: 'hooksStatus', data: { activeCount, summary } });
   } catch { /* non-critical */ }
+
+  // Trigger immediate usage fetch so the indicator shows right away
+  void ctx.usageService.fetchUsageData();
 
   // Replay conversation to restore webview state
   const conversation = ctx.messageProcessor.currentConversation;
@@ -1020,7 +1024,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
   const filename = msg.filename as string;
   const conversation = await ctx.conversationService.loadConversation(filename);
   if (!conversation) {
-    ctx.postMessage({ type: 'error', data: '加载历史会话失败' });
+    ctx.postMessage({ type: 'error', data: t('error.loadConversation') });
     return;
   }
   ctx.panelManager?.createNewPanel(undefined, false, {
@@ -1086,7 +1090,7 @@ const handleRevertFile: MessageHandler = async (msg, ctx) => {
     const fileName = (msg.filePath as string).split(/[\\/]/).pop() || 'file';
     vscode.window.showInformationMessage(`Reverted: ${fileName}`);
   } catch {
-    ctx.postMessage({ type: 'error', data: '文件还原失败' });
+    ctx.postMessage({ type: 'error', data: t('error.revertFile') });
   }
 };
 
@@ -1271,7 +1275,7 @@ const handleSaveHooks: MessageHandler = (msg, ctx) => {
     writeClaudeSettings(settings);
     ctx.postMessage({ type: 'hooksSaved' });
   } catch {
-    ctx.postMessage({ type: 'error', data: '保存 Hooks 配置失败' });
+    ctx.postMessage({ type: 'error', data: t('error.saveHooks') });
   }
 };
 

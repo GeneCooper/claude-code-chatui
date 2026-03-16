@@ -7,6 +7,7 @@ import { useSkillStore } from './store'
 import { useSnippetStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
+import { setLocale } from './i18n'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
 import type { UsageData, SkillConfig } from '../shared/types'
@@ -347,7 +348,9 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   platformInfo: (msg) => {
-    useUIStore.getState().setPlatformInfo(msg.data as { platform: string; isWindows: boolean })
+    const data = msg.data as { platform: string; isWindows: boolean; locale?: string }
+    useUIStore.getState().setPlatformInfo(data)
+    if (data.locale) setLocale(data.locale)
   },
 
   hooksStatus: (msg) => {

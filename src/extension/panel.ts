@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ClaudeService } from './claude';
+import { t } from './i18n';
 import { ConversationService, UsageService, MCPService, SkillService } from './storage';
 import { PermissionService } from './claude';
 import {
@@ -287,7 +288,7 @@ export class PanelProvider {
   async loadConversation(filename: string): Promise<void> {
     const conversation = await this._conversationService.loadConversation(filename);
     if (!conversation) {
-      this._postMessage({ type: 'error', data: '加载历史会话失败' });
+      this._postMessage({ type: 'error', data: t('error.loadConversation') });
       return;
     }
 
@@ -686,7 +687,7 @@ export class PanelProvider {
         this._postMessage({ type: 'error', data: error });
         if (error.includes('permission') || error.includes('denied')) {
           if (!this._settingsManager.isYoloModeEnabled()) {
-            this._postMessage({ type: 'error', data: '提示：在设置中启用 YOLO 模式可跳过权限确认。' });
+            this._postMessage({ type: 'error', data: t('tip.yoloMode') });
           }
         }
       }
