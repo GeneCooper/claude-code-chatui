@@ -100,7 +100,7 @@ export const SnippetButton = memo(function SnippetButton({ onClick }: { onClick:
         <line x1="16" y1="17" x2="8" y2="17" />
       </svg>
 
-      {count === 0 && <span>Snippets</span>}
+      {count === 0 && <span>提示词</span>}
 
       {/* Selected snippet pills */}
       {selectedSnippets.length > 0 && (

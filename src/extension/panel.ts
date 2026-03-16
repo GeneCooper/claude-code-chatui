@@ -287,7 +287,7 @@ export class PanelProvider {
   async loadConversation(filename: string): Promise<void> {
     const conversation = await this._conversationService.loadConversation(filename);
     if (!conversation) {
-      this._postMessage({ type: 'error', data: 'Failed to load conversation' });
+      this._postMessage({ type: 'error', data: '加载历史会话失败' });
       return;
     }
 
@@ -686,7 +686,7 @@ export class PanelProvider {
         this._postMessage({ type: 'error', data: error });
         if (error.includes('permission') || error.includes('denied')) {
           if (!this._settingsManager.isYoloModeEnabled()) {
-            this._postMessage({ type: 'error', data: 'Tip: Enable YOLO mode in Settings to skip permission prompts.' });
+            this._postMessage({ type: 'error', data: '提示：在设置中启用 YOLO 模式可跳过权限确认。' });
           }
         }
       }

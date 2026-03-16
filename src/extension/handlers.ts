@@ -577,7 +577,7 @@ export class ClaudeMessageProcessor {
       const sessionNotFound = allErrors.some((e) => e.includes('No conversation found with session ID'));
       if (sessionNotFound) {
         this._callbacks.onSessionNotFound?.();
-        this._poster.postMessage({ type: 'error', data: 'Session expired. Send your message again to start a new conversation.' });
+        this._poster.postMessage({ type: 'error', data: '会话已过期，请重新发送消息以开始新对话。' });
       } else {
         for (const err of allErrors) {
           this._poster.postMessage({ type: 'error', data: err });
@@ -1020,7 +1020,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
   const filename = msg.filename as string;
   const conversation = await ctx.conversationService.loadConversation(filename);
   if (!conversation) {
-    ctx.postMessage({ type: 'error', data: 'Failed to load conversation' });
+    ctx.postMessage({ type: 'error', data: '加载历史会话失败' });
     return;
   }
   ctx.panelManager?.createNewPanel(undefined, false, {
@@ -1086,7 +1086,7 @@ const handleRevertFile: MessageHandler = async (msg, ctx) => {
     const fileName = (msg.filePath as string).split(/[\\/]/).pop() || 'file';
     vscode.window.showInformationMessage(`Reverted: ${fileName}`);
   } catch {
-    ctx.postMessage({ type: 'error', data: 'Failed to revert file' });
+    ctx.postMessage({ type: 'error', data: '文件还原失败' });
   }
 };
 
@@ -1271,7 +1271,7 @@ const handleSaveHooks: MessageHandler = (msg, ctx) => {
     writeClaudeSettings(settings);
     ctx.postMessage({ type: 'hooksSaved' });
   } catch {
-    ctx.postMessage({ type: 'error', data: 'Failed to save hooks configuration' });
+    ctx.postMessage({ type: 'error', data: '保存 Hooks 配置失败' });
   }
 };
 
