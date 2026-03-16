@@ -57,6 +57,15 @@ export function activate(context: vscode.ExtensionContext): void {
     panelManager,
   );
 
+  // When AI summary is generated asynchronously, broadcast updated list to all panels + sidebar
+  conversationService.onSummaryUpdated = () => {
+    panelManager.broadcastConversationList();
+    sidebarProvider.postMessageToWebview({
+      type: 'conversationList',
+      data: conversationService.getConversationList(),
+    });
+  };
+
   // Create sidebar webview provider
   const webviewProvider = new WebviewProvider(context.extensionUri, context, sidebarProvider, conversationService);
 

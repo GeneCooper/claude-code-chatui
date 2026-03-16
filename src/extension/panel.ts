@@ -788,6 +788,11 @@ export class PanelProvider {
       this._webview.postMessage(message);
     }
   }
+
+  /** Public wrapper for broadcasting system messages (e.g. updated conversation list) */
+  postMessageToWebview(message: Record<string, unknown>): void {
+    this._postMessage(message);
+  }
 }
 
 // ============================================================================

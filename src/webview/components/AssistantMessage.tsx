@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { CopyButton } from './CopyButton'
 import { FlowChainBlock, isFlowChain } from './FlowChainBlock'
+import { TreeBlock, isTreeStructure } from './TreeBlock'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
 
@@ -56,7 +57,8 @@ function useDebouncedText(text: string, isStreaming: boolean, delayMs = 80): str
 
 /**
  * Detect tree-like structures (using box-drawing chars or ASCII pipes with ├──/└──)
- * that remarkGfm would misinterpret as tables, and wrap them in fenced code blocks.
+ * that remarkGfm would misinterpret as tables.
+ * Now marks them with a special fence so they can be rendered as visual tree components.
  */
 function escapeTreeStructures(md: string): string {
   // Split into code-fenced vs non-code sections to avoid double-wrapping
@@ -68,10 +70,11 @@ function escapeTreeStructures(md: string): string {
     return part.replace(
       /(?:^|\n)((?:[ \t]*[│├└┌┐┘┤┬┴┼─|].*\n?){2,})/g,
       (match, treeBlock: string) => {
-        // Only wrap if the block contains actual tree connectors (├── or └──)
+        // Only process if the block contains actual tree connectors (├── or └──)
         if (/[├└┌┐┘┤┬┴┼]/.test(treeBlock) || /\|[\s]*[├└]/.test(treeBlock)) {
           const trimmed = treeBlock.replace(/\n$/, '')
-          return match.replace(treeBlock, `\`\`\`\n${trimmed}\n\`\`\`\n`)
+          // Use a special marker fence so we can intercept it in rendering
+          return match.replace(treeBlock, `\`\`\`tree\n${trimmed}\n\`\`\`\n`)
         }
         return match
       },
@@ -116,19 +119,25 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
   // Memoize tree-structure escaping separately, then markdown rendering
   const escapedText = useMemo(() => escapeTreeStructures(displayText), [displayText])
 
-  // Split text into segments: regular markdown vs flow chains
+  // Split text into segments: regular markdown vs flow chains vs tree blocks
   const renderedContent = useMemo(() => {
-    // Don't process flow chains inside code blocks
+    // Split by code fences (including our special ```tree fences)
     const parts = escapedText.split(/(```[\s\S]*?```)/g)
-    const segments: { type: 'md' | 'flow'; text: string }[] = []
+    const segments: { type: 'md' | 'flow' | 'tree'; text: string }[] = []
 
     for (const part of parts) {
+      // Detect ```tree fenced blocks (from escapeTreeStructures)
+      const treeMatch = part.match(/^```tree\n([\s\S]*)\n```$/)
+      if (treeMatch) {
+        segments.push({ type: 'tree', text: treeMatch[1] })
+        continue
+      }
       if (part.startsWith('```')) {
-        // Code block — always markdown
+        // Regular code block — always markdown
         segments.push({ type: 'md', text: part })
         continue
       }
-      // Split by lines and detect flow chains
+      // Split by lines and detect flow chains + inline tree structures
       const lines = part.split('\n')
       let mdBuffer: string[] = []
 
@@ -143,6 +152,10 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
         if (isFlowChain(line)) {
           flushMd()
           segments.push({ type: 'flow', text: line })
+        } else if (isTreeStructure(line) && line.trim().length > 20) {
+          // Single-line tree structure (inline tree connectors)
+          flushMd()
+          segments.push({ type: 'tree', text: line })
         } else {
           mdBuffer.push(line)
         }
@@ -160,8 +173,8 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
       }
     }
 
-    // Check if there are any flow chains — if not, render as pure markdown (fast path)
-    if (!merged.some(s => s.type === 'flow')) {
+    // Fast path: no special blocks detected
+    if (!merged.some(s => s.type !== 'md')) {
       return (
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {escapedText}
@@ -169,15 +182,15 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
       )
     }
 
-    return merged.map((seg, i) =>
-      seg.type === 'flow' ? (
-        <FlowChainBlock key={`flow-${i}`} text={seg.text} />
-      ) : (
+    return merged.map((seg, i) => {
+      if (seg.type === 'flow') return <FlowChainBlock key={`flow-${i}`} text={seg.text} />
+      if (seg.type === 'tree') return <TreeBlock key={`tree-${i}`} text={seg.text} />
+      return (
         <ReactMarkdown key={`md-${i}`} remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {seg.text}
         </ReactMarkdown>
       )
-    )
+    })
   }, [escapedText])
 
   return (

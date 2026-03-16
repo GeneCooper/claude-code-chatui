@@ -120,6 +120,15 @@ export class PanelManager {
     }, null, this._disposables);
   }
 
+  /** Broadcast updated conversation list to all open panels */
+  broadcastConversationList(): void {
+    const list = this._conversationService.getConversationList();
+    const msg = { type: 'conversationList', data: list };
+    for (const { provider } of this._panels.values()) {
+      provider.postMessageToWebview(msg);
+    }
+  }
+
   disposeAll(): void {
     for (const { provider, claudeService, panel } of this._panels.values()) {
       provider.dispose();

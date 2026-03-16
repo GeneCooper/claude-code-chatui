@@ -257,6 +257,12 @@ export class ConversationService {
   private _workspacePath: string | undefined;
   /** Maps sessionId → filename for dedup (same session overwrites same file) */
   private _sessionFileMap = new Map<string, string>();
+  /** Track sessions that already have AI-generated summaries */
+  private _aiSummaryGenerated = new Set<string>();
+  /** Track sessions with pending AI summary generation */
+  private _aiSummaryPending = new Set<string>();
+  /** Callback to notify when summary is updated (set by panel/handler) */
+  onSummaryUpdated?: (sessionId: string) => void;
 
   constructor(private readonly _context: vscode.ExtensionContext) {
     this._conversationsDir = path.join(_context.globalStorageUri.fsPath, 'conversations');
@@ -444,9 +450,29 @@ export class ConversationService {
     return this.loadConversation(list[0].filename);
   }
 
+  /**
+   * Strip common prompt wrapper tags (<role>, <system>, <context>, etc.)
+   * to extract the user's actual question from a message.
+   */
+  private _stripPromptTags(text: string): string {
+    // Remove <role>...</role>, <system>...</system>, <context>...</context> and similar blocks
+    let cleaned = text
+      .replace(/<(role|system|context|system-prompt|instruction|persona)>[\s\S]*?<\/\1>/gi, '')
+      .trim();
+
+    // Also remove standalone opening/closing tags that might not be paired
+    cleaned = cleaned
+      .replace(/<\/?(role|system|context|system-prompt|instruction|persona)>/gi, '')
+      .trim();
+
+    // If stripping removed everything, return original (the entire message was a prompt)
+    return cleaned || text;
+  }
+
   /** Extract a concise summary title from conversation messages */
   private _generateSummary(messages: ConversationMessage[]): string {
     let firstUserMessage = '';
+    let firstUserActualQuestion = ''; // After stripping prompt tags
     let firstAssistantText = '';
     const toolNames = new Set<string>();
 
@@ -455,7 +481,10 @@ export class ConversationService {
         const text = typeof msg.data === 'string'
           ? msg.data
           : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
-        if (text) firstUserMessage = text;
+        if (text) {
+          firstUserMessage = text;
+          firstUserActualQuestion = this._stripPromptTags(text);
+        }
       }
       if (msg.messageType === 'output' && !firstAssistantText) {
         const text = typeof msg.data === 'string' ? msg.data : '';
@@ -468,22 +497,36 @@ export class ConversationService {
       }
     }
 
-    // Strategy: use assistant's first response as summary (it usually describes what it's doing)
-    // Fallback to user's first message if no assistant response
+    // Strategy priority:
+    // 1. User's actual question (after stripping prompt tags) — most descriptive
+    // 2. Assistant's first meaningful sentence — describes what it's doing
+    // 3. Raw first user message — last resort
     let summary = '';
-    if (firstAssistantText) {
-      // Take first meaningful sentence from assistant response
+
+    // Try user's actual question first (if it differs from the raw message, meaning tags were stripped)
+    if (firstUserActualQuestion && firstUserActualQuestion !== firstUserMessage) {
+      // Get first sentence from the actual question
+      const sentenceMatch = firstUserActualQuestion.match(/^(.+?[。.!！?？\n])/);
+      summary = sentenceMatch ? sentenceMatch[1].trim() : firstUserActualQuestion.split('\n')[0].trim();
+    }
+
+    // Fall back to assistant's first response
+    if (!summary && firstAssistantText) {
       const cleaned = firstAssistantText
         .replace(/```[\s\S]*?```/g, '') // Remove code blocks
         .replace(/\n{2,}/g, '\n')
         .trim();
-      // Get first sentence or first line
       const sentenceMatch = cleaned.match(/^(.+?[。.!！?？\n])/);
       summary = sentenceMatch ? sentenceMatch[1].trim() : cleaned.split('\n')[0].trim();
     }
 
+    // Fall back to raw user message (stripped of tags)
+    if (!summary && firstUserActualQuestion) {
+      summary = firstUserActualQuestion.split('\n')[0].trim();
+    }
+
     if (!summary && firstUserMessage) {
-      summary = firstUserMessage;
+      summary = firstUserMessage.split('\n')[0].trim();
     }
 
     // Append tool tags for quick visual context
@@ -583,8 +626,8 @@ export class ConversationService {
       filename: data.filename, sessionId: data.sessionId,
       startTime: data.startTime || data.endTime, endTime: data.endTime,
       messageCount: data.messageCount, totalCost: data.totalCost,
-      firstUserMessage: firstUserMessage.substring(0, 100),
-      lastUserMessage: lastUserMessage.substring(0, 100),
+      firstUserMessage: this._stripPromptTags(firstUserMessage).substring(0, 100),
+      lastUserMessage: this._stripPromptTags(lastUserMessage).substring(0, 100),
       workspacePath: data.workspacePath,
       summary,
     });
@@ -592,6 +635,115 @@ export class ConversationService {
       .sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())
       .slice(0, 100);
     await this._context.globalState.update('claude.conversationIndex', trimmed);
+
+    // Trigger AI summary generation asynchronously (only once per session, after enough messages)
+    if (data.messageCount >= 4 && !this._aiSummaryGenerated.has(data.sessionId) && !this._aiSummaryPending.has(data.sessionId)) {
+      this._aiSummaryPending.add(data.sessionId);
+      void this._generateAISummary(data.sessionId, data.messages).catch(() => {});
+    }
+  }
+
+  /**
+   * Use Claude Haiku to generate a concise, descriptive title for a conversation.
+   * Runs asynchronously — updates the index when the result is ready.
+   */
+  private async _generateAISummary(sessionId: string, messages: ConversationMessage[]): Promise<void> {
+    // Build a compact context from the conversation
+    const excerpts: string[] = [];
+    let userCount = 0;
+    let assistantCount = 0;
+
+    for (const msg of messages) {
+      if (msg.messageType === 'userInput' && userCount < 3) {
+        const text = typeof msg.data === 'string'
+          ? msg.data
+          : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
+        if (text) {
+          const cleaned = this._stripPromptTags(text);
+          excerpts.push(`User: ${cleaned.substring(0, 200)}`);
+          userCount++;
+        }
+      }
+      if (msg.messageType === 'output' && assistantCount < 2) {
+        const text = typeof msg.data === 'string' ? msg.data : '';
+        if (text && text.length > 10) {
+          excerpts.push(`Assistant: ${text.substring(0, 200)}`);
+          assistantCount++;
+        }
+      }
+    }
+
+    if (excerpts.length === 0) {
+      this._aiSummaryPending.delete(sessionId);
+      return;
+    }
+
+    const prompt = `Based on this conversation excerpt, generate a concise title (under 50 characters) that captures the main topic. Reply with ONLY the title, nothing else. Language should match the conversation's language.
+
+${excerpts.join('\n')}`;
+
+    try {
+      const result = await this._callClaudeHaiku(prompt);
+      if (result && result.length > 0 && result.length <= 80) {
+        // Clean up: remove surrounding quotes if any
+        const title = result.replace(/^["'「『]|["'」』]$/g, '').trim();
+        if (title.length > 0) {
+          await this._updateSessionSummary(sessionId, title);
+          this._aiSummaryGenerated.add(sessionId);
+          this.onSummaryUpdated?.(sessionId);
+        }
+      }
+    } catch {
+      // AI summary failed — the heuristic summary remains
+    } finally {
+      this._aiSummaryPending.delete(sessionId);
+    }
+  }
+
+  /** Update the summary field for a specific session in the conversation index */
+  private async _updateSessionSummary(sessionId: string, summary: string): Promise<void> {
+    const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
+    const entry = index.find(e => e.sessionId === sessionId);
+    if (entry) {
+      entry.summary = summary;
+      await this._context.globalState.update('claude.conversationIndex', index);
+    }
+  }
+
+  /** Spawn a lightweight Claude Haiku call and return the text result */
+  private _callClaudeHaiku(prompt: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      let stdout = '';
+      let resolved = false;
+
+      const timeout = setTimeout(() => {
+        if (!resolved) { resolved = true; proc?.kill('SIGTERM'); reject(new Error('timeout')); }
+      }, 15_000);
+
+      const proc = spawn('claude', [
+        '-p', prompt,
+        '--output-format', 'text',
+        '--model', 'claude-haiku-4-5-20251001',
+        '--max-turns', '1',
+      ], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: process.platform === 'win32',
+      });
+
+      proc.stdout?.on('data', (data: Buffer) => { stdout += data.toString(); });
+      proc.on('close', (code) => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          if (code === 0 && stdout.trim()) resolve(stdout.trim());
+          else reject(new Error(`exit ${code}`));
+        }
+      });
+      proc.on('error', (err) => {
+        clearTimeout(timeout);
+        if (!resolved) { resolved = true; reject(err); }
+      });
+    });
   }
 }
 

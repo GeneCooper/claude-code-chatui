@@ -396,3 +396,16 @@ body {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
+
+/* ===== Tree Blocks ===== */
+.tree-block-node:hover {
+  background: var(--chatui-surface-2);
+}
+
+.tree-block-container::-webkit-scrollbar {
+  height: 4px;
+}
+.tree-block-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
