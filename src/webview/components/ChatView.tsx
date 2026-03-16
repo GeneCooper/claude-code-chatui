@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef, useMemo, memo } from 'react'
+import { useCallback, useState, useEffect, useRef, memo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useChatStore, useUIStore } from '../store'
 import { useAutoScroll } from '../hooks'
@@ -41,28 +41,6 @@ export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [showSearch])
-
-  // Count errors
-  const errorCount = useMemo(() => {
-    return messages.filter(m =>
-      m.type === 'error' ||
-      (m.type === 'toolResult' && (m.data as Record<string, unknown>)?.isError),
-    ).length
-  }, [messages])
-
-  const scrollToLastError = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return
-    // Try data-error attribute first (normal errors & tool errors)
-    let errorElements = container.querySelectorAll('[data-error="true"]')
-    if (errorElements.length === 0) {
-      // Fallback: find elements with error styling (e.g. discussion panel errors)
-      errorElements = container.querySelectorAll('[style*="color: rgb(239, 68, 68)"], [style*="#ef4444"]')
-    }
-    if (errorElements.length > 0) {
-      errorElements[errorElements.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }, [containerRef])
 
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -130,32 +108,6 @@ export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
 
       </div>
 
-      {/* Error jump banner */}
-      {errorCount > 0 && !isProcessing && (
-        <button
-          onClick={scrollToLastError}
-          className="cursor-pointer border-none"
-          style={{
-            position: 'absolute',
-            bottom: '8px',
-            right: '16px',
-            padding: '4px 12px',
-            borderRadius: '12px',
-            background: 'rgba(231, 76, 60, 0.9)',
-            color: 'white',
-            fontSize: '11px',
-            fontWeight: 500,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            zIndex: 20,
-            transition: 'all 0.2s ease',
-            pointerEvents: 'auto',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(231, 76, 60, 1)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(231, 76, 60, 0.9)' }}
-        >
-          {errorCount} error{errorCount > 1 ? 's' : ''} — click to jump
-        </button>
-      )}
     </div>
   )
 })
