@@ -221,23 +221,38 @@ export function HistoryView() {
                       </span>
                     </div>
 
-                    {/* Title / first message */}
+                    {/* Summary title (AI-generated) or fallback to first message */}
                     <div className="truncate" style={{ fontWeight: 500, fontSize: '13px' }}>
-                      {conv.firstUserMessage || 'No message'}
+                      {conv.summary || conv.firstUserMessage || 'No message'}
                     </div>
 
-                    {/* Preview */}
-                    {conv.lastUserMessage && conv.lastUserMessage !== conv.firstUserMessage && (
+                    {/* Show first user message as subtitle when summary differs */}
+                    {conv.summary && conv.firstUserMessage && conv.summary !== conv.firstUserMessage && (
                       <div style={{
                         fontSize: '11px',
                         color: 'var(--vscode-descriptionForeground)',
-                        opacity: 0.7,
+                        opacity: 0.6,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                         marginTop: '2px',
                       }}>
-                        {conv.lastUserMessage}
+                        {conv.firstUserMessage}
+                      </div>
+                    )}
+
+                    {/* Last message preview */}
+                    {conv.lastUserMessage && conv.lastUserMessage !== conv.firstUserMessage && conv.lastUserMessage !== conv.summary && (
+                      <div style={{
+                        fontSize: '11px',
+                        color: 'var(--vscode-descriptionForeground)',
+                        opacity: 0.5,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        marginTop: '1px',
+                      }}>
+                        Latest: {conv.lastUserMessage}
                       </div>
                     )}
                   </button>

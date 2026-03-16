@@ -1027,13 +1027,20 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
     ctx.postMessage({ type: 'error', data: t('error.loadConversation') });
     return;
   }
+  // Generate a meaningful title from conversation summary or first message
+  const summaryTitle = (() => {
+    // Try to get summary from the index first
+    const list = ctx.conversationService.getConversationList();
+    const entry = list.find(e => e.sessionId === conversation.sessionId);
+    if (entry?.summary) return entry.summary.slice(0, 50);
+    // Fallback: first user message
+    const first = conversation.messages.find(m => m.messageType === 'userInput');
+    if (!first) return 'Claude Code ChatUI';
+    const text = typeof first.data === 'string' ? first.data : (first.data && typeof first.data === 'object' && 'text' in first.data ? String((first.data as Record<string, unknown>).text) : '');
+    return text.slice(0, 40) || 'Claude Code ChatUI';
+  })();
   ctx.panelManager?.createNewPanel(undefined, false, {
-    title: (() => {
-      const first = conversation.messages.find(m => m.messageType === 'userInput');
-      if (!first) return 'Claude Code ChatUI';
-      const text = typeof first.data === 'string' ? first.data : (first.data && typeof first.data === 'object' && 'text' in first.data ? String((first.data as Record<string, unknown>).text) : '');
-      return text.slice(0, 40) || 'Claude Code ChatUI';
-    })(),
+    title: summaryTitle,
     initialConversation: conversation.messages,
     sessionId: conversation.sessionId,
     totalCost: conversation.totalCost,

@@ -315,6 +315,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
     useConversationStore.getState().setConversations(msg.data as Array<{
       filename: string; sessionId: string; startTime: string; endTime: string;
       messageCount: number; totalCost: number; firstUserMessage: string; lastUserMessage: string;
+      summary?: string;
     }>)
   },
 

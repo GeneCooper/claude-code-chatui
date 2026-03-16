@@ -166,6 +166,8 @@ export interface ConversationIndexEntry {
   firstUserMessage: string;
   lastUserMessage: string;
   workspacePath?: string;
+  /** AI-generated summary title for the conversation */
+  summary?: string;
 }
 
 // ============================================================================

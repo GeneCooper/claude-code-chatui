@@ -119,6 +119,8 @@ export class PanelProvider {
   private _messageProcessor: ClaudeMessageProcessor;
   private _stateManager: SessionStateManager;
   private _sessionId: string | undefined;
+  /** Context summary to inject on the first new message in a restored conversation */
+  private _pendingContextSummary: string | undefined;
 
 
   constructor(
@@ -282,6 +284,7 @@ export class PanelProvider {
     this._messageProcessor.resetSession();
     this._stateManager.resetSession();
     this._sessionId = undefined;
+    this._pendingContextSummary = undefined;
     this._postMessage({ type: 'sessionCleared' });
   }
 
@@ -306,6 +309,9 @@ export class PanelProvider {
       this._messageProcessor.currentConversation.push(msg);
     }
 
+    // Build context summary so the LLM can pick up where it left off
+    this._pendingContextSummary = this._conversationService.buildContextSummary(conversation.messages);
+
     this._replayConversation();
   }
 
@@ -319,6 +325,11 @@ export class PanelProvider {
 
     for (const msg of messages) {
       this._messageProcessor.currentConversation.push({ ...msg });
+    }
+
+    // Build context summary for resumed conversations
+    if (messages.length > 0) {
+      this._pendingContextSummary = this._conversationService.buildContextSummary(messages);
     }
 
     // Replay will happen when webview sends 'ready'
@@ -438,7 +449,15 @@ export class PanelProvider {
     // to avoid wasting tokens on repeated context every turn
     const isFirstMessage = !this._sessionId;
     const contextPrefix = isFirstMessage ? this._gatherIDEContext() : '';
-    const enrichedText = [contextPrefix, processedText].filter(Boolean).join('\n\n');
+
+    // Inject conversation context summary for resumed conversations
+    // This ensures the LLM knows what was discussed even if --resume session expired
+    const conversationContext = this._pendingContextSummary || '';
+    if (this._pendingContextSummary) {
+      this._pendingContextSummary = undefined; // Only inject once
+    }
+
+    const enrichedText = [contextPrefix, conversationContext, processedText].filter(Boolean).join('\n\n');
 
     void this._claudeService.sendMessage(enrichedText, {
       cwd, yoloMode, effortLevel,

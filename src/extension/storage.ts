@@ -408,6 +408,7 @@ export class ConversationService {
           firstUserMessage: firstUserMessage.substring(0, 100),
           lastUserMessage: lastUserMessage.substring(0, 100),
           workspacePath: data.workspacePath,
+          summary: this._generateSummary(data.messages),
         });
       } catch { /* skip corrupted files */ }
     }
@@ -420,7 +421,8 @@ export class ConversationService {
     const lower = query.toLowerCase();
     return this.getConversationList().filter((entry) =>
       entry.firstUserMessage.toLowerCase().includes(lower) ||
-      entry.lastUserMessage.toLowerCase().includes(lower),
+      entry.lastUserMessage.toLowerCase().includes(lower) ||
+      (entry.summary && entry.summary.toLowerCase().includes(lower)),
     );
   }
 
@@ -442,6 +444,126 @@ export class ConversationService {
     return this.loadConversation(list[0].filename);
   }
 
+  /** Extract a concise summary title from conversation messages */
+  private _generateSummary(messages: ConversationMessage[]): string {
+    let firstUserMessage = '';
+    let firstAssistantText = '';
+    const toolNames = new Set<string>();
+
+    for (const msg of messages) {
+      if (msg.messageType === 'userInput' && !firstUserMessage) {
+        const text = typeof msg.data === 'string'
+          ? msg.data
+          : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
+        if (text) firstUserMessage = text;
+      }
+      if (msg.messageType === 'output' && !firstAssistantText) {
+        const text = typeof msg.data === 'string' ? msg.data : '';
+        if (text && text.length > 5) firstAssistantText = text;
+      }
+      if (msg.messageType === 'toolUse') {
+        const d = msg.data as Record<string, unknown> | undefined;
+        const name = d?.toolName as string | undefined;
+        if (name) toolNames.add(name);
+      }
+    }
+
+    // Strategy: use assistant's first response as summary (it usually describes what it's doing)
+    // Fallback to user's first message if no assistant response
+    let summary = '';
+    if (firstAssistantText) {
+      // Take first meaningful sentence from assistant response
+      const cleaned = firstAssistantText
+        .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+      // Get first sentence or first line
+      const sentenceMatch = cleaned.match(/^(.+?[。.!！?？\n])/);
+      summary = sentenceMatch ? sentenceMatch[1].trim() : cleaned.split('\n')[0].trim();
+    }
+
+    if (!summary && firstUserMessage) {
+      summary = firstUserMessage;
+    }
+
+    // Append tool tags for quick visual context
+    if (toolNames.size > 0) {
+      const keyTools = [...toolNames]
+        .filter(t => !['TodoWrite', 'Task'].includes(t))
+        .slice(0, 3);
+      if (keyTools.length > 0 && summary.length < 60) {
+        summary += ` [${keyTools.join(', ')}]`;
+      }
+    }
+
+    return summary.substring(0, 120);
+  }
+
+  /** Build a context summary for resuming a conversation */
+  buildContextSummary(messages: ConversationMessage[]): string {
+    const userMessages: string[] = [];
+    const assistantSnippets: string[] = [];
+    const toolsUsed = new Set<string>();
+    const filesModified = new Set<string>();
+
+    for (const msg of messages) {
+      if (msg.messageType === 'userInput') {
+        const text = typeof msg.data === 'string'
+          ? msg.data
+          : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
+        if (text) userMessages.push(text.substring(0, 200));
+      }
+      if (msg.messageType === 'output') {
+        const text = typeof msg.data === 'string' ? msg.data : '';
+        if (text && text.length > 10) {
+          // Keep first 200 chars of each assistant response
+          assistantSnippets.push(text.substring(0, 200));
+        }
+      }
+      if (msg.messageType === 'toolUse') {
+        const d = msg.data as Record<string, unknown> | undefined;
+        const name = d?.toolName as string | undefined;
+        if (name) toolsUsed.add(name);
+        // Track file modifications
+        const raw = d?.rawInput as Record<string, unknown> | undefined;
+        const filePath = (raw?.file_path ?? raw?.path) as string | undefined;
+        if (filePath && (name === 'Edit' || name === 'Write' || name === 'Read')) {
+          filesModified.add(filePath);
+        }
+      }
+    }
+
+    const parts: string[] = ['[Previous Conversation Context - This is a resumed conversation. Here is what was discussed previously:]'];
+
+    if (userMessages.length > 0) {
+      // Include up to 5 user messages for context
+      const selected = userMessages.length <= 5
+        ? userMessages
+        : [userMessages[0], ...userMessages.slice(-4)];
+      parts.push('User requests:\n' + selected.map((m, i) => `${i + 1}. ${m}`).join('\n'));
+    }
+
+    if (assistantSnippets.length > 0) {
+      // Include first and last assistant response
+      const snippets = assistantSnippets.length <= 3
+        ? assistantSnippets
+        : [assistantSnippets[0], assistantSnippets[assistantSnippets.length - 1]];
+      parts.push('Key assistant responses:\n' + snippets.map(s => `- ${s}`).join('\n'));
+    }
+
+    if (toolsUsed.size > 0) {
+      parts.push(`Tools used: ${[...toolsUsed].join(', ')}`);
+    }
+
+    if (filesModified.size > 0) {
+      const files = [...filesModified].slice(0, 10);
+      parts.push(`Files involved: ${files.join(', ')}`);
+    }
+
+    parts.push('[/Previous Conversation Context]');
+    return parts.join('\n\n');
+  }
+
   private async _updateConversationIndex(data: ConversationData): Promise<void> {
     const index = this._context.globalState.get<ConversationIndexEntry[]>('claude.conversationIndex', []);
     let firstUserMessage = '';
@@ -455,6 +577,7 @@ export class ConversationService {
         if (text) lastUserMessage = text;
       }
     }
+    const summary = this._generateSummary(data.messages);
     const filtered = index.filter((e) => e.sessionId !== data.sessionId);
     filtered.push({
       filename: data.filename, sessionId: data.sessionId,
@@ -463,6 +586,7 @@ export class ConversationService {
       firstUserMessage: firstUserMessage.substring(0, 100),
       lastUserMessage: lastUserMessage.substring(0, 100),
       workspacePath: data.workspacePath,
+      summary,
     });
     const trimmed = filtered
       .sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())
