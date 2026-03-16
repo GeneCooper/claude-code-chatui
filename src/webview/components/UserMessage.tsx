@@ -18,51 +18,13 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
         style={{ animation: 'fadeIn 0.15s ease' }}
       >
         <div
-          className="group relative w-full"
+          className="group w-full"
           style={{
             background: 'var(--chatui-user-bubble)',
             borderRadius: '10px',
             padding: '8px 14px',
           }}
         >
-          {/* Action bar - appears above bubble on hover */}
-          <div
-            className="absolute -top-7 right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100"
-            style={{
-              transition: 'opacity 0.15s ease',
-              pointerEvents: 'auto',
-            }}
-          >
-            {onEdit && !isProcessing && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onEdit() }}
-                className="checkpoint-action-btn"
-                title="Edit message"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </button>
-            )}
-            <CopyButton
-              text={text}
-              className="checkpoint-action-btn"
-              style={{ padding: 0, background: 'none', color: 'inherit', opacity: 1 }}
-            >
-              {(copied) => copied ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              )}
-            </CopyButton>
-          </div>
-
           {/* Image thumbnails */}
           {images && images.length > 0 && (
             <div className="flex gap-2 flex-wrap" style={{ marginBottom: text ? '8px' : 0 }}>
@@ -92,6 +54,44 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
               {text}
             </div>
           )}
+
+          {/* Action bar — bottom of bubble, appears on hover */}
+          <div className="msg-actions">
+            {onEdit && !isProcessing && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit() }}
+                className="msg-action-btn"
+                title="Edit message"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit
+              </button>
+            )}
+            <CopyButton
+              text={text}
+              className="msg-action-btn"
+              style={{ padding: '2px 8px' }}
+            >
+              {(copied) => (
+                <>
+                  {copied ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  )}
+                  {copied ? 'Copied!' : 'Copy'}
+                </>
+              )}
+            </CopyButton>
+          </div>
         </div>
       </div>
 

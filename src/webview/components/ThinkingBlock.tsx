@@ -25,7 +25,7 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
 
   return (
     <div
-      className="relative z-10 overflow-hidden"
+      className="group z-10 overflow-hidden"
       style={{
         border: '1px solid rgba(255, 255, 255, 0.06)',
         borderRadius: 'var(--radius-md)',
@@ -46,19 +46,19 @@ export const ThinkingBlock = memo(function ThinkingBlock({ text }: Props) {
       >
         <span className={`transition-transform ${expanded ? 'rotate-90' : ''}`} style={{ fontSize: '10px' }}>&#9654;</span>
         <span style={{ fontStyle: 'italic' }}>Thinking...</span>
-        <span className="ml-auto text-[10px] opacity-50">{wordCount}</span>
-        {expanded && (
+        <span className="ml-auto flex items-center gap-2">
+          {wordCount && <span className="text-[10px] opacity-50">{wordCount}</span>}
           <span
             role="button"
             tabIndex={0}
             onClick={(e) => { e.stopPropagation(); handleCopy() }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleCopy() } }}
-            className="text-[10px] opacity-40 hover:opacity-80 cursor-pointer ml-2"
-            style={{ flexShrink: 0 }}
+            className="text-[10px] opacity-0 group-hover:opacity-60 hover:opacity-100! cursor-pointer"
+            style={{ transition: 'opacity 0.15s ease', color: copied ? '#4ade80' : 'inherit' }}
           >
-            {copied ? '✓ Copied' : '⎘ Copy'}
+            {copied ? '✓' : '⎘'}
           </span>
-        )}
+        </span>
       </button>
 
       {/* Preview (when collapsed and text is long enough) */}

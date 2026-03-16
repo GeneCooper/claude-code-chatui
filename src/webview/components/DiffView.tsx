@@ -192,12 +192,6 @@ const UnifiedIcon = () => (
   </svg>
 )
 
-const CopyIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M4 4h1V2h7v7h-2v1h3V1H4v3zm-1 1v9h9V5H3zm1 1h7v7H4V6z"/>
-  </svg>
-)
-
 // ---------------------------------------------------------------------------
 // Toolbar button
 // ---------------------------------------------------------------------------
@@ -228,9 +222,8 @@ function ToolBtn({ onClick, title, active, children }: {
 // Main DiffView component
 // ===========================================================================
 export function DiffView({ oldContent, newContent, filePath, startLine }: Props) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('unified')
-  const [copied, setCopied] = useState(false)
 
   const fileName = filePath.split(/[\\/]/).pop() || 'file'
   const _lang = detectLang(filePath)
@@ -254,17 +247,6 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
   const handleOpenFile = useCallback(() => {
     postMessage({ type: 'openFile', filePath, line: startLine })
   }, [filePath, startLine])
-
-  const handleCopy = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    const text = diffLines
-      .filter(l => l.type !== 'context')
-      .map(l => `${l.type === 'add' ? '+' : '-'} ${l.content}`)
-      .join('\n')
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }, [diffLines])
 
   if (addCount === 0 && removeCount === 0) return null
 
@@ -318,22 +300,14 @@ export function DiffView({ oldContent, newContent, filePath, startLine }: Props)
         {/* Spacer */}
         <span className="flex-1" />
 
-        {/* Toolbar — view toggle + copy only */}
-        <span className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-          <ToolBtn onClick={() => setViewMode('unified')} title="Unified view" active={viewMode === 'unified'}>
-            <UnifiedIcon />
-          </ToolBtn>
-          <ToolBtn onClick={() => setViewMode('split')} title="Side-by-side view" active={viewMode === 'split'}>
-            <SplitIcon />
-          </ToolBtn>
-
-          <span style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 2px' }} />
-
-          <ToolBtn onClick={handleCopy} title={copied ? 'Copied!' : 'Copy diff'}>
-            {copied
-              ? <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>
-              : <CopyIcon />
-            }
+        {/* Toolbar — view toggle only */}
+        <span className="flex items-center" onClick={e => e.stopPropagation()}>
+          <ToolBtn
+            onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}
+            title={viewMode === 'unified' ? 'Switch to side-by-side view' : 'Switch to unified view'}
+            active
+          >
+            {viewMode === 'unified' ? <UnifiedIcon /> : <SplitIcon />}
           </ToolBtn>
         </span>
       </div>

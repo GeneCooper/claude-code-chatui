@@ -122,7 +122,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
 
   return (
     <div
-      className="group relative max-w-[95%]"
+      className="group max-w-[95%]"
       style={{ padding: '4px 0' }}
     >
       {/* Message content */}
@@ -130,22 +130,12 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
         {renderedMarkdown}
       </div>
 
-      {/* Action buttons - appear above message on hover */}
-      <div className="absolute -top-7 right-0 opacity-0 group-hover:opacity-100 flex items-center gap-1" style={{ transition: 'opacity 0.2s ease' }}>
+      {/* Action bar — bottom of message, appears on hover */}
+      <div className="msg-actions">
         {showOpenAsDoc && (
           <button
             onClick={handleOpenAsDoc}
-            className="cursor-pointer bg-transparent border-none flex items-center gap-1"
-            style={{
-              padding: '2px 8px',
-              borderRadius: '4px',
-              fontSize: '11px',
-              color: 'var(--vscode-descriptionForeground)',
-              opacity: 0.6,
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6' }}
+            className="msg-action-btn"
             title="Open as document"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -159,17 +149,8 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
         )}
         <button
           onClick={handleCopyMessage}
-          className="cursor-pointer bg-transparent border-none flex items-center gap-1"
-          style={{
-            padding: '2px 8px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            color: copied ? '#4ade80' : 'var(--vscode-descriptionForeground)',
-            opacity: copied ? 1 : 0.6,
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = copied ? '1' : '0.6' }}
+          className="msg-action-btn"
+          data-active={copied || undefined}
           title="Copy message"
           aria-label={copied ? 'Copied' : 'Copy message'}
         >
