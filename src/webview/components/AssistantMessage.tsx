@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { CopyButton } from './CopyButton'
+import { FlowChainBlock, isFlowChain } from './FlowChainBlock'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
 
@@ -114,11 +115,70 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
 
   // Memoize tree-structure escaping separately, then markdown rendering
   const escapedText = useMemo(() => escapeTreeStructures(displayText), [displayText])
-  const renderedMarkdown = useMemo(() => (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-      {escapedText}
-    </ReactMarkdown>
-  ), [escapedText])
+
+  // Split text into segments: regular markdown vs flow chains
+  const renderedContent = useMemo(() => {
+    // Don't process flow chains inside code blocks
+    const parts = escapedText.split(/(```[\s\S]*?```)/g)
+    const segments: { type: 'md' | 'flow'; text: string }[] = []
+
+    for (const part of parts) {
+      if (part.startsWith('```')) {
+        // Code block — always markdown
+        segments.push({ type: 'md', text: part })
+        continue
+      }
+      // Split by lines and detect flow chains
+      const lines = part.split('\n')
+      let mdBuffer: string[] = []
+
+      const flushMd = () => {
+        if (mdBuffer.length > 0) {
+          segments.push({ type: 'md', text: mdBuffer.join('\n') })
+          mdBuffer = []
+        }
+      }
+
+      for (const line of lines) {
+        if (isFlowChain(line)) {
+          flushMd()
+          segments.push({ type: 'flow', text: line })
+        } else {
+          mdBuffer.push(line)
+        }
+      }
+      flushMd()
+    }
+
+    // Merge adjacent md segments
+    const merged: typeof segments = []
+    for (const seg of segments) {
+      if (seg.type === 'md' && merged.length > 0 && merged[merged.length - 1].type === 'md') {
+        merged[merged.length - 1].text += '\n' + seg.text
+      } else {
+        merged.push(seg)
+      }
+    }
+
+    // Check if there are any flow chains — if not, render as pure markdown (fast path)
+    if (!merged.some(s => s.type === 'flow')) {
+      return (
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {escapedText}
+        </ReactMarkdown>
+      )
+    }
+
+    return merged.map((seg, i) =>
+      seg.type === 'flow' ? (
+        <FlowChainBlock key={`flow-${i}`} text={seg.text} />
+      ) : (
+        <ReactMarkdown key={`md-${i}`} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {seg.text}
+        </ReactMarkdown>
+      )
+    )
+  }, [escapedText])
 
   return (
     <div
@@ -127,7 +187,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
     >
       {/* Message content */}
       <div className="markdown-content text-sm leading-relaxed">
-        {renderedMarkdown}
+        {renderedContent}
       </div>
 
       {/* Action bar — bottom of message, appears on hover */}
