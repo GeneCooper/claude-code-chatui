@@ -219,10 +219,10 @@ function LoadingIndicator() {
             <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
           </svg>
         </div>
-        <span style={{ minWidth: '100px', transition: 'opacity 0.2s ease', opacity: fadeClass ? 1 : 0, fontWeight: 500 }}>
+        <span style={{ minWidth: '100px', transition: 'opacity 0.2s ease', opacity: fadeClass ? 1 : 0, fontWeight: 500, lineHeight: '16px' }}>
           {statusLabel}
         </span>
-        <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}>{formatTime(elapsed)}</span>
+        <span style={{ opacity: 0.35, fontSize: '10px', fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{formatTime(elapsed)}</span>
         {hasStarted && (
           <span style={{
             width: '6px', height: '6px', borderRadius: '50%',

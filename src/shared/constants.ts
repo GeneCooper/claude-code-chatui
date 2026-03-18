@@ -54,6 +54,12 @@ export const PROMPT_SNIPPET_PRESETS: PromptSnippetPreset[] = [
         color: '#10b981',
     },
     {
+        id: 'ui-design',
+        name: 'UI 设计',
+        prompt: '请额外从 UI 设计的视角关注以下方面：视觉层次、排版与间距、色彩搭配与对比度、图标与插图运用、微交互与动效、设计一致性（Design Token / 设计系统）、信息密度与留白、组件状态（hover/active/disabled/loading/empty/error）的完整性。重点关注界面的美观性、直觉性和品牌统一感。',
+        color: '#d946ef',
+    },
+    {
         id: 'testing',
         name: '测试工程师',
         prompt: '请额外从测试的视角关注以下方面：测试覆盖率、测试策略、边界情况、回归风险、可测试性和测试自动化。重点关注质量保证。',
