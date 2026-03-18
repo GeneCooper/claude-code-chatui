@@ -3,8 +3,11 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import remarkMath from 'remark-math'
+import remarkGemoji from 'remark-gemoji'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
+import rehypeSlug from 'rehype-slug'
+import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 
 // Allow safe layout HTML tags + style attributes, block dangerous ones (script, iframe, etc.)
@@ -18,7 +21,8 @@ const sanitizeSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
-    '*': [...(defaultSchema.attributes?.['*'] || []), 'style', 'className', 'class', 'data-*'],
+    '*': [...(defaultSchema.attributes?.['*'] || []), 'style', 'className', 'class', 'data-*', 'id'],
+    'a': [...(defaultSchema.attributes?.['a'] || []), 'ariaHidden', 'tabIndex'],
     'abbr': ['title'],
     'time': ['dateTime'],
     'data': ['value'],
@@ -28,6 +32,7 @@ const sanitizeSchema = {
   },
 }
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
+import { MermaidBlock } from './MermaidBlock'
 import { CopyButton } from './CopyButton'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
@@ -119,8 +124,8 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
 
   const renderedContent = useMemo(() => (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-      rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, sanitizeSchema]]}
+      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkGemoji]}
+      rehypePlugins={[rehypeRaw, rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'prepend' }], rehypeKatex, [rehypeSanitize, sanitizeSchema]]}
       components={markdownComponents}
     >
       {displayText}
@@ -310,6 +315,11 @@ function linkifyFilePaths(text: string): React.ReactNode {
 function CodeComponent({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) {
   const match = /language-(\w+)/.exec(className || '')
   const code = String(children).replace(/\n$/, '')
+
+  // Mermaid diagram — render as interactive SVG
+  if (match && match[1] === 'mermaid') {
+    return <MermaidBlock code={code} />
+  }
 
   if (match) {
     return (

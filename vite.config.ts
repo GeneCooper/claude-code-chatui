@@ -11,10 +11,13 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        format: 'iife',
+        format: 'es',
         entryFileNames: 'assets/main.js',
+        chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name][extname]',
-        inlineDynamicImports: true,
+        manualChunks: {
+          mermaid: ['mermaid'],
+        },
       },
     },
     cssCodeSplit: false,

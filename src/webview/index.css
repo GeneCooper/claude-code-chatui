@@ -557,6 +557,45 @@ body {
   font-size: 1.05em;
 }
 
+/* --- Heading anchor links (rehype-autolink-headings) --- */
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  position: relative;
+  scroll-margin-top: 12px;
+}
+.markdown-content h1 > a.heading-anchor,
+.markdown-content h2 > a.heading-anchor,
+.markdown-content h3 > a.heading-anchor,
+.markdown-content h4 > a.heading-anchor,
+.markdown-content :is(h1, h2, h3, h4) > a:first-child:not([href^="http"]) {
+  position: absolute;
+  left: -1.2em;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  font-size: 0.75em;
+  text-decoration: none;
+  color: var(--chatui-accent, #6366f1);
+  transition: opacity 0.15s ease;
+}
+.markdown-content :is(h1, h2, h3, h4):hover > a:first-child {
+  opacity: 0.6;
+}
+.markdown-content :is(h1, h2, h3, h4):hover > a:first-child:hover {
+  opacity: 1;
+}
+
+/* --- Mermaid diagram container --- */
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.mermaid-diagram .nodeLabel {
+  font-size: 13px;
+}
+
 /* ===== Message Action Bar ===== */
 .msg-actions {
   display: flex;

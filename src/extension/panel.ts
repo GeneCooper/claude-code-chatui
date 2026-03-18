@@ -46,7 +46,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none';
       style-src ${webview.cspSource} 'unsafe-inline';
-      script-src 'nonce-${nonce}';
+      script-src 'nonce-${nonce}' ${webview.cspSource};
       img-src ${webview.cspSource} https: data:;
       font-src ${webview.cspSource};">
   <link href="${styleUri}" rel="stylesheet">
@@ -96,7 +96,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
     </div>
   </div>
   <script nonce="${nonce}">window.__ICON_URI__="${iconUri}";</script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
 }
