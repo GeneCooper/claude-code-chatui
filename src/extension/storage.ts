@@ -543,6 +543,17 @@ export class ConversationService {
   }
 
   /** Build a context summary for resuming a conversation */
+  /**
+   * Strip analysis-perspective/role XML tags from text to avoid injecting
+   * stale prompt fragments into the context summary.
+   */
+  private _stripPerspectiveTags(text: string): string {
+    return text
+      .replace(/<\/?(?:analysis-perspectives?|roles?)>\n?/g, '')
+      .replace(/^Analyze from these perspectives:\n/m, '')
+      .trim();
+  }
+
   buildContextSummary(messages: ConversationMessage[]): string {
     const userMessages: string[] = [];
     const assistantSnippets: string[] = [];
@@ -551,9 +562,11 @@ export class ConversationService {
 
     for (const msg of messages) {
       if (msg.messageType === 'userInput') {
-        const text = typeof msg.data === 'string'
+        let text = typeof msg.data === 'string'
           ? msg.data
           : (msg.data && typeof msg.data === 'object' && 'text' in msg.data ? String((msg.data as Record<string, unknown>).text) : '');
+        // Strip perspective/role tags to avoid polluting the summary
+        text = this._stripPerspectiveTags(text);
         if (text) userMessages.push(text.substring(0, 200));
       }
       if (msg.messageType === 'output') {

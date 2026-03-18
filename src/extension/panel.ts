@@ -450,11 +450,16 @@ export class PanelProvider {
     const isFirstMessage = !this._sessionId;
     const contextPrefix = isFirstMessage ? this._gatherIDEContext() : '';
 
-    // Inject conversation context summary for resumed conversations
-    // This ensures the LLM knows what was discussed even if --resume session expired
-    const conversationContext = this._pendingContextSummary || '';
+    // Inject conversation context summary ONLY when --resume session is NOT available.
+    // When --resume is used, the CLI already has full conversation history server-side;
+    // injecting a summary would create redundant/conflicting context.
+    let conversationContext = '';
     if (this._pendingContextSummary) {
-      this._pendingContextSummary = undefined; // Only inject once
+      if (!this._claudeService.sessionId) {
+        // No CLI session to resume — summary is the only context bridge
+        conversationContext = this._pendingContextSummary;
+      }
+      this._pendingContextSummary = undefined; // Only inject once regardless
     }
 
     const enrichedText = [contextPrefix, conversationContext, processedText].filter(Boolean).join('\n\n');
@@ -473,10 +478,15 @@ export class PanelProvider {
     if (!workspaceFolder) return text;
     const rootPath = workspaceFolder.uri.fsPath;
 
-    const fileRefPattern = /@([\w./\\-]+\.\w+)/g;
+    // Match @file references but exclude email addresses (word-char before @)
+    // and require the path to start with a path-like segment (not bare domain names)
+    const fileRefPattern = /(?<![a-zA-Z0-9._%+-])@((?:[\w-]+[/\\])*[\w.-]+\.\w+)/g;
     const matches: { fullMatch: string; relativePath: string }[] = [];
     let match: RegExpExecArray | null;
     while ((match = fileRefPattern.exec(text)) !== null) {
+      // Extra guard: skip if it looks like an email (e.g. user@domain.com)
+      const before = text[match.index - 1];
+      if (before && /\w/.test(before)) continue;
       matches.push({ fullMatch: match[0], relativePath: match[1] });
     }
     if (matches.length === 0) return text;
@@ -612,7 +622,7 @@ export class PanelProvider {
     }
 
     if (parts.length === 0) return '';
-    return `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]`;
+    return `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]\n\nIMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.`;
   }
 
   /**

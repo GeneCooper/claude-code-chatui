@@ -186,14 +186,14 @@ export const InputArea = memo(function InputArea() {
 
     let finalText: string
     if (selectedSnippets.length === 1) {
-      // Single role: clean structured format for maximum model focus
-      finalText = `<role>\n${selectedSnippets[0].prompt}\n</role>\n\n${trimmed}`
+      // Single perspective: supplementary analysis hint, not identity override
+      finalText = `<analysis-perspective>\n${selectedSnippets[0].prompt}\n</analysis-perspective>\n\n${trimmed}`
     } else if (selectedSnippets.length > 1) {
-      // Multiple roles: numbered for clarity
-      const roleBlock = selectedSnippets
+      // Multiple perspectives: numbered for clarity
+      const perspectiveBlock = selectedSnippets
         .map((s, i) => `${i + 1}. **${s.name}**: ${s.prompt}`)
         .join('\n')
-      finalText = `<roles>\nAnalyze from these perspectives:\n${roleBlock}\n</roles>\n\n${trimmed}`
+      finalText = `<analysis-perspectives>\n${perspectiveBlock}\n</analysis-perspectives>\n\n${trimmed}`
     } else {
       finalText = trimmed
     }
