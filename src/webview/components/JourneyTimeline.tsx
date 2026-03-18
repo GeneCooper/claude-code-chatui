@@ -290,10 +290,10 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
   // Hidden tools (Read, TodoWrite): ultra-compact one-liner
   if (isHidden && !isError) {
     return (
-      <div className="flex items-center gap-1.5" style={{ padding: '1px 8px', fontSize: '11px', opacity: 0.35 }}>
+      <div className="flex items-center gap-1.5" style={{ padding: '1px 8px', fontSize: '11px', opacity: 0.35, lineHeight: '16px' }}>
         <span style={{ color: iconColor, fontSize: '9px' }}>{icon}</span>
         <span>{verb} {detail}</span>
-        {durationStr && <span style={{ fontSize: '9px', opacity: 0.6, fontFamily: 'var(--font-mono, monospace)' }}>{durationStr}</span>}
+        {durationStr && <span style={{ fontSize: '9px', opacity: 0.6, fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{durationStr}</span>}
       </div>
     )
   }
@@ -324,8 +324,8 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
           </svg>
           <span style={{ color: subagentColor, fontWeight: 500 }}>{subagentType}</span>
           {subagentDesc && <span className="truncate opacity-50" style={{ fontSize: '10px' }}>{subagentDesc}</span>}
-          {durationStr && <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--font-mono, monospace)' }}>{durationStr}</span>}
-          <span style={{ opacity: 0.4, fontSize: '9px', marginLeft: 'auto' }}>{effectiveExpanded ? '▾' : '▸'}</span>
+          {durationStr && <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{durationStr}</span>}
+          <span style={{ opacity: 0.4, fontSize: '9px', marginLeft: 'auto', lineHeight: '16px' }}>{effectiveExpanded ? '▾' : '▸'}</span>
         </button>
         {effectiveExpanded && (
           <div style={{ paddingLeft: '8px' }}>
@@ -365,7 +365,7 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
           display: 'flex', alignItems: 'center', gap: '6px',
           padding: '3px 8px', borderRadius: 'var(--radius-sm)',
           background: isError ? 'rgba(231, 76, 60, 0.06)' : 'transparent',
-          fontSize: '11px',
+          fontSize: '11px', lineHeight: '16px',
           opacity: isError ? 0.9 : 0.6,
           transition: 'all 0.15s ease',
         }}
@@ -383,9 +383,9 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
           {verb} {detail}
         </span>
         {durationStr && (
-          <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--font-mono, monospace)' }}>{durationStr}</span>
+          <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{durationStr}</span>
         )}
-        <span style={{ opacity: 0.3, fontSize: '9px', marginLeft: 'auto' }}>
+        <span style={{ opacity: 0.3, fontSize: '9px', marginLeft: 'auto', lineHeight: '16px' }}>
           {effectiveExpanded ? '▾' : '▸'}
         </span>
       </button>

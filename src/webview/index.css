@@ -333,6 +333,230 @@ body {
   background: rgba(128, 128, 128, 0.12);
 }
 
+/* ===== Rich Content (rehype-raw + GFM extensions) ===== */
+
+/* --- Blockquote --- */
+.markdown-content blockquote {
+  margin: 0.6em 0;
+  padding: 10px 16px;
+  border-left: 3px solid var(--chatui-accent, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 0 6px 6px 0;
+  color: var(--vscode-foreground, #ccc);
+  opacity: 0.9;
+}
+.markdown-content blockquote p { margin: 0.3em 0; }
+.markdown-content blockquote blockquote {
+  margin: 0.4em 0;
+  border-left-color: rgba(99, 102, 241, 0.4);
+}
+
+/* --- Horizontal Rule --- */
+.markdown-content hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(128,128,128,0.3) 20%, rgba(128,128,128,0.3) 80%, transparent);
+  margin: 1.2em 0;
+}
+
+/* --- Details / Summary (collapsible) --- */
+.markdown-content details {
+  margin: 0.6em 0;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+.markdown-content details[open] {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.markdown-content details summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 500;
+  background: var(--chatui-surface-1, rgba(255,255,255,0.03));
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.markdown-content details summary::-webkit-details-marker { display: none; }
+.markdown-content details summary::before {
+  content: '▶';
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  opacity: 0.5;
+}
+.markdown-content details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.markdown-content details summary:hover {
+  background: var(--chatui-surface-2, rgba(255,255,255,0.06));
+}
+.markdown-content details > :not(summary) {
+  padding: 0 12px;
+}
+.markdown-content details > :last-child {
+  padding-bottom: 10px;
+}
+
+/* --- Task List (GFM checkboxes) --- */
+.markdown-content .task-list-item,
+.markdown-content li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.2em;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.markdown-content input[type="checkbox"] {
+  margin: 0 6px 0 0;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--chatui-accent, #6366f1);
+  cursor: default;
+  flex-shrink: 0;
+}
+
+/* --- Definition List (dl/dt/dd) --- */
+.markdown-content dl {
+  margin: 0.6em 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+}
+.markdown-content dt {
+  font-weight: 600;
+  color: var(--vscode-foreground, #ccc);
+  grid-column: 1;
+}
+.markdown-content dd {
+  margin: 0;
+  grid-column: 2;
+  opacity: 0.85;
+}
+
+/* --- Mark / Highlight --- */
+.markdown-content mark {
+  background: rgba(250, 204, 21, 0.2);
+  color: inherit;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* --- Abbreviation with tooltip --- */
+.markdown-content abbr[title] {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+  opacity: 0.9;
+}
+
+/* --- Keyboard shortcut (kbd) --- */
+.markdown-content kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  font-family: var(--vscode-editor-font-family, monospace);
+  line-height: 1.4;
+  color: var(--vscode-foreground, #ccc);
+  background: var(--chatui-surface-2, rgba(255,255,255,0.06));
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+
+/* --- Subscript / Superscript --- */
+.markdown-content sub, .markdown-content sup {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.markdown-content sup { top: -0.5em; }
+.markdown-content sub { bottom: -0.25em; }
+
+/* --- Figure / Figcaption --- */
+.markdown-content figure {
+  margin: 0.8em 0;
+  padding: 0;
+}
+.markdown-content figcaption {
+  font-size: 0.85em;
+  opacity: 0.6;
+  text-align: center;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* --- Inserted / Deleted text --- */
+.markdown-content ins {
+  text-decoration: none;
+  background: rgba(63, 185, 80, 0.15);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+.markdown-content del {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* --- Nested list refinement --- */
+.markdown-content ul ul,
+.markdown-content ol ol,
+.markdown-content ul ol,
+.markdown-content ol ul {
+  margin: 0.2em 0;
+}
+.markdown-content ul { list-style-type: disc; }
+.markdown-content ul ul { list-style-type: circle; }
+.markdown-content ul ul ul { list-style-type: square; }
+
+/* --- Cards rendered via inline HTML --- */
+.markdown-content .card,
+.markdown-content [data-card] {
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 8px 0;
+  background: var(--chatui-surface-1, rgba(255,255,255,0.03));
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.markdown-content .card:hover,
+.markdown-content [data-card]:hover {
+  border-color: var(--chatui-accent, #6366f1);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
+/* --- Grid layout for card grids --- */
+.markdown-content .grid,
+.markdown-content [data-grid] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* --- Inline HTML images --- */
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 0.4em 0;
+}
+
+/* --- KaTeX math overrides --- */
+.markdown-content .katex-display {
+  margin: 0.8em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+.markdown-content .katex {
+  font-size: 1.05em;
+}
+
 /* ===== Message Action Bar ===== */
 .msg-actions {
   display: flex;

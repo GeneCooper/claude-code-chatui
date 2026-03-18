@@ -1,6 +1,31 @@
 import { useState, useMemo, useRef, useEffect, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+
+// Allow safe layout HTML tags + style attributes, block dangerous ones (script, iframe, etc.)
+const sanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+    'div', 'span', 'section', 'article', 'header', 'footer', 'nav', 'aside', 'main',
+    'details', 'summary', 'mark', 'abbr', 'kbd', 'sub', 'sup', 'dl', 'dt', 'dd',
+    'figure', 'figcaption', 'time', 'data', 'ins', 'del',
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    '*': [...(defaultSchema.attributes?.['*'] || []), 'style', 'className', 'class', 'data-*'],
+    'abbr': ['title'],
+    'time': ['dateTime'],
+    'data': ['value'],
+    'ol': ['start', 'type', 'reversed'],
+    'td': ['colSpan', 'rowSpan'],
+    'th': ['colSpan', 'rowSpan', 'scope'],
+  },
+}
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { CopyButton } from './CopyButton'
 import type { ComponentPropsWithoutRef } from 'react'
@@ -8,6 +33,9 @@ import { postMessage } from '../hooks'
 
 // Regex to detect file paths in text (Unix and Windows paths)
 const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-]+(?::\d+)?)/g
+
+// Regex to detect Unicode box-drawing characters (used for ASCII art tables/cards)
+const BOX_DRAWING_REGEX = /[─━│┃┄┅┆┇┈┉┊┋┌┍┎┏┐┑┒┓└┘┙┚┛├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋╌╍╎╏═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬]/
 
 interface Props {
   text: string
@@ -90,7 +118,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
 
   // Render markdown directly — no special block splitting
   const renderedContent = useMemo(() => (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, sanitizeSchema]]} components={markdownComponents}>
       {displayText}
     </ReactMarkdown>
   ), [displayText])
@@ -166,9 +194,42 @@ function LinkComponent({ href, children, ...props }: ComponentPropsWithoutRef<'a
   )
 }
 
-function ParagraphWithPaths({ children, ...props }: ComponentPropsWithoutRef<'p'>) {
+function ParagraphWithPaths({ children }: ComponentPropsWithoutRef<'p'>) {
+  // Detect box-drawing characters — render as monospace pre block for proper alignment
+  const textContent = extractText(children)
+  if (BOX_DRAWING_REGEX.test(textContent)) {
+    return (
+      <pre
+        style={{
+          fontFamily: 'var(--vscode-editor-font-family, "Cascadia Code", "Fira Code", Consolas, monospace)',
+          fontSize: '12px',
+          lineHeight: 1.4,
+          whiteSpace: 'pre',
+          overflowX: 'auto',
+          margin: '0.6em 0',
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+        }}
+      >
+        {children}
+      </pre>
+    )
+  }
   const processedChildren = processChildren(children)
-  return <p {...props}>{processedChildren}</p>
+  return <p>{processedChildren}</p>
+}
+
+/** Extract plain text from React children for content detection */
+function extractText(children: React.ReactNode): string {
+  if (typeof children === 'string') return children
+  if (typeof children === 'number') return String(children)
+  if (Array.isArray(children)) return children.map(extractText).join('')
+  if (children && typeof children === 'object' && 'props' in children) {
+    const el = children as React.ReactElement<{ children?: React.ReactNode }>
+    return extractText(el.props.children)
+  }
+  return ''
 }
 
 function processChildren(children: React.ReactNode): React.ReactNode {
