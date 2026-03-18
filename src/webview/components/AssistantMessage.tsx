@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
@@ -34,62 +35,8 @@ import { postMessage } from '../hooks'
 // Regex to detect file paths in text (Unix and Windows paths)
 const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-]+(?::\d+)?)/g
 
-// Unicode range for box-drawing characters (U+2500–U+257F)
-const BOX_DRAWING_REGEX = /[\u2500-\u257F]/
-
-// Tree-structure markers that typically start a new visual line
-// Matches: ├── ├─ └── └─ │ (with optional leading whitespace)
-const TREE_MARKER = /[├└│┌┐┘┬┴┼┤┣┫┳┻╋]/
-
-/**
- * Pre-process markdown text:
- * 1. Detect text containing box-drawing / tree-structure characters
- * 2. Insert line breaks before tree markers (├, └, │) when they appear
- *    mid-line after other content — Claude often outputs tree structures
- *    as a single paragraph without newlines
- * 3. Wrap the result in a fenced code block for monospace rendering
- */
-function wrapBoxDrawingBlocks(text: string): string {
-  if (!BOX_DRAWING_REGEX.test(text)) return text
-
-  // Process each section separated by code fences
-  const parts = text.split(/(```[\s\S]*?```)/g)
-  const result = parts.map((part) => {
-    // Skip existing code blocks
-    if (part.startsWith('```')) return part
-    if (!BOX_DRAWING_REGEX.test(part)) return part
-
-    // Split into paragraphs (double newline separated)
-    return part.replace(/\n\n/g, '\0PARA\0').split('\0PARA\0').map((para) => {
-      if (!BOX_DRAWING_REGEX.test(para)) return para
-
-      // Step 1: Insert newlines before tree markers that follow content on the same line.
-      // e.g. "index.vue ├── modules/" → "index.vue\n├── modules/"
-      // But don't break "├── foo" at the start of a line.
-      const restored = para.replace(
-        /([^\n\s])(\s+)([\u2500-\u257F])/g,
-        (_, before, _ws, marker) => {
-          // Only break before vertical/branching markers, not horizontal lines mid-word
-          if (TREE_MARKER.test(marker)) return `${before}\n${marker}`
-          return `${before} ${marker}`
-        }
-      )
-
-      // Step 2: Also handle cases where ├/└/│ appear right after space sequences
-      // that look like indentation + continuation
-      const withBreaks = restored.replace(
-        /([^\n])([\s]{1,2}[├└│])/g,
-        '$1\n$2'
-      )
-
-      // Step 3: Wrap in code fence for monospace rendering
-      const trimmed = withBreaks.trim()
-      return '```\n' + trimmed + '\n```'
-    }).join('\n\n')
-  })
-
-  return result.join('')
-}
+// Unicode range: U+2500–U+257F (Box Drawing), U+2580–U+259F (Block Elements)
+const BOX_DRAWING_REGEX = /[\u2500-\u257F\u2580-\u259F]/
 
 interface Props {
   text: string
@@ -170,15 +117,15 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // Pre-process: wrap consecutive lines containing box-drawing characters in fenced code blocks
-  // so markdown doesn't collapse their line breaks into spaces
-  const preprocessedText = useMemo(() => wrapBoxDrawingBlocks(displayText), [displayText])
-
   const renderedContent = useMemo(() => (
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, sanitizeSchema]]} components={markdownComponents}>
-      {preprocessedText}
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+      rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, sanitizeSchema]]}
+      components={markdownComponents}
+    >
+      {displayText}
     </ReactMarkdown>
-  ), [preprocessedText])
+  ), [displayText])
 
   return (
     <div
