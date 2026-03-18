@@ -1,5 +1,59 @@
-import { useState, memo } from 'react'
+import { useState, useMemo, memo, type ReactNode } from 'react'
 import { CopyButton } from './CopyButton'
+
+/** Parse text and render @filepath references as inline tag-styled spans */
+function renderTextWithFileRefs(text: string): ReactNode {
+  // Match @filepath patterns (non-whitespace after @, but not at word boundary like emails)
+  const regex = /@((?:[a-zA-Z]:)?[\w./@\\-]+(?:\.[\w]+)?)/g
+  const parts: ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+    const filePath = match[1]
+    // Show parent dir + filename for context
+    const segments = filePath.replace(/\\/g, '/').split('/')
+    const fileName = segments.pop() || filePath
+    const dirPrefix = segments.length > 0 ? segments.slice(-1)[0] + '/' : ''
+    parts.push(
+      <span
+        key={match.index}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          padding: '0px 6px',
+          borderRadius: '4px',
+          background: 'rgba(99, 102, 241, 0.12)',
+          border: '1px solid rgba(99, 102, 241, 0.25)',
+          boxShadow: '0 0 5px rgba(99, 102, 241, 0.15)',
+          fontSize: '12px',
+          fontFamily: 'var(--vscode-editor-font-family)',
+          lineHeight: '20px',
+          verticalAlign: 'middle',
+          gap: '2px',
+          margin: '1px 2px',
+        }}
+        title={filePath}
+      >
+        <span style={{ color: 'var(--chatui-accent, #6366f1)', opacity: 0.6 }}>@</span>
+        {dirPrefix && <span style={{ opacity: 0.45 }}>{dirPrefix}</span>}
+        <span>{fileName}</span>
+      </span>
+    )
+    lastIndex = regex.lastIndex
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+
+  return parts.length > 0 ? parts : text
+}
 
 interface Props {
   text: string
@@ -10,6 +64,8 @@ interface Props {
 
 export const UserMessage = memo(function UserMessage({ text, images, onEdit, isProcessing }: Props) {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+
+  const renderedText = useMemo(() => text ? renderTextWithFileRefs(text) : null, [text])
 
   return (
     <>
@@ -48,10 +104,10 @@ export const UserMessage = memo(function UserMessage({ text, images, onEdit, isP
             </div>
           )}
 
-          {/* Message content */}
-          {text && (
+          {/* Message content with inline @file highlighting */}
+          {renderedText && (
             <div className="text-sm whitespace-pre-wrap wrap-break-word">
-              {text}
+              {renderedText}
             </div>
           )}
 

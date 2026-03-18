@@ -100,19 +100,31 @@ export const InputArea = memo(function InputArea() {
         recentAttachRef.current.add(key)
         setTimeout(() => recentAttachRef.current.delete(key), 200)
 
+        // Each file on its own line, cursor after the last \n
         const ref = `@${detail.filePath}\n`
         setText((prev) => {
           const ta = textareaRef.current
-          if (ta && ta.selectionStart !== undefined) {
+          const isFocused = ta && document.activeElement === ta
+          if (isFocused && ta.selectionStart !== undefined) {
+            // Textarea is focused — insert at cursor position
             const start = ta.selectionStart
             const end = ta.selectionEnd
             const next = prev.slice(0, start) + ref + prev.slice(end)
             requestAnimationFrame(() => {
               ta.selectionStart = ta.selectionEnd = start + ref.length
+              ta.scrollTop = ta.scrollHeight
             })
             return next
           }
-          return prev ? `${prev} ${ref}` : ref
+          // Textarea not focused (e.g. drag-drop) — append to end, cursor to end
+          const next = prev ? `${prev}${ref}` : ref
+          requestAnimationFrame(() => {
+            if (ta) {
+              ta.selectionStart = ta.selectionEnd = next.length
+              ta.scrollTop = ta.scrollHeight
+            }
+          })
+          return next
         })
         textareaRef.current?.focus()
       }
@@ -138,7 +150,6 @@ export const InputArea = memo(function InputArea() {
     const el = textareaRef.current
     if (!el) return
 
-    // Reset to measure true scrollHeight
     el.style.height = 'auto'
 
     const computed = getComputedStyle(el)

@@ -183,6 +183,7 @@ body {
   border-color: var(--chatui-accent) !important;
 }
 
+
 /* ===== Marquee Slide ===== */
 @keyframes marquee-slide {
   0% { left: -40%; }
