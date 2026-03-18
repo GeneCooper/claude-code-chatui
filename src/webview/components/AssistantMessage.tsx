@@ -34,8 +34,61 @@ import { postMessage } from '../hooks'
 // Regex to detect file paths in text (Unix and Windows paths)
 const FILE_PATH_REGEX = /(?:^|\s)([A-Za-z]:\\[\w\\.\-/]+|\/(?:[\w.\-]+\/)+[\w.\-]+(?::\d+)?)/g
 
-// Regex to detect Unicode box-drawing characters (used for ASCII art tables/cards)
-const BOX_DRAWING_REGEX = /[─━│┃┄┅┆┇┈┉┊┋┌┍┎┏┐┑┒┓└┘┙┚┛├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋╌╍╎╏═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬]/
+// Detect lines that should be rendered as preformatted monospace blocks.
+// Uses Unicode ranges instead of character enumeration for robustness:
+//   U+2500–U+257F  Box Drawing
+//   U+2580–U+259F  Block Elements
+//   U+25A0–U+25FF  Geometric Shapes (often used in ASCII art)
+//   U+2800–U+28FF  Braille Patterns (sometimes used for art)
+// Also catches common ASCII art patterns: +--+, |  |, tree-style lines
+const BOX_DRAWING_REGEX = /[\u2500-\u257F\u2580-\u259F\u2550-\u256C]|[+|][-=]{2,}[+|]|^[\s]*[|│┃][\s]/
+
+/**
+ * Pre-process markdown text: detect consecutive lines containing box-drawing
+ * characters and wrap them in fenced code blocks so markdown preserves their
+ * line breaks and ReactMarkdown renders them with monospace font.
+ */
+function wrapBoxDrawingBlocks(text: string): string {
+  // Skip if already inside code fences or no box-drawing chars at all
+  if (!BOX_DRAWING_REGEX.test(text)) return text
+
+  const lines = text.split('\n')
+  const result: string[] = []
+  let blockBuffer: string[] = []
+  let insideCodeFence = false
+
+  const flushBlock = () => {
+    if (blockBuffer.length > 0) {
+      result.push('```')
+      result.push(...blockBuffer)
+      result.push('```')
+      blockBuffer = []
+    }
+  }
+
+  for (const line of lines) {
+    // Track existing code fences to avoid double-wrapping
+    if (line.trimStart().startsWith('```')) {
+      flushBlock()
+      insideCodeFence = !insideCodeFence
+      result.push(line)
+      continue
+    }
+    if (insideCodeFence) {
+      result.push(line)
+      continue
+    }
+
+    if (BOX_DRAWING_REGEX.test(line)) {
+      blockBuffer.push(line)
+    } else {
+      flushBlock()
+      result.push(line)
+    }
+  }
+  flushBlock()
+  return result.join('\n')
+}
 
 interface Props {
   text: string
@@ -116,12 +169,15 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // Render markdown directly — no special block splitting
+  // Pre-process: wrap consecutive lines containing box-drawing characters in fenced code blocks
+  // so markdown doesn't collapse their line breaks into spaces
+  const preprocessedText = useMemo(() => wrapBoxDrawingBlocks(displayText), [displayText])
+
   const renderedContent = useMemo(() => (
     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex, [rehypeSanitize, sanitizeSchema]]} components={markdownComponents}>
-      {displayText}
+      {preprocessedText}
     </ReactMarkdown>
-  ), [displayText])
+  ), [preprocessedText])
 
   return (
     <div
