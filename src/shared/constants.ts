@@ -121,3 +121,6 @@ export const FILE_EDIT_TOOLS: string[] = ["Edit", "MultiEdit", "Write", "Noteboo
 
 /** Tools whose results are hidden by default (unless error) */
 export const HIDDEN_RESULT_TOOLS: string[] = ["Read", "TodoWrite"];
+
+/** MCP servers that are built-in and cannot be deleted by users */
+export const PROTECTED_MCP_SERVERS: string[] = ["context7", "playwright"];

@@ -9,7 +9,7 @@ import type {
 } from '../shared/types';
 import type { PanelManager } from './panelManager';
 import { t } from './i18n';
-import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS } from '../shared/constants';
+import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS, PROTECTED_MCP_SERVERS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
 import type { ConversationService, UsageService, MCPService, SkillService } from './storage';
@@ -1076,10 +1076,15 @@ const handleSaveMCPServer: MessageHandler = async (msg, ctx) => {
 };
 
 const handleDeleteMCPServer: MessageHandler = async (msg, ctx) => {
-  if (await ctx.mcpService.deleteServer(msg.name as string)) {
-    ctx.postMessage({ type: 'mcpServerDeleted', data: { name: msg.name } });
+  const name = msg.name as string;
+  if (PROTECTED_MCP_SERVERS.includes(name)) {
+    ctx.postMessage({ type: 'mcpServerError', data: { error: `"${name}" is a built-in server and cannot be deleted` } });
+    return;
+  }
+  if (await ctx.mcpService.deleteServer(name)) {
+    ctx.postMessage({ type: 'mcpServerDeleted', data: { name } });
   } else {
-    ctx.postMessage({ type: 'mcpServerError', data: { error: `Server "${msg.name}" not found` } });
+    ctx.postMessage({ type: 'mcpServerError', data: { error: `Server "${name}" not found` } });
   }
 };
 

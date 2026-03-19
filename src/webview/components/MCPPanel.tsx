@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { postMessage } from '../hooks'
 import { useMCPStore } from '../store'
 import { useUIStore } from '../store'
+import { PROTECTED_MCP_SERVERS } from '../../shared/constants'
 
 const SERVER_DESCRIPTIONS: Record<string, string> = {
   'context7': 'Up-to-date library docs',
+  'playwright': 'Browser automation & web fetching',
   'sequential-thinking': 'Structured reasoning for complex decisions',
 }
 
@@ -15,6 +17,14 @@ const POPULAR_SERVERS = [
     type: 'http' as const,
     url: 'https://context7.liam.sh/mcp',
     icon: '📚',
+  },
+  {
+    name: 'playwright',
+    description: 'Browser automation & web fetching',
+    type: 'stdio' as const,
+    command: 'npx',
+    args: ['-y', '@anthropic-ai/mcp-server-playwright@latest'],
+    icon: '🌐',
   },
   {
     name: 'sequential-thinking',
@@ -242,7 +252,22 @@ export function MCPPanel() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-1.5" style={{ flexShrink: 0, marginLeft: '12px' }}>
+                  <div className="flex gap-1.5" style={{ flexShrink: 0, marginLeft: '12px', alignItems: 'center' }}>
+                    {PROTECTED_MCP_SERVERS.includes(sName) && (
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          color: 'var(--chatui-accent)',
+                          border: '1px solid var(--chatui-accent)',
+                          borderRadius: 'var(--radius-sm)',
+                          opacity: 0.7,
+                        }}
+                      >
+                        Built-in
+                      </span>
+                    )}
                     <button
                       onClick={() => useMCPStore.getState().setEditingServer(sName)}
                       className="cursor-pointer"
@@ -266,27 +291,29 @@ export function MCPPanel() {
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => handleDelete(sName)}
-                      className="cursor-pointer"
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: '11px',
-                        color: 'var(--vscode-errorForeground)',
-                        border: '1px solid var(--vscode-errorForeground)',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'transparent',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {!PROTECTED_MCP_SERVERS.includes(sName) && (
+                      <button
+                        onClick={() => handleDelete(sName)}
+                        className="cursor-pointer"
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '11px',
+                          color: 'var(--vscode-errorForeground)',
+                          border: '1px solid var(--vscode-errorForeground)',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'transparent',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

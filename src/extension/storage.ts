@@ -9,6 +9,7 @@ import type {
   ConversationData, ConversationMessage, ConversationIndexEntry,
   MCPServerConfig, MCPConfig, UsageData, SkillConfig,
 } from '../shared/types';
+import { PROTECTED_MCP_SERVERS } from '../shared/constants';
 
 // ============================================================================
 // RateLimitCache
@@ -62,6 +63,7 @@ export class MCPService {
 
   private static readonly DEFAULT_SERVERS: Record<string, MCPServerConfig> = {
     'context7': { type: 'http', url: 'https://context7.liam.sh/mcp' },
+    'playwright': { type: 'stdio', command: 'npx', args: ['-y', '@anthropic-ai/mcp-server-playwright@latest'] },
     'sequential-thinking': { type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
   };
 
@@ -76,7 +78,7 @@ export class MCPService {
   }
 
   /** Servers that were previously bundled as defaults but are now opt-in */
-  private static readonly REMOVED_DEFAULTS = ['memory', 'fetch', 'playwright', 'magicui', 'shadcn'];
+  private static readonly REMOVED_DEFAULTS = ['memory', 'fetch', 'magicui', 'shadcn'];
 
   private _migrateDefaults(): void {
     try {
@@ -115,6 +117,7 @@ export class MCPService {
   }
 
   async deleteServer(name: string): Promise<boolean> {
+    if (PROTECTED_MCP_SERVERS.includes(name)) return false;
     const allConfig = await this._loadConfigAsync();
     if (!(name in allConfig.mcpServers)) return false;
     delete allConfig.mcpServers[name];
