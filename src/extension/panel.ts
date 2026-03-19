@@ -442,6 +442,14 @@ export class PanelProvider {
     }
     const mcpServers = this._mcpService.loadServers();
     const mcpConfigPath = Object.keys(mcpServers).length > 0 ? this._mcpService.configPath : undefined;
+    // When Playwright MCP is available, disable built-in WebFetch/WebSearch
+    // to force Claude to use Playwright (real browser) for web access instead of
+    // the simple HTTP client which fails on most sites (403, anti-bot, redirects)
+    if ('playwright' in mcpServers) {
+      for (const tool of ['WebFetch', 'WebSearch']) {
+        if (!disallowedTools.includes(tool)) disallowedTools.push(tool);
+      }
+    }
 
     const processedText = this._preprocessFileReferences(text);
 
