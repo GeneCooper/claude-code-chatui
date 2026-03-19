@@ -17,6 +17,7 @@ export default defineConfig({
         assetFileNames: 'assets/[name][extname]',
         manualChunks: {
           mermaid: ['mermaid'],
+          echarts: ['echarts'],
         },
       },
     },

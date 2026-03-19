@@ -351,6 +351,56 @@ body {
   border-left-color: rgba(99, 102, 241, 0.4);
 }
 
+/* --- GitHub-style Blockquote Alerts --- */
+.markdown-content .markdown-alert {
+  margin: 0.6em 0;
+  padding: 10px 16px;
+  border-left: 3px solid;
+  border-radius: 0 6px 6px 0;
+  background: rgba(255, 255, 255, 0.03);
+  opacity: 1;
+}
+.markdown-content .markdown-alert p { margin: 0.3em 0; }
+.markdown-content .markdown-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.9em;
+  margin-bottom: 4px;
+}
+.markdown-content .markdown-alert-title svg { flex-shrink: 0; }
+
+.markdown-content .markdown-alert-note {
+  border-left-color: #58a6ff;
+  background: rgba(88, 166, 255, 0.06);
+}
+.markdown-content .markdown-alert-note .markdown-alert-title { color: #58a6ff; }
+
+.markdown-content .markdown-alert-tip {
+  border-left-color: #3fb950;
+  background: rgba(63, 185, 80, 0.06);
+}
+.markdown-content .markdown-alert-tip .markdown-alert-title { color: #3fb950; }
+
+.markdown-content .markdown-alert-important {
+  border-left-color: #a371f7;
+  background: rgba(163, 113, 247, 0.06);
+}
+.markdown-content .markdown-alert-important .markdown-alert-title { color: #a371f7; }
+
+.markdown-content .markdown-alert-warning {
+  border-left-color: #d29922;
+  background: rgba(210, 153, 34, 0.06);
+}
+.markdown-content .markdown-alert-warning .markdown-alert-title { color: #d29922; }
+
+.markdown-content .markdown-alert-caution {
+  border-left-color: #f85149;
+  background: rgba(248, 81, 73, 0.06);
+}
+.markdown-content .markdown-alert-caution .markdown-alert-title { color: #f85149; }
+
 /* --- Horizontal Rule --- */
 .markdown-content hr {
   border: none;

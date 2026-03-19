@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { remarkAlert } from 'remark-github-blockquote-alert'
 import remarkBreaks from 'remark-breaks'
 import remarkMath from 'remark-math'
 import remarkGemoji from 'remark-gemoji'
@@ -18,10 +19,11 @@ const sanitizeSchema = {
     'div', 'span', 'section', 'article', 'header', 'footer', 'nav', 'aside', 'main',
     'details', 'summary', 'mark', 'abbr', 'kbd', 'sub', 'sup', 'dl', 'dt', 'dd',
     'figure', 'figcaption', 'time', 'data', 'ins', 'del',
+    'svg', 'path',
   ],
   attributes: {
     ...defaultSchema.attributes,
-    '*': [...(defaultSchema.attributes?.['*'] || []), 'style', 'className', 'class', 'data-*', 'id'],
+    '*': [...(defaultSchema.attributes?.['*'] || []), 'style', 'className', 'class', 'data-*', 'id', 'dir'],
     'a': [...(defaultSchema.attributes?.['a'] || []), 'ariaHidden', 'tabIndex'],
     'abbr': ['title'],
     'time': ['dateTime'],
@@ -29,10 +31,13 @@ const sanitizeSchema = {
     'ol': ['start', 'type', 'reversed'],
     'td': ['colSpan', 'rowSpan'],
     'th': ['colSpan', 'rowSpan', 'scope'],
+    'svg': ['viewBox', 'width', 'height', 'aria-hidden', 'fill', 'xmlns', 'class'],
+    'path': ['d', 'fill', 'fill-rule'],
   },
 }
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { MermaidBlock } from './MermaidBlock'
+import { EChartsBlock } from './EChartsBlock'
 import { CopyButton } from './CopyButton'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
@@ -124,7 +129,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
 
   const renderedContent = useMemo(() => (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath, remarkGemoji]}
+      remarkPlugins={[remarkGfm, remarkAlert, remarkBreaks, remarkMath, remarkGemoji]}
       rehypePlugins={[rehypeRaw, rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'prepend' }], rehypeKatex, [rehypeSanitize, sanitizeSchema]]}
       components={markdownComponents}
     >
@@ -319,6 +324,11 @@ function CodeComponent({ className, children, ...props }: ComponentPropsWithoutR
   // Mermaid diagram — render as interactive SVG
   if (match && match[1] === 'mermaid') {
     return <MermaidBlock code={code} />
+  }
+
+  // ECharts — render as interactive chart
+  if (match && match[1] === 'echarts') {
+    return <EChartsBlock code={code} />
   }
 
   if (match) {
