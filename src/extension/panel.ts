@@ -116,18 +116,17 @@ export class PanelProvider {
 
   private readonly _settingsManager = new SettingsManager();
 
-  /** Show a VS Code notification when a task completes while the panel is not visible */
-  private _notifyIfBackground(result: 'success' | 'error'): void {
-    if (this._isVisible) return;
-    const title = this._panel?.title || 'Claude Code ChatUI';
-    const icon = result === 'success' ? '✓' : '✗';
-    const label = result === 'success' ? 'completed' : 'failed';
-    void vscode.window.showInformationMessage(
-      `${icon} "${title}" ${label}`,
-      'Show',
-    ).then((action) => {
-      if (action === 'Show') this._panel?.reveal();
-    });
+  /** Swap tab icon to a badge icon when a task completes in the background */
+  private _showBadgeIcon(result: 'success' | 'error'): void {
+    if (!this._panel || this._panel.active) return;
+    const svg = result === 'success' ? 'icon-badge-success.svg' : 'icon-badge-error.svg';
+    this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', svg);
+  }
+
+  /** Restore the default tab icon */
+  private _restoreDefaultIcon(): void {
+    if (!this._panel) return;
+    this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png');
   }
 
   // Single session state (no tabs)
@@ -218,7 +217,10 @@ export class PanelProvider {
     this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png');
     this._panel.webview.html = getWebviewHtml(this._panel.webview, this._extensionUri);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-    this._panel.onDidChangeViewState((e) => { this._isVisible = e.webviewPanel.visible; }, null, this._disposables);
+    this._panel.onDidChangeViewState((e) => {
+      this._isVisible = e.webviewPanel.active;
+      if (this._isVisible) this._restoreDefaultIcon();
+    }, null, this._disposables);
     this._setupWebviewMessageHandler(this._panel.webview);
 
     // Lock the editor group so the chat panel stays pinned
@@ -251,8 +253,11 @@ export class PanelProvider {
     this._webview = webview;
     if (panel) {
       this._panel = panel;
-      this._isVisible = panel.visible;
-      panel.onDidChangeViewState((e) => { this._isVisible = e.webviewPanel.visible; }, null, this._disposables);
+      this._isVisible = panel.active;
+      panel.onDidChangeViewState((e) => {
+        this._isVisible = e.webviewPanel.active;
+        if (this._isVisible) this._restoreDefaultIcon();
+      }, null, this._disposables);
     }
     this._setupWebviewMessageHandler(webview);
   }
@@ -617,7 +622,7 @@ export class PanelProvider {
       this._postMessage({ type: 'requestResult', data: { result: 'success' } });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
-      this._notifyIfBackground('success');
+      this._showBadgeIcon('success');
     });
 
     this._claudeService.onError((error) => {
@@ -627,7 +632,7 @@ export class PanelProvider {
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'requestResult', data: { result: 'error' } });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
-      this._notifyIfBackground('error');
+      this._showBadgeIcon('error');
 
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });
