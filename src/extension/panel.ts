@@ -112,8 +112,23 @@ export class PanelProvider {
   private _disposables: vscode.Disposable[] = [];
   private _messageHandlerDisposable: vscode.Disposable | undefined;
   private _isVisible = true;
+  private _titleSet = false;
 
   private readonly _settingsManager = new SettingsManager();
+
+  /** Show a VS Code notification when a task completes while the panel is not visible */
+  private _notifyIfBackground(result: 'success' | 'error'): void {
+    if (this._isVisible) return;
+    const title = this._panel?.title || 'Claude Code ChatUI';
+    const icon = result === 'success' ? '✓' : '✗';
+    const label = result === 'success' ? 'completed' : 'failed';
+    void vscode.window.showInformationMessage(
+      `${icon} "${title}" ${label}`,
+      'Show',
+    ).then((action) => {
+      if (action === 'Show') this._panel?.reveal();
+    });
+  }
 
   // Single session state (no tabs)
   private _messageProcessor: ClaudeMessageProcessor;
@@ -235,6 +250,7 @@ export class PanelProvider {
   bindToWebview(webview: vscode.Webview, panel?: vscode.WebviewPanel): void {
     this._webview = webview;
     if (panel) {
+      this._panel = panel;
       this._isVisible = panel.visible;
       panel.onDidChangeViewState((e) => { this._isVisible = e.webviewPanel.visible; }, null, this._disposables);
     }
@@ -402,6 +418,14 @@ export class PanelProvider {
     if (this._stateManager.isProcessing) return;
 
     log.info('Sending message', { hasImages: !!images?.length });
+
+    // Auto-title: set panel title from first user message
+    if (this._panel && !this._titleSet) {
+      this._titleSet = true;
+      const clean = text.replace(/@\S+\n?/g, '').trim(); // remove @file references
+      const title = clean.length > 30 ? clean.substring(0, 30) + '…' : clean || 'Chat';
+      this._panel.title = title;
+    }
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const cwd = workspaceFolder ? workspaceFolder.uri.fsPath : process.cwd();
@@ -593,7 +617,7 @@ export class PanelProvider {
       this._postMessage({ type: 'requestResult', data: { result: 'success' } });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
       this._usageService.onClaudeSessionEnd();
-
+      this._notifyIfBackground('success');
     });
 
     this._claudeService.onError((error) => {
@@ -603,6 +627,7 @@ export class PanelProvider {
       this._postMessage({ type: 'clearLoading' });
       this._postMessage({ type: 'requestResult', data: { result: 'error' } });
       this._postMessage({ type: 'setProcessing', data: { isProcessing: false } });
+      this._notifyIfBackground('error');
 
       if (error.includes('ENOENT') || error.includes('command not found')) {
         this._postMessage({ type: 'showInstallModal' });

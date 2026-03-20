@@ -19,6 +19,14 @@ export class PanelManager {
     private readonly _permissionService: PermissionService,
   ) {}
 
+  /** Get the ViewColumn used by an existing chat panel (if any) so new panels open as tabs in the same group */
+  private _getExistingColumn(): vscode.ViewColumn | undefined {
+    for (const { panel } of this._panels.values()) {
+      if (panel.viewColumn !== undefined) return panel.viewColumn;
+    }
+    return undefined;
+  }
+
   createNewPanel(
     column: vscode.ViewColumn = vscode.ViewColumn.Two,
     preserveFocus = false,
@@ -29,6 +37,9 @@ export class PanelManager {
       totalCost?: number;
     },
   ): PanelProvider {
+    // Reuse the editor group of an existing chat panel so all chats stay as tabs in one group
+    const targetColumn = this._getExistingColumn() || column;
+
     const panelId = `panel-${++this._panelCounter}`;
     const claudeService = new ClaudeService(this._context);
 
@@ -46,7 +57,7 @@ export class PanelManager {
     const panel = vscode.window.createWebviewPanel(
       'claudeCodeChatUI',
       options?.title || 'Claude Code ChatUI',
-      { viewColumn: column, preserveFocus },
+      { viewColumn: targetColumn, preserveFocus },
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [this._extensionUri] },
     );
 
