@@ -428,7 +428,7 @@ export class PanelProvider {
     if (this._panel && !this._titleSet) {
       this._titleSet = true;
       const clean = text.replace(/@\S+\n?/g, '').trim(); // remove @file references
-      const title = clean.length > 30 ? clean.substring(0, 30) + '…' : clean || 'Chat';
+      const title = clean.length > 15 ? clean.substring(0, 15) + '…' : clean || 'Chat';
       this._panel.title = title;
     }
 
