@@ -573,10 +573,6 @@ export class PanelProvider {
     return [...new Set(decls)].slice(0, 30);
   }
 
-  /**
-   * Gather IDE context (workspace, git, active file, open files, selection, diagnostics)
-   * to prepend to user messages. Respects the `context.includeFileContext` setting.
-   */
   private _setupClaudeServiceHandlers(): void {
     this._claudeService.onMessage((message: ClaudeMessage) => {
       void this._messageProcessor.processMessage(message);

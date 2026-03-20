@@ -206,37 +206,6 @@ export interface TodoItem {
 }
 
 // ============================================================================
-// Role persona types (single-role selection for session)
-// ============================================================================
-
-export interface RolePersona {
-  id: string;
-  name: string;
-  prompt: string;
-  color: string;
-}
-
-// ============================================================================
-// Diagnostic types (compile error visualization)
-// ============================================================================
-
-export interface DiagnosticItem {
-  severity: 'error' | 'warning' | 'info' | 'hint';
-  message: string;
-  line: number;
-  column: number;
-  endLine?: number;
-  endColumn?: number;
-  source?: string;
-  code?: string | number;
-}
-
-export interface DiagnosticsData {
-  filePath: string;
-  diagnostics: DiagnosticItem[];
-}
-
-// ============================================================================
 // Webview communication types
 // ============================================================================
 
@@ -262,16 +231,11 @@ export type WebviewToExtensionMessage =
       approved: boolean;
       alwaysAllow?: boolean;
     }
-  | { type: "getPermissions" }
-  | { type: "addPermission"; toolName: string; pattern: string }
-  | { type: "removePermission"; toolName: string; pattern: string }
 
   // Conversation management
   | { type: "getConversationList" }
   | { type: "loadConversation"; filename: string }
-  | { type: "deleteConversation"; filename: string }
   | { type: "searchConversations"; query: string }
-  | { type: "exportConversation"; filename: string }
 
   // File & editor
   | { type: "openFile"; filePath: string }

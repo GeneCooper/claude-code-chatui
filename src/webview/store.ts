@@ -27,8 +27,7 @@ export interface ChatMessage {
     | "compacting"
     | "compactBoundary"
     | "permissionRequest"
-    | "todosUpdate"
-    | "diagnostics";
+    | "todosUpdate";
   data: unknown;
   timestamp: string;
 }
