@@ -118,14 +118,22 @@ export class PanelProvider {
 
   /** Swap tab icon to a badge icon when a task completes in the background */
   private _showBadgeIcon(result: 'success' | 'error'): void {
-    if (!this._panel || this._panel.active) return;
+    if (!this._panel) return;
     const svg = result === 'success' ? 'icon-badge-success.svg' : 'icon-badge-error.svg';
     this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', svg);
+  }
+
+  /** Show loading badge icon while processing */
+  private _showLoadingIcon(): void {
+    if (!this._panel) return;
+    this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon-badge-loading.svg');
   }
 
   /** Restore the default tab icon */
   private _restoreDefaultIcon(): void {
     if (!this._panel) return;
+    // Don't restore default icon while still processing
+    if (this._stateManager.isProcessing) return;
     this._panel.iconPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'icon.png');
   }
 
@@ -450,6 +458,7 @@ export class PanelProvider {
     this._postMessage({ type: 'userInput', data: userInputData });
     this._postMessage({ type: 'setProcessing', data: { isProcessing: true } });
     this._postMessage({ type: 'loading', data: 'Claude is working...' });
+    this._showLoadingIcon();
 
     const yoloMode = this._settingsManager.isYoloModeEnabled();
     const disallowedTools = [...this._settingsManager.getDisallowedTools()];
