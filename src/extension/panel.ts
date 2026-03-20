@@ -451,26 +451,20 @@ export class PanelProvider {
 
     const processedText = this._preprocessFileReferences(text);
 
-    // Only inject IDE context and hooks info on the first message of a session
-    // to avoid wasting tokens on repeated context every turn
-    const isFirstMessage = !this._sessionId;
-    const contextPrefix = isFirstMessage ? this._gatherIDEContext() : '';
-
     // Inject conversation context summary ONLY when --resume session is NOT available.
     // When --resume is used, the CLI already has full conversation history server-side;
     // injecting a summary would create redundant/conflicting context.
     let conversationContext = '';
     if (this._pendingContextSummary) {
       if (!this._claudeService.sessionId) {
-        // No CLI session to resume — summary is the only context bridge
         conversationContext = this._pendingContextSummary;
       }
-      this._pendingContextSummary = undefined; // Only inject once regardless
+      this._pendingContextSummary = undefined;
     }
 
-    const enrichedText = [contextPrefix, conversationContext, processedText].filter(Boolean).join('\n\n');
+    const finalText = conversationContext ? `${conversationContext}\n\n${processedText}` : processedText;
 
-    void this._claudeService.sendMessage(enrichedText, {
+    void this._claudeService.sendMessage(finalText, {
       cwd, yoloMode, effortLevel,
       model: this._stateManager.selectedModel !== 'default' ? this._stateManager.selectedModel : undefined,
       mcpConfigPath, images,
@@ -583,106 +577,6 @@ export class PanelProvider {
    * Gather IDE context (workspace, git, active file, open files, selection, diagnostics)
    * to prepend to user messages. Respects the `context.includeFileContext` setting.
    */
-  private _gatherIDEContext(): string {
-    const config = vscode.workspace.getConfiguration('claudeCodeChatUI');
-    if (!config.get<boolean>('context.includeFileContext', true)) return '';
-
-    const parts: string[] = [];
-
-    // --- Layer 1: Workspace & Environment ---
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder) {
-      parts.push(`Workspace: ${workspaceFolder.uri.fsPath}`);
-    }
-
-    // Git status (branch + dirty files) — lightweight, no spawn
-    this._appendGitContext(parts, workspaceFolder);
-
-    // --- Layer 2: Active file + selection (most relevant context) ---
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
-      const doc = editor.document;
-      const relativePath = vscode.workspace.asRelativePath(doc.uri, false);
-      parts.push(`Active file: ${relativePath}`);
-
-      // Selection only — most valuable context, skip if nothing selected
-      const selection = editor.selection;
-      if (!selection.isEmpty) {
-        const selectedText = doc.getText(selection);
-        const lines = selectedText.split('\n');
-        const capped = lines.length > 100 ? lines.slice(0, 100).join('\n') + '\n... (truncated)' : selectedText;
-        parts.push(`Selected text (lines ${selection.start.line + 1}-${selection.end.line + 1}):\n\`\`\`\n${capped}\n\`\`\``);
-      }
-
-      // Diagnostics — only errors (warnings are too noisy), cap at 10
-      const diagnostics = vscode.languages.getDiagnostics(doc.uri)
-        .filter(d => d.severity === vscode.DiagnosticSeverity.Error)
-        .slice(0, 10);
-      if (diagnostics.length > 0) {
-        const items = diagnostics.map(d => {
-          const src = d.source ? ` [${d.source}]` : '';
-          return `- L${d.range.start.line + 1}: ${d.message}${src}`;
-        });
-        parts.push(`Errors:\n${items.join('\n')}`);
-      }
-    }
-
-    if (parts.length === 0) return '';
-    return `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]`;
-  }
-
-  /**
-   * Read active hooks from ~/.claude/settings.json and build a system prompt fragment.
-   */
-  private _getActiveHooksPrompt(): string {
-    try {
-      const os = require('os') as typeof import('os');
-      const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
-      if (!fs.existsSync(settingsPath)) return '';
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
-      const hooks = settings.hooks as Record<string, Array<{ matcher: string; hooks: Array<{ command: string }> }>> | undefined;
-      if (!hooks || Object.keys(hooks).length === 0) return '';
-
-      const lines: string[] = ['[Active Hooks]'];
-      for (const [event, matchers] of Object.entries(hooks)) {
-        if (!Array.isArray(matchers) || matchers.length === 0) continue;
-        for (const m of matchers) {
-          const cmds = m.hooks?.map(h => h.command).join('; ') || '';
-          lines.push(`- ${event} (${m.matcher}): ${cmds}`);
-        }
-      }
-      if (lines.length <= 1) return '';
-      lines.push('Hooks run automatically by the CLI. Do NOT re-run hook commands manually.');
-      lines.push('[/Active Hooks]');
-      return lines.join('\n');
-    } catch {
-      return '';
-    }
-  }
-
-  /**
-   * Append git branch and dirty-file info by reading .git files directly (no child process).
-   */
-  private _appendGitContext(parts: string[], workspaceFolder?: vscode.WorkspaceFolder): void {
-    if (!workspaceFolder) return;
-
-    const gitDir = path.join(workspaceFolder.uri.fsPath, '.git');
-    try {
-      if (!fs.existsSync(gitDir)) return;
-
-      // Read current branch from .git/HEAD
-      const headContent = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf-8').trim();
-      const branch = headContent.startsWith('ref: refs/heads/')
-        ? headContent.replace('ref: refs/heads/', '')
-        : headContent.slice(0, 8); // detached HEAD — show short hash
-
-      parts.push(`Git branch: ${branch}`);
-    } catch {
-      // .git read failed — skip silently
-    }
-  }
-
-
   private _setupClaudeServiceHandlers(): void {
     this._claudeService.onMessage((message: ClaudeMessage) => {
       void this._messageProcessor.processMessage(message);
