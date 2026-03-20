@@ -200,15 +200,11 @@ body {
 }
 
 
-/* ===== Streaming Cursor ===== */
-.streaming-cursor::after {
-  content: '▋';
-  display: inline-block;
-  animation: cursorBlink 1s step-end infinite;
+/* ===== Streaming Cursor (rendered inline via markdown text) ===== */
+.markdown-content .streaming-cursor-char {
   color: var(--chatui-accent);
-  font-size: 0.85em;
-  margin-left: 2px;
-  vertical-align: baseline;
+  font-weight: bold;
+  animation: cursorBlink 1s step-end infinite;
 }
 
 @keyframes cursorBlink {
