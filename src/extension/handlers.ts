@@ -727,22 +727,6 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
   ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 
-  // Send active hooks summary so webview can show indicator
-  try {
-    const hooksSettings = readClaudeSettings();
-    const hooks = (hooksSettings.hooks || {}) as HooksConfig;
-    const activeCount = Object.values(hooks).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-    const summary: string[] = [];
-    for (const [event, matchers] of Object.entries(hooks) as [string, HookMatcher[]][]) {
-      if (!matchers?.length) continue;
-      for (const m of matchers) {
-        const cmd = m.hooks?.[0]?.command || '';
-        const short = cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
-        summary.push(`${event}(${m.matcher}): ${short}`);
-      }
-    }
-    ctx.postMessage({ type: 'hooksStatus', data: { activeCount, summary } });
-  } catch { /* non-critical */ }
 
   // Trigger immediate usage fetch so the indicator shows right away
   void ctx.usageService.fetchUsageData();
@@ -953,63 +937,6 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
   });
 }
 
-// ============================================================================
-// Hooks Management
-// ============================================================================
-
-interface HookEntry {
-  type: 'command';
-  command: string;
-}
-
-interface HookMatcher {
-  matcher: string;
-  hooks: HookEntry[];
-}
-
-type HookEvent = 'PreToolUse' | 'PostToolUse' | 'Notification' | 'Stop';
-
-type HooksConfig = Partial<Record<HookEvent, HookMatcher[]>>;
-
-function getClaudeSettingsPath(): string {
-  const os = require('os') as typeof import('os');
-  return path.join(os.homedir(), '.claude', 'settings.json');
-}
-
-function readClaudeSettings(): Record<string, unknown> {
-  const settingsPath = getClaudeSettingsPath();
-  try {
-    if (fs.existsSync(settingsPath)) {
-      return JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
-    }
-  } catch { /* corrupt or missing */ }
-  return {};
-}
-
-function writeClaudeSettings(settings: Record<string, unknown>): void {
-  const settingsPath = getClaudeSettingsPath();
-  const dir = path.dirname(settingsPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-}
-
-const handleLoadHooks: MessageHandler = (_msg, ctx) => {
-  const settings = readClaudeSettings();
-  const hooks = (settings.hooks || {}) as HooksConfig;
-  ctx.postMessage({ type: 'hooksData', data: hooks });
-};
-
-const handleSaveHooks: MessageHandler = (msg, ctx) => {
-  try {
-    const hooks = msg.hooks as HooksConfig;
-    const settings = readClaudeSettings();
-    settings.hooks = hooks;
-    writeClaudeSettings(settings);
-    ctx.postMessage({ type: 'hooksSaved' });
-  } catch {
-    ctx.postMessage({ type: 'error', data: t('error.saveHooks') });
-  }
-};
 
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
@@ -1036,8 +963,6 @@ const messageHandlers: Record<string, MessageHandler> = {
   openCCUsageTerminal: handleOpenCCUsageTerminal,
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
-  loadHooks: handleLoadHooks,
-  saveHooks: handleSaveHooks,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
