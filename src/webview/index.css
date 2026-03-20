@@ -200,18 +200,6 @@ body {
 }
 
 
-/* ===== Streaming Cursor (rendered inline via markdown text) ===== */
-.markdown-content .streaming-cursor-char {
-  color: var(--chatui-accent);
-  font-weight: bold;
-  animation: cursorBlink 1s step-end infinite;
-}
-
-@keyframes cursorBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
 /* ===== Tool Execution Animations ===== */
 .tool-executing-icon {
   animation: toolPulse 1.5s ease-in-out infinite;

@@ -98,14 +98,9 @@ function isArtifactWorthy(text: string): boolean {
   return headerCount >= 2
 }
 
-// Sentinel that gets appended during streaming and rendered as a blinking cursor
-const CURSOR_SENTINEL = ' ▋'
-
 export const AssistantMessage = memo(function AssistantMessage({ text, isStreaming = false }: Props) {
   const [copied, setCopied] = useState(false)
-  const rawDisplayText = useDebouncedText(text, isStreaming)
-  // Append cursor character directly into markdown text so it renders inline
-  const displayText = isStreaming ? rawDisplayText + CURSOR_SENTINEL : rawDisplayText
+  const displayText = useDebouncedText(text, isStreaming)
   const showOpenAsDoc = !isStreaming && isArtifactWorthy(text)
 
   const handleOpenAsDoc = () => {
@@ -251,31 +246,17 @@ function extractText(children: React.ReactNode): string {
 
 function processChildren(children: React.ReactNode): React.ReactNode {
   if (typeof children === 'string') {
-    return styleCursorAndLinkify(children)
+    return linkifyFilePaths(children)
   }
   if (Array.isArray(children)) {
     return children.map((child, i) => {
       if (typeof child === 'string') {
-        return <span key={i}>{styleCursorAndLinkify(child)}</span>
+        return <span key={i}>{linkifyFilePaths(child)}</span>
       }
       return child
     })
   }
   return children
-}
-
-/** Wrap trailing ▋ cursor char in a styled span, then linkify the rest */
-function styleCursorAndLinkify(text: string): React.ReactNode {
-  if (text.endsWith('▋')) {
-    const before = text.slice(0, -1)
-    return (
-      <>
-        {before ? linkifyFilePaths(before) : null}
-        <span className="streaming-cursor-char">▋</span>
-      </>
-    )
-  }
-  return linkifyFilePaths(text)
 }
 
 // Simple LRU-ish cache for linkifyFilePaths to avoid re-running regex on same text
