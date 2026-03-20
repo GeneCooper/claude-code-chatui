@@ -65,25 +65,27 @@ const markdownComponents = {
 }
 
 /**
- * Debounce markdown rendering during streaming — only re-render every 150ms
- * to avoid expensive markdown parsing on every character.
+ * Adaptive debounce during streaming — plain text updates faster (50ms),
+ * content with code blocks/tables uses slower debounce (150ms) to avoid
+ * expensive markdown parsing.
  */
-function useDebouncedText(text: string, isStreaming: boolean, delayMs = 150): string {
+function useDebouncedText(text: string, isStreaming: boolean): string {
   const [debouncedText, setDebouncedText] = useState(text)
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     if (!isStreaming) {
-      // When not streaming, render immediately
       if (timerRef.current) clearTimeout(timerRef.current)
       setDebouncedText(text)
       return
     }
-    // During streaming, debounce updates
+    // Adaptive delay: shorter for plain text, longer for complex markdown
+    const hasComplexContent = /```|^\|.*\|/m.test(text)
+    const delayMs = hasComplexContent ? 150 : 50
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setDebouncedText(text), delayMs)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [text, isStreaming, delayMs])
+  }, [text, isStreaming])
 
   return debouncedText
 }
@@ -139,7 +141,7 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
       style={{ padding: '4px 0' }}
     >
       {/* Message content */}
-      <div className="markdown-content text-sm leading-relaxed">
+      <div className={`markdown-content text-sm leading-relaxed${isStreaming ? ' streaming-cursor' : ''}`}>
         {renderedContent}
       </div>
 

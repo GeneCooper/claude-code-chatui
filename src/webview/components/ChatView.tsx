@@ -1,9 +1,78 @@
-import { useCallback, useState, useEffect, useRef, memo } from 'react'
+import { useCallback, useState, useEffect, useRef, useMemo, memo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useChatStore, useUIStore } from '../store'
+import { useChatStore, useUIStore, type ChatMessage } from '../store'
 import { useAutoScroll } from '../hooks'
 import { JourneyTimeline } from './JourneyTimeline'
 import { WelcomeScreen } from './WelcomeScreen'
+
+// ============================================================================
+// Mini Navigator — shows message distribution + click to jump
+// ============================================================================
+
+interface NavSegment {
+  type: 'user' | 'assistant' | 'tool' | 'error'
+  position: number // 0..1 relative position
+  messageIndex: number
+}
+
+function buildNavSegments(messages: ChatMessage[]): NavSegment[] {
+  if (messages.length === 0) return []
+  const segments: NavSegment[] = []
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]
+    const position = i / messages.length
+    if (msg.type === 'userInput') segments.push({ type: 'user', position, messageIndex: i })
+    else if (msg.type === 'output') segments.push({ type: 'assistant', position, messageIndex: i })
+    else if (msg.type === 'error') segments.push({ type: 'error', position, messageIndex: i })
+    else if (msg.type === 'toolUse') segments.push({ type: 'tool', position, messageIndex: i })
+  }
+  return segments
+}
+
+const NAV_COLORS: Record<string, string> = {
+  user: 'var(--chatui-accent)',
+  assistant: 'var(--status-success)',
+  tool: 'rgba(255, 255, 255, 0.2)',
+  error: 'var(--status-error)',
+}
+
+const NAV_HEIGHTS: Record<string, number> = {
+  user: 8,
+  assistant: 4,
+  tool: 2,
+  error: 6,
+}
+
+function MiniNavigator({ messages, containerRef }: { messages: ChatMessage[]; containerRef: React.RefObject<HTMLDivElement | null> }) {
+  const segments = useMemo(() => buildNavSegments(messages), [messages])
+
+  const handleClick = useCallback((position: number) => {
+    const container = containerRef.current
+    if (!container) return
+    const targetScroll = position * container.scrollHeight
+    container.scrollTo({ top: targetScroll, behavior: 'smooth' })
+  }, [containerRef])
+
+  if (segments.length < 5) return null // Only show for conversations with enough messages
+
+  return (
+    <div className="chat-navigator">
+      {segments.map((seg, i) => (
+        <div
+          key={i}
+          className="chat-nav-segment"
+          style={{
+            top: `${seg.position * 100}%`,
+            height: `${NAV_HEIGHTS[seg.type]}px`,
+            background: NAV_COLORS[seg.type],
+          }}
+          onClick={() => handleClick(seg.position)}
+          title={`${seg.type} message`}
+        />
+      ))}
+    </div>
+  )
+}
 
 interface ChatViewProps {
   onHintClick?: (text: string) => void
@@ -87,25 +156,31 @@ export const ChatView = memo(function ChatView({ onHintClick }: ChatViewProps) {
         </div>
       )}
 
-      {/* Scroll container */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 min-h-0"
-        style={{ position: 'relative', zIndex: 0 }}
-      >
-        {messages.length === 0 && (
-          <WelcomeScreen onHintClick={onHintClick || (() => {})} />
-        )}
+      {/* Scroll container with mini navigator */}
+      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div
+          ref={containerRef}
+          className="chat-scroll-container flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 min-h-0"
+          style={{ position: 'relative', zIndex: 0, height: '100%' }}
+        >
+          {messages.length === 0 && (
+            <WelcomeScreen onHintClick={onHintClick || (() => {})} />
+          )}
 
+          {messages.length > 0 && (
+            <JourneyTimeline
+              messages={messages}
+              isProcessing={isProcessing}
+              onEdit={handleEdit}
+              searchQuery={searchQuery}
+            />
+          )}
+        </div>
+
+        {/* Mini navigator — right edge color bar for quick jumping */}
         {messages.length > 0 && (
-          <JourneyTimeline
-            messages={messages}
-            isProcessing={isProcessing}
-            onEdit={handleEdit}
-            searchQuery={searchQuery}
-          />
+          <MiniNavigator messages={messages} containerRef={containerRef} />
         )}
-
       </div>
 
     </div>

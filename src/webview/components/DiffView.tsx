@@ -93,10 +93,10 @@ function CharHighlight({ segments, mode }: { segments: CharDiffSegment[]; mode: 
       {segments.map((seg, i) => {
         if (seg.type === 'equal') return <span key={i}>{seg.value}</span>
         if (mode === 'delete' && seg.type === 'delete') {
-          return <span key={i} style={{ background: 'rgba(244, 67, 54, 0.3)', borderRadius: '2px' }}>{seg.value}</span>
+          return <span key={i} style={{ background: 'var(--diff-remove-char)', borderRadius: '2px' }}>{seg.value}</span>
         }
         if (mode === 'insert' && seg.type === 'insert') {
-          return <span key={i} style={{ background: 'rgba(76, 175, 80, 0.3)', borderRadius: '2px' }}>{seg.value}</span>
+          return <span key={i} style={{ background: 'var(--diff-add-char)', borderRadius: '2px' }}>{seg.value}</span>
         }
         return null
       })}
@@ -147,33 +147,33 @@ function pairLines(lines: DiffLineDisplay[]): LinePair[] {
 }
 
 // ---------------------------------------------------------------------------
-// Styles
+// Styles — using CSS variables from index.css :root
 // ---------------------------------------------------------------------------
-const FONT = "'Cascadia Code', 'SF Mono', Monaco, 'Fira Code', 'Courier New', monospace"
+const FONT = 'var(--diff-font)'
 const LINE_HEIGHT = 1.6
 const FONT_SIZE = '11.5px'
 
 const lineNumStyle: React.CSSProperties = {
   width: '42px', minWidth: '42px', textAlign: 'right', padding: '0 8px 0 4px',
   fontSize: '10px', opacity: 0.35, userSelect: 'none', whiteSpace: 'nowrap',
-  borderRight: '1px solid rgba(255,255,255,0.06)',
+  borderRight: '1px solid var(--diff-line-border)',
 }
 
 const bgColors = {
-  add: 'rgba(46, 160, 67, 0.12)',
-  remove: 'rgba(248, 81, 73, 0.12)',
+  add: 'var(--diff-add-bg)',
+  remove: 'var(--diff-remove-bg)',
   context: 'transparent',
 }
 
 const gutterColors = {
-  add: 'rgba(46, 160, 67, 0.22)',
-  remove: 'rgba(248, 81, 73, 0.22)',
+  add: 'var(--diff-add-gutter)',
+  remove: 'var(--diff-remove-gutter)',
   context: 'transparent',
 }
 
 const textColors = {
-  add: 'var(--vscode-gitDecoration-addedResourceForeground, #3fb950)',
-  remove: 'var(--vscode-gitDecoration-deletedResourceForeground, #f85149)',
+  add: 'var(--diff-add-color)',
+  remove: 'var(--diff-remove-color)',
   context: 'inherit',
 }
 
@@ -449,7 +449,7 @@ function SplitView({ hunks }: { hunks: Hunk[] }) {
                         )}
                       </td>
                       {/* Divider */}
-                      <td style={{ width: '1px', background: 'rgba(255,255,255,0.06)', padding: 0 }} />
+                      <td style={{ width: '1px', background: 'var(--diff-line-border)', padding: 0 }} />
                       {/* Right gutter */}
                       <td style={{ ...lineNumStyle, background: rightGutter, width: '36px', minWidth: '36px' }}>
                         {pair.insertLine?.newLineNum ?? ''}
@@ -501,9 +501,9 @@ function HunkGroup({ hunk, colSpan = 3, children }: { hunk: Hunk; colSpan?: numb
             fontSize: '10px',
             fontFamily: FONT,
             color: 'var(--vscode-descriptionForeground, rgba(255,255,255,0.45))',
-            background: 'rgba(56, 139, 253, 0.08)',
-            borderTop: '1px solid rgba(255,255,255,0.04)',
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            background: 'var(--diff-hunk-bg)',
+            borderTop: '1px solid var(--diff-line-border)',
+            borderBottom: '1px solid var(--diff-line-border)',
             userSelect: 'none',
           }}
         >

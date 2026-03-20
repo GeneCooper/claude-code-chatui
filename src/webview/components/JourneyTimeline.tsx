@@ -9,6 +9,7 @@ import { PermissionDialog } from './PermissionDialog'
 import { ErrorBoundary } from './ErrorBoundary'
 import { DiffView } from './DiffView'
 import { SUBAGENT_COLORS, FILE_EDIT_TOOLS } from '../../shared/constants'
+import { postMessage } from '../hooks'
 
 // ============================================================================
 // Constants
@@ -208,7 +209,7 @@ function LoadingIndicator() {
         <div style={{
           width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: isActive ? 'loadingSpin 1s linear infinite' : 'loadingSpin 2s linear infinite',
-          color: isStale ? 'var(--vscode-editorWarning-foreground, #cca700)' : 'var(--chatui-accent)',
+          color: isStale ? 'var(--status-warning)' : 'var(--chatui-accent)',
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3v3m0 12v3M5.636 5.636l2.121 2.121m8.486 8.486l2.121 2.121M3 12h3m12 0h3M5.636 18.364l2.121-2.121m8.486-8.486l2.121-2.121" />
@@ -221,21 +222,21 @@ function LoadingIndicator() {
         {hasStarted && (
           <span style={{
             width: '6px', height: '6px', borderRadius: '50%',
-            backgroundColor: isStale ? '#cca700' : '#3fb950',
+            backgroundColor: isStale ? 'var(--status-warning)' : 'var(--status-success)',
             animation: isActive ? 'pulse 1s ease infinite' : 'none',
             opacity: isStale ? 0.6 : 0.8,
           }} />
         )}
       </div>
       {isStale && (
-        <div style={{ marginTop: '4px', marginLeft: '28px', fontSize: '10px', opacity: 0.5, color: 'var(--vscode-editorWarning-foreground, #cca700)' }}>
+        <div style={{ marginTop: '4px', marginLeft: '28px', fontSize: '10px', opacity: 0.5, color: 'var(--status-warning)' }}>
           No activity for {formatTime(secondsSinceActivity)} — process may be starting up
         </div>
       )}
       {hookDetail && (
         <div style={{
           marginTop: '4px', marginLeft: '28px', fontSize: '10px', opacity: 0.7,
-          color: processStatus?.status === 'hook-failed' ? 'var(--vscode-editorError-foreground, #e74c3c)' : '#4ade80',
+          color: processStatus?.status === 'hook-failed' ? 'var(--status-error)' : 'var(--status-success)',
           fontFamily: 'var(--vscode-editor-font-family, monospace)', whiteSpace: 'pre-wrap',
         }}>
           {hookDetail}
@@ -243,6 +244,63 @@ function LoadingIndicator() {
       )}
     </div>
   )
+}
+
+// ============================================================================
+// Live Elapsed Timer — shows real-time duration for executing tools
+// ============================================================================
+
+function LiveElapsedTimer({ startTime }: { startTime: string }) {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const start = new Date(startTime).getTime()
+    const update = () => setElapsed(Math.floor((Date.now() - start) / 1000))
+    update()
+    const id = setInterval(update, 1000)
+    return () => clearInterval(id)
+  }, [startTime])
+
+  // Only show after 2 seconds to avoid flicker for fast tools
+  if (elapsed < 2) return null
+
+  const display = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m${elapsed % 60}s`
+
+  return (
+    <span style={{
+      opacity: 0.4, fontSize: '9px',
+      fontFamily: 'var(--tool-font-mono)',
+      lineHeight: '16px',
+      fontVariantNumeric: 'tabular-nums',
+    }}>
+      {display}
+    </span>
+  )
+}
+
+// ============================================================================
+// Error Type Detection — classifies errors for specialized rendering
+// ============================================================================
+
+type ErrorType = 'generic' | 'permission' | 'file-not-found' | 'command-failed' | 'rate-limit'
+
+function classifyError(errorText: string): ErrorType {
+  const lower = errorText.toLowerCase()
+  if (/permission denied|not allowed|requires approval|user denied/i.test(lower)) return 'permission'
+  if (/no such file|file not found|enoent|does not exist|path not found/i.test(lower)) return 'file-not-found'
+  if (/exit code|exited with|command failed|non-zero|returned \d+/i.test(lower)) return 'command-failed'
+  if (/rate limit|too many requests|429|quota exceeded|usage limit/i.test(lower)) return 'rate-limit'
+  return 'generic'
+}
+
+function getErrorIcon(type: ErrorType): string {
+  switch (type) {
+    case 'permission': return '🔒'
+    case 'file-not-found': return '📄'
+    case 'command-failed': return '⚠'
+    case 'rate-limit': return '⏳'
+    default: return '✗'
+  }
 }
 
 // ============================================================================
@@ -271,9 +329,10 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
   const mapping = TOOL_VERBS[toolName]
   const detail = rawInput && mapping ? mapping.getDetail(rawInput) : ''
   const verb = hasResult ? (mapping?.done || toolName) : (mapping?.active || toolName)
-  const icon = isError ? '✗' : hasResult ? '✓' : '⟳'
-  const iconColor = isError ? '#e74c3c' : hasResult ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.4)'
   const isExecuting = !hasResult
+  const errorType = isError ? classifyError(String(resultData?.content || '')) : undefined
+  const icon = isError ? getErrorIcon(errorType!) : hasResult ? '✓' : '⟳'
+  const iconColor = isError ? 'var(--status-error)' : hasResult ? 'var(--status-icon-done)' : 'var(--status-icon-pending)'
 
   // Auto-expand errors and edit tools with diffs (always show diff content)
   const isEditWithDiff = FILE_EDIT_TOOLS.includes(toolName) && resultData?.fileContentBefore !== undefined && resultData?.fileContentAfter !== undefined
@@ -286,9 +345,10 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
   if (isHidden && !isError) {
     return (
       <div className="flex items-center gap-1.5" style={{ padding: '1px 8px', fontSize: '11px', opacity: 0.35, lineHeight: '16px' }}>
-        <span style={{ color: iconColor, fontSize: '9px' }}>{icon}</span>
+        <span style={{ color: iconColor, fontSize: '9px' }} className={isExecuting ? 'tool-executing-icon' : undefined}>{icon}</span>
         <span>{verb} {detail}</span>
-        {durationStr && <span style={{ fontSize: '9px', opacity: 0.6, fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{durationStr}</span>}
+        {isExecuting && <LiveElapsedTimer startTime={item.toolUse.timestamp} />}
+        {durationStr && <span style={{ fontSize: '9px', opacity: 0.6, fontFamily: 'var(--tool-font-mono)', lineHeight: '16px' }}>{durationStr}</span>}
       </div>
     )
   }
@@ -312,14 +372,15 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85' }}
         >
-          <span style={{ color: iconColor, fontSize: '10px', display: 'inline-block', animation: isExecuting ? 'spin 1.5s linear infinite' : 'none' }}>{icon}</span>
+          <span style={{ color: iconColor, fontSize: '10px', display: 'inline-block' }} className={isExecuting ? 'tool-executing-icon' : undefined}>{icon}</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={subagentColor} strokeWidth="2.5" style={{ flexShrink: 0 }}>
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
           </svg>
           <span style={{ color: subagentColor, fontWeight: 500 }}>{subagentType}</span>
           {subagentDesc && <span className="truncate opacity-50" style={{ fontSize: '10px' }}>{subagentDesc}</span>}
-          {durationStr && <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{durationStr}</span>}
+          {isExecuting && <LiveElapsedTimer startTime={item.toolUse.timestamp} />}
+          {durationStr && <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--tool-font-mono)', lineHeight: '16px' }}>{durationStr}</span>}
           <span style={{ opacity: 0.4, fontSize: '9px', marginLeft: 'auto', lineHeight: '16px' }}>{effectiveExpanded ? '▾' : '▸'}</span>
         </button>
         {effectiveExpanded && (
@@ -356,7 +417,7 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           padding: '3px 8px', borderRadius: 'var(--radius-sm)',
-          background: isError ? 'rgba(231, 76, 60, 0.06)' : 'transparent',
+          background: isError ? 'var(--status-error-bg)' : 'transparent',
           fontSize: '11px', lineHeight: '16px',
           opacity: isError ? 0.9 : 0.6,
           transition: 'all 0.15s ease',
@@ -364,18 +425,19 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
         onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
         onMouseLeave={(e) => { e.currentTarget.style.opacity = isError ? '0.9' : '0.6' }}
       >
-        <span style={{
-          color: iconColor, fontSize: '10px', display: 'inline-block',
-          animation: isExecuting ? 'spin 1.5s linear infinite' : 'none',
-        }}>{icon}</span>
+        <span
+          style={{ color: iconColor, fontSize: '10px', display: 'inline-block' }}
+          className={isExecuting ? 'tool-executing-icon' : (hasResult ? (isError ? 'tool-complete-error' : 'tool-complete-success') : undefined)}
+        >{icon}</span>
         <span className="truncate" style={{
           fontWeight: isExecuting ? 500 : 400,
-          color: isError ? '#e74c3c' : 'inherit',
+          color: isError ? 'var(--status-error)' : 'inherit',
         }}>
           {verb} {detail}
         </span>
+        {isExecuting && <LiveElapsedTimer startTime={item.toolUse.timestamp} />}
         {durationStr && (
-          <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--font-mono, monospace)', lineHeight: '16px' }}>{durationStr}</span>
+          <span style={{ opacity: 0.3, fontSize: '9px', fontFamily: 'var(--tool-font-mono)', lineHeight: '16px' }}>{durationStr}</span>
         )}
         <span style={{ opacity: 0.3, fontSize: '9px', marginLeft: 'auto', lineHeight: '16px' }}>
           {effectiveExpanded ? '▾' : '▸'}
@@ -415,19 +477,59 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
         />
       )
     }
-    case 'error':
+    case 'error': {
+      const errorText = String(message.data)
+      const errType = classifyError(errorText)
+      const errIcon = getErrorIcon(errType)
+      // Extract exit code for command failures
+      const exitCodeMatch = errType === 'command-failed' ? errorText.match(/(?:exit code|exited with|returned)\s*(\d+)/i) : null
+      // Extract file path for file-not-found
+      const filePathMatch = errType === 'file-not-found' ? errorText.match(/(?:file|path)[:\s]*["']?([^\s"']+)["']?/i) : null
       return (
         <div
           data-error="true"
-          className="px-3 py-2 rounded-lg border text-sm"
-          style={{
-            backgroundColor: 'var(--vscode-inputValidation-errorBackground, rgba(255,0,0,0.1))',
-            borderColor: 'var(--vscode-inputValidation-errorBorder, #be1100)',
-          }}
+          className={`error-block error-block--${errType} px-3 py-2 text-sm`}
         >
-          {String(message.data)}
+          <div className="flex items-start gap-2">
+            <span style={{ fontSize: '13px', flexShrink: 0, lineHeight: '20px' }}>{errIcon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{errorText}</div>
+              {errType === 'command-failed' && exitCodeMatch && (
+                <div className="flex items-center gap-2 mt-1" style={{ fontSize: '11px', opacity: 0.7 }}>
+                  <span style={{
+                    padding: '1px 6px', borderRadius: '3px',
+                    background: 'var(--status-error-bg)',
+                    fontFamily: 'var(--tool-font-mono)',
+                    color: 'var(--status-error)',
+                  }}>
+                    exit {exitCodeMatch[1]}
+                  </span>
+                </div>
+              )}
+              {errType === 'file-not-found' && filePathMatch && (
+                <button
+                  onClick={() => postMessage({ type: 'openFile', filePath: filePathMatch[1] })}
+                  className="mt-1.5 cursor-pointer border-none text-[11px]"
+                  style={{
+                    padding: '2px 8px', borderRadius: '4px',
+                    background: 'var(--chatui-accent-subtle)',
+                    color: 'var(--chatui-accent)',
+                    fontWeight: 500,
+                  }}
+                >
+                  Open path in editor
+                </button>
+              )}
+              {errType === 'rate-limit' && (
+                <div className="mt-1" style={{ fontSize: '11px', opacity: 0.7, color: 'var(--status-warning)' }}>
+                  Usage limit reached — please wait before retrying
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )
+    }
     case 'loading':
       return <LoadingIndicator />
     case 'compacting':

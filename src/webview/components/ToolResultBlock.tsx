@@ -49,8 +49,8 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
       className="relative z-10 overflow-hidden text-xs"
       style={{
         border: isError
-          ? '1px solid rgba(231, 76, 60, 0.15)'
-          : '1px solid rgba(255, 255, 255, 0.06)',
+          ? '1px solid var(--status-error-border)'
+          : '1px solid var(--diff-border)',
         borderRadius: 'var(--radius-md)',
         animation: 'fadeIn 0.15s ease',
       }}
@@ -67,7 +67,7 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
           width: '6px',
           height: '6px',
           borderRadius: '50%',
-          background: isError ? '#e74c3c' : '#4ade80',
+          background: isError ? 'var(--status-error)' : 'var(--status-success)',
         }} />
         <span style={{ opacity: 0.6 }}>
           {toolName ? `${toolName} result` : 'Result'}
