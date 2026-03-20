@@ -218,8 +218,6 @@ export type WebviewToExtensionMessage =
       model?: string;
       images?: string[];
     }
-  | { type: "newSession" }
-  | { type: "createNewPanel" }
   | { type: "rewindToMessage"; userInputIndex: number }
   | { type: "stopRequest" }
   | { type: "ready" }
@@ -239,15 +237,7 @@ export type WebviewToExtensionMessage =
 
   // File & editor
   | { type: "openFile"; filePath: string }
-  | { type: "openFileAtLine"; filePath: string; line: number; column?: number }
   | { type: "openExternal"; url: string }
-  | {
-      type: "openDiff";
-      oldContent: string;
-      newContent: string;
-      filePath: string;
-    }
-  | { type: "revertFile"; filePath: string; oldContent: string }
   | { type: "resolveDroppedFile"; uri: string }
   | { type: "getClipboardText" }
 
@@ -268,10 +258,6 @@ export type WebviewToExtensionMessage =
   | { type: "openCCUsageTerminal" }
   | { type: "runInstallCommand" }
   | { type: "openLoginTerminal" }
-
-  // Hooks
-  | { type: "loadHooks" }
-  | { type: "saveHooks"; hooks: Record<string, unknown> }
 
   // UI notifications
   | { type: "showWarning"; data: string }

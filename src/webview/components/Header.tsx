@@ -89,7 +89,6 @@ export const Header = memo(function Header() {
       </div>
 
       <div className="flex items-center" style={{ fontSize: '11px', height: '28px' }}>
-        <HooksIndicator />
         <UsageIndicator />
         <HeaderSep />
 
@@ -290,80 +289,4 @@ function HeaderIconButton({
   )
 }
 
-function HooksIndicator() {
-  const hooksStatus = useUIStore((s) => s.hooksStatus)
-  const [showTooltip, setShowTooltip] = useState(false)
-
-  if (!hooksStatus || hooksStatus.activeCount === 0) return null
-
-  return (
-    <div style={{ position: 'relative', marginRight: '6px' }}>
-      <button
-        onClick={() => {
-          // Navigate to settings to manage hooks
-          useUIStore.getState().setActiveView('settings')
-        }}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        className="cursor-pointer border-none flex items-center gap-1"
-        style={{
-          background: 'rgba(74, 222, 128, 0.1)',
-          border: '1px solid rgba(74, 222, 128, 0.2)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '2px 6px',
-          fontSize: '10px',
-          color: '#4ade80',
-          height: '22px',
-          transition: 'all 0.15s ease',
-        }}
-        title={`${hooksStatus.activeCount} hook(s) active`}
-      >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-        <span style={{ fontWeight: 600 }}>Hooks</span>
-        <span style={{
-          background: 'rgba(74, 222, 128, 0.2)',
-          borderRadius: '50%',
-          width: '14px',
-          height: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '9px',
-          fontWeight: 700,
-        }}>
-          {hooksStatus.activeCount}
-        </span>
-      </button>
-
-      {/* Tooltip */}
-      {showTooltip && hooksStatus.summary.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          marginTop: '4px',
-          background: 'var(--vscode-editorHoverWidget-background, #252526)',
-          border: '1px solid var(--vscode-editorHoverWidget-border, #454545)',
-          borderRadius: '6px',
-          padding: '8px 10px',
-          fontSize: '10px',
-          lineHeight: 1.6,
-          whiteSpace: 'nowrap',
-          zIndex: 1000,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          minWidth: '200px',
-        }}>
-          <div style={{ fontWeight: 600, marginBottom: '4px', opacity: 0.7 }}>Active Hooks</div>
-          {hooksStatus.summary.map((s, i) => (
-            <div key={i} style={{ opacity: 0.8, fontFamily: 'var(--vscode-editor-font-family, monospace)' }}>
-              {s}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 

@@ -410,7 +410,6 @@ export class PanelProvider {
       messageProcessor: this._messageProcessor,
       extensionContext: this._context,
       postMessage: (msg: Record<string, unknown>) => this._postMessage(msg),
-      newSession: () => this.newSession(),
       loadConversation: (filename: string) => this.loadConversation(filename),
       handleSendMessage: (text: string, images?: string[]) =>
         this._handleSendMessage(text, images),
@@ -609,10 +608,6 @@ export class PanelProvider {
 
     this._claudeService.onProcessStatus((data) => {
       this._postMessage({ type: 'processStatus', data });
-    });
-
-    this._claudeService.onHookEvent((data) => {
-      this._postMessage({ type: 'hookExecution', data });
     });
 
     this._claudeService.onProcessEnd(() => {

@@ -576,8 +576,6 @@ export class ClaudeMessageProcessor {
       type: 'updateTotals',
       data: {
         totalCost: this._stateManager.totalCost,
-        totalTokensInput: this._stateManager.totalTokensInput,
-        totalTokensOutput: this._stateManager.totalTokensOutput,
         requestCount: this._stateManager.requestCount,
         currentCost: result.total_cost_usd,
         currentDuration: result.duration_ms,
@@ -609,58 +607,20 @@ interface WebviewSettings {
   selectedModel: string;
   thinkingIntensity: string;
   yoloMode: boolean;
-  autoApprovePatterns: string[];
-  claudeExecutable: string;
-  maxHistorySize: number;
-  streamResponses: boolean;
-  showTimestamps: boolean;
-  codeBlockTheme: string;
-  fontSize: number;
-  compactMode: boolean;
-  showAvatars: boolean;
-  includeFileContext: boolean;
-  includeWorkspaceInfo: boolean;
-  maxContextLines: number;
   maxTurns: number;
   disallowedTools: string[];
 }
 
 const CONFIG_KEYS = {
-  CLAUDE_MODEL: 'claude.model',
-  CLAUDE_EXECUTABLE: 'claude.executable',
   THINKING_INTENSITY: 'thinking.intensity',
   PERMISSIONS_YOLO_MODE: 'permissions.yoloMode',
-  PERMISSIONS_AUTO_APPROVE: 'permissions.autoApprove',
-  CHAT_MAX_HISTORY_SIZE: 'chat.maxHistorySize',
-  CHAT_STREAM_RESPONSES: 'chat.streamResponses',
-  CHAT_SHOW_TIMESTAMPS: 'chat.showTimestamps',
-  CHAT_CODE_BLOCK_THEME: 'chat.codeBlockTheme',
-  UI_FONT_SIZE: 'ui.fontSize',
-  UI_COMPACT_MODE: 'ui.compactMode',
-  UI_SHOW_AVATARS: 'ui.showAvatars',
-  CONTEXT_INCLUDE_FILE: 'context.includeFileContext',
-  CONTEXT_INCLUDE_WORKSPACE: 'context.includeWorkspaceInfo',
-  CONTEXT_MAX_LINES: 'context.maxContextLines',
   MAX_TURNS: 'maxTurns',
   DISALLOWED_TOOLS: 'disallowedTools',
 } as const;
 
 const DEFAULTS = {
-  CLAUDE_MODEL: 'claude-sonnet-4-6',
-  CLAUDE_EXECUTABLE: 'claude',
   THINKING_INTENSITY: 'deep',
   YOLO_MODE: true,
-  AUTO_APPROVE_PATTERNS: [] as string[],
-  MAX_HISTORY_SIZE: 100,
-  STREAM_RESPONSES: true,
-  SHOW_TIMESTAMPS: true,
-  CODE_BLOCK_THEME: 'auto',
-  FONT_SIZE: 14,
-  COMPACT_MODE: false,
-  SHOW_AVATARS: true,
-  INCLUDE_FILE_CONTEXT: true,
-  INCLUDE_WORKSPACE_INFO: true,
-  MAX_CONTEXT_LINES: 500,
   MAX_TURNS: 25,
   DISALLOWED_TOOLS: [] as string[],
 };
@@ -680,96 +640,28 @@ export class SettingsManager {
         ? config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY)
         : DEFAULTS.THINKING_INTENSITY,
       yoloMode: config.get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE),
-      autoApprovePatterns: config.get<string[]>(CONFIG_KEYS.PERMISSIONS_AUTO_APPROVE, DEFAULTS.AUTO_APPROVE_PATTERNS),
-      claudeExecutable: config.get<string>(CONFIG_KEYS.CLAUDE_EXECUTABLE, DEFAULTS.CLAUDE_EXECUTABLE),
-      maxHistorySize: config.get<number>(CONFIG_KEYS.CHAT_MAX_HISTORY_SIZE, DEFAULTS.MAX_HISTORY_SIZE),
-      streamResponses: config.get<boolean>(CONFIG_KEYS.CHAT_STREAM_RESPONSES, DEFAULTS.STREAM_RESPONSES),
-      showTimestamps: config.get<boolean>(CONFIG_KEYS.CHAT_SHOW_TIMESTAMPS, DEFAULTS.SHOW_TIMESTAMPS),
-      codeBlockTheme: config.get<string>(CONFIG_KEYS.CHAT_CODE_BLOCK_THEME, DEFAULTS.CODE_BLOCK_THEME),
-      fontSize: config.get<number>(CONFIG_KEYS.UI_FONT_SIZE, DEFAULTS.FONT_SIZE),
-      compactMode: config.get<boolean>(CONFIG_KEYS.UI_COMPACT_MODE, DEFAULTS.COMPACT_MODE),
-      showAvatars: config.get<boolean>(CONFIG_KEYS.UI_SHOW_AVATARS, DEFAULTS.SHOW_AVATARS),
-      includeFileContext: config.get<boolean>(CONFIG_KEYS.CONTEXT_INCLUDE_FILE, DEFAULTS.INCLUDE_FILE_CONTEXT),
-      includeWorkspaceInfo: config.get<boolean>(CONFIG_KEYS.CONTEXT_INCLUDE_WORKSPACE, DEFAULTS.INCLUDE_WORKSPACE_INFO),
-      maxContextLines: config.get<number>(CONFIG_KEYS.CONTEXT_MAX_LINES, DEFAULTS.MAX_CONTEXT_LINES),
       maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
       disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
     };
-  }
-
-  getDefaultModel(): string {
-    return this._getConfig().get<string>(CONFIG_KEYS.CLAUDE_MODEL, DEFAULTS.CLAUDE_MODEL);
   }
 
   async updateSettings(settings: Record<string, unknown>): Promise<void> {
     const config = this._getConfig();
     if (!settings || typeof settings !== 'object') return;
 
-    // Thinking intensity
     const intensityValue = settings.thinkingIntensity ?? settings['thinking.intensity'];
     if (typeof intensityValue === 'string') {
       await config.update(CONFIG_KEYS.THINKING_INTENSITY, intensityValue, vscode.ConfigurationTarget.Global);
     }
-
-    // Permission settings
     if (typeof settings.yoloMode === 'boolean') {
       await config.update(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, settings.yoloMode, vscode.ConfigurationTarget.Global);
     }
-    if (Array.isArray(settings.autoApprovePatterns)) {
-      await config.update(CONFIG_KEYS.PERMISSIONS_AUTO_APPROVE, settings.autoApprovePatterns, vscode.ConfigurationTarget.Global);
-    }
-
-    // Claude executable
-    if (typeof settings.claudeExecutable === 'string') {
-      await config.update(CONFIG_KEYS.CLAUDE_EXECUTABLE, settings.claudeExecutable, vscode.ConfigurationTarget.Global);
-    }
-
-    // Chat settings
-    if (typeof settings.maxHistorySize === 'number') {
-      await config.update(CONFIG_KEYS.CHAT_MAX_HISTORY_SIZE, settings.maxHistorySize, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.streamResponses === 'boolean') {
-      await config.update(CONFIG_KEYS.CHAT_STREAM_RESPONSES, settings.streamResponses, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.showTimestamps === 'boolean') {
-      await config.update(CONFIG_KEYS.CHAT_SHOW_TIMESTAMPS, settings.showTimestamps, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.codeBlockTheme === 'string') {
-      await config.update(CONFIG_KEYS.CHAT_CODE_BLOCK_THEME, settings.codeBlockTheme, vscode.ConfigurationTarget.Global);
-    }
-
-    // UI settings
-    if (typeof settings.fontSize === 'number') {
-      await config.update(CONFIG_KEYS.UI_FONT_SIZE, settings.fontSize, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.compactMode === 'boolean') {
-      await config.update(CONFIG_KEYS.UI_COMPACT_MODE, settings.compactMode, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.showAvatars === 'boolean') {
-      await config.update(CONFIG_KEYS.UI_SHOW_AVATARS, settings.showAvatars, vscode.ConfigurationTarget.Global);
-    }
-
-    // Context settings
-    if (typeof settings.includeFileContext === 'boolean') {
-      await config.update(CONFIG_KEYS.CONTEXT_INCLUDE_FILE, settings.includeFileContext, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.includeWorkspaceInfo === 'boolean') {
-      await config.update(CONFIG_KEYS.CONTEXT_INCLUDE_WORKSPACE, settings.includeWorkspaceInfo, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.maxContextLines === 'number') {
-      await config.update(CONFIG_KEYS.CONTEXT_MAX_LINES, settings.maxContextLines, vscode.ConfigurationTarget.Global);
-    }
-
-    // Max turns
     if (typeof settings.maxTurns === 'number') {
       await config.update(CONFIG_KEYS.MAX_TURNS, settings.maxTurns, vscode.ConfigurationTarget.Global);
     }
-
-    // Disallowed tools
     if (Array.isArray(settings.disallowedTools)) {
       await config.update(CONFIG_KEYS.DISALLOWED_TOOLS, settings.disallowedTools, vscode.ConfigurationTarget.Global);
     }
-
   }
 
   getDisallowedTools(): string[] {
@@ -801,7 +693,6 @@ export interface MessageHandlerContext {
   messageProcessor: ClaudeMessageProcessor;
   extensionContext: vscode.ExtensionContext;
   postMessage(msg: Record<string, unknown>): void;
-  newSession(): Promise<void>;
   loadConversation(filename: string): Promise<void>;
   handleSendMessage(text: string, images?: string[]): void;
   panelManager?: PanelManager;
@@ -823,7 +714,6 @@ const handleSendMessage: MessageHandler = (msg, ctx) => {
   );
 };
 
-const handleNewSession: MessageHandler = (_msg, ctx) => { void ctx.newSession(); };
 const handleStopRequest: MessageHandler = (_msg, ctx) => { void ctx.claudeService.stopProcess(); };
 
 const handleReady: MessageHandler = (_msg, ctx) => {
@@ -847,7 +737,6 @@ const handleReady: MessageHandler = (_msg, ctx) => {
       if (!matchers?.length) continue;
       for (const m of matchers) {
         const cmd = m.hooks?.[0]?.command || '';
-        // Extract short label from command
         const short = cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
         summary.push(`${event}(${m.matcher}): ${short}`);
       }
@@ -933,30 +822,10 @@ const handleOpenFile: MessageHandler = (msg) => {
   });
 };
 
-const handleOpenFileAtLine: MessageHandler = (msg) => {
-  const uri = vscode.Uri.file(msg.filePath as string);
-  const line = Math.max(0, (msg.line as number || 1) - 1);
-  const col = Math.max(0, (msg.column as number || 1) - 1);
-  const pos = new vscode.Position(line, col);
-  const sel = new vscode.Selection(pos, pos);
-  vscode.workspace.openTextDocument(uri).then((doc) => {
-    vscode.window.showTextDocument(doc, { preview: true, selection: sel });
-  });
-};
-
 const handleOpenExternal: MessageHandler = (msg) => { void vscode.env.openExternal(vscode.Uri.parse(msg.url as string)); };
 
 const handleOpenMarkdownArtifact: MessageHandler = async (msg) => {
   await MarkdownContentProvider.openMarkdown(msg.content as string, (msg.title as string) || 'Claude Output');
-};
-
-const handleOpenDiff: MessageHandler = async (msg) => {
-  // Force side-by-side diff rendering
-  const diffConfig = vscode.workspace.getConfiguration('diffEditor');
-  if (!diffConfig.get<boolean>('renderSideBySide', true)) {
-    await diffConfig.update('renderSideBySide', true, vscode.ConfigurationTarget.Global);
-  }
-  await DiffContentProvider.openDiff(msg.oldContent as string, msg.newContent as string, msg.filePath as string);
 };
 
 const handleGetConversationList: MessageHandler = (_msg, ctx) => {
@@ -992,7 +861,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {
@@ -1035,18 +904,6 @@ const handleRefreshUsage: MessageHandler = (_msg, ctx) => { void ctx.usageServic
 
 const handleSearchConversations: MessageHandler = (msg, ctx) => {
   ctx.postMessage({ type: 'conversationList', data: ctx.conversationService.searchConversations(msg.query as string) });
-};
-
-const handleRevertFile: MessageHandler = async (msg, ctx) => {
-  try {
-    const uri = vscode.Uri.file(msg.filePath as string);
-    const content = new TextEncoder().encode(msg.oldContent as string);
-    await vscode.workspace.fs.writeFile(uri, content);
-    const fileName = (msg.filePath as string).split(/[\\/]/).pop() || 'file';
-    vscode.window.showInformationMessage(`Reverted: ${fileName}`);
-  } catch {
-    ctx.postMessage({ type: 'error', data: t('error.revertFile') });
-  }
 };
 
 const handleOpenCCUsageTerminal: MessageHandler = (_msg, ctx) => {
@@ -1096,8 +953,6 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
   });
 }
 
-const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
-
 // ============================================================================
 // Hooks Management
 // ============================================================================
@@ -1140,35 +995,7 @@ function writeClaudeSettings(settings: Record<string, unknown>): void {
 
 const handleLoadHooks: MessageHandler = (_msg, ctx) => {
   const settings = readClaudeSettings();
-  let hooks = (settings.hooks || {}) as HooksConfig;
-
-  // Migrate old Unix-only commands to cross-platform versions
-  let migrated = false;
-  const migrations: Record<string, string> = {
-    'npm run lint --fix 2>/dev/null || true': 'npm run lint --fix 2>&1 || echo "[hook:auto-lint] lint failed with exit code $?"',
-    'npm test 2>/dev/null || true': 'npm test 2>&1 || echo "[hook:auto-test] tests failed with exit code $?"',
-    'npx tsc --noEmit 2>/dev/null || true': 'npx tsc --noEmit 2>&1 || echo "[hook:type-check] type check failed with exit code $?"',
-    'git add -A && git commit -m "auto: agent checkpoint" 2>/dev/null || true': 'git add -A && git commit -m "auto: agent checkpoint" 2>&1 || echo "[hook:git-backup] commit failed"',
-    'echo "Claude task completed" | wall 2>/dev/null || echo "\\a"': 'echo "[hook:notify-done] Claude task completed"',
-    'echo "[$(date +%H:%M:%S)] Bash tool used" >> /tmp/claude-audit.log': 'echo "[$(date +%H:%M:%S)] Bash tool used" >> "${TMPDIR:-/tmp}/claude-audit.log"',
-  };
-  for (const matchers of Object.values(hooks)) {
-    if (!Array.isArray(matchers)) continue;
-    for (const matcher of matchers) {
-      for (const hook of matcher.hooks || []) {
-        const replacement = migrations[hook.command];
-        if (replacement) {
-          hook.command = replacement;
-          migrated = true;
-        }
-      }
-    }
-  }
-  if (migrated) {
-    settings.hooks = hooks;
-    writeClaudeSettings(settings);
-  }
-
+  const hooks = (settings.hooks || {}) as HooksConfig;
   ctx.postMessage({ type: 'hooksData', data: hooks });
 };
 
@@ -1186,7 +1013,6 @@ const handleSaveHooks: MessageHandler = (msg, ctx) => {
 
 const messageHandlers: Record<string, MessageHandler> = {
   sendMessage: handleSendMessage,
-  newSession: handleNewSession,
   stopRequest: handleStopRequest,
   ready: handleReady,
   permissionResponse: handlePermissionResponse,
@@ -1195,9 +1021,7 @@ const messageHandlers: Record<string, MessageHandler> = {
   runInstallCommand: handleRunInstallCommand,
   saveInputText: handleSaveInputText,
   openFile: handleOpenFile,
-  openFileAtLine: handleOpenFileAtLine,
   openExternal: handleOpenExternal,
-  openDiff: handleOpenDiff,
   openMarkdownArtifact: handleOpenMarkdownArtifact,
   getConversationList: handleGetConversationList,
   loadConversation: handleLoadConversation,
@@ -1209,11 +1033,9 @@ const messageHandlers: Record<string, MessageHandler> = {
   deleteMCPServer: handleDeleteMCPServer,
   refreshUsage: handleRefreshUsage,
   searchConversations: handleSearchConversations,
-  revertFile: handleRevertFile,
   openCCUsageTerminal: handleOpenCCUsageTerminal,
   getClipboardText: handleGetClipboard,
   resolveDroppedFile: handleResolveDroppedFile,
-  createNewPanel: handleCreateNewPanel,
   loadHooks: handleLoadHooks,
   saveHooks: handleSaveHooks,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),

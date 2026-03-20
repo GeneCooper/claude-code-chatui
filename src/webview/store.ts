@@ -43,8 +43,6 @@ interface TokenState {
 
 interface TotalsState {
   totalCost: number;
-  totalTokensInput: number;
-  totalTokensOutput: number;
   requestCount: number;
   currentCost?: number;
   currentDuration?: number;
@@ -97,8 +95,6 @@ export const useChatStore = create<ChatState>((set) => ({
   },
   totals: {
     totalCost: 0,
-    totalTokensInput: 0,
-    totalTokensOutput: 0,
     requestCount: 0,
   },
 
@@ -152,8 +148,6 @@ export const useChatStore = create<ChatState>((set) => ({
       sessionId: restored.sessionId || null,
       totals: {
         totalCost: restored.totalCost || 0,
-        totalTokensInput: 0,
-        totalTokensOutput: 0,
         requestCount: 0,
       },
     })),
@@ -205,13 +199,11 @@ interface SettingsState {
   thinkingIntensity: string;
   yoloMode: boolean;
   maxTurns: number;
-  disallowedTools: string[];
   updateSettings: (
     settings: Partial<{
       thinkingIntensity: string;
       yoloMode: boolean;
       maxTurns: number;
-      disallowedTools: string[];
     }>,
   ) => void;
 }
@@ -220,7 +212,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   thinkingIntensity: "deep",
   yoloMode: true,
   maxTurns: 25,
-  disallowedTools: [],
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
 }));
 
@@ -245,7 +236,6 @@ interface UIState {
   usageData: UsageData | null;
   accountType: "pro" | "max" | undefined;
   platformInfo: { platform: string; isWindows: boolean } | null;
-  hooksStatus: { activeCount: number; summary: string[] } | null;
   setActiveView: (view: ActiveView) => void;
   setShowMCPModal: (show: boolean) => void;
   setShowInstallModal: (show: boolean) => void;
@@ -261,9 +251,6 @@ interface UIState {
   setAccountType: (type: "pro" | "max" | undefined) => void;
   setPlatformInfo: (
     info: { platform: string; isWindows: boolean } | null,
-  ) => void;
-  setHooksStatus: (
-    status: { activeCount: number; summary: string[] } | null,
   ) => void;
 }
 
@@ -281,7 +268,6 @@ export const useUIStore = create<UIState>((set) => ({
   usageData: null,
   accountType: undefined,
   platformInfo: null,
-  hooksStatus: null,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
@@ -295,6 +281,5 @@ export const useUIStore = create<UIState>((set) => ({
   setUsageData: (data) => set({ usageData: data }),
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
-  setHooksStatus: (status) => set({ hooksStatus: status }),
 }));
 
