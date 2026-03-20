@@ -109,7 +109,6 @@ interface SendMessageOptions {
   cwd: string;
   yoloMode?: boolean;
   model?: string;
-  effortLevel?: string;
   mcpConfigPath?: string;
   images?: string[];
   allowedTools?: string[];
@@ -179,9 +178,6 @@ export class ClaudeService implements vscode.Disposable {
     }
     if (options.disallowedTools?.length) {
       for (const tool of options.disallowedTools) args.push('--disallowedTools', tool);
-    }
-    if (options.effortLevel && ['low', 'medium', 'high'].includes(options.effortLevel)) {
-      args.push('--effort', options.effortLevel);
     }
     if (this._sessionId) args.push('--resume', this._sessionId);
 

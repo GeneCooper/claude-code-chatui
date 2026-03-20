@@ -29,60 +29,107 @@ const descStyle: React.CSSProperties = {
 }
 
 // ============================================================================
-// Agent Mode Selector
+// Effort Level Selector
 // ============================================================================
 
-const AGENT_MODES = [
-  { value: 'fast', label: 'Fast', desc: 'Minimal thinking, act immediately', icon: '\u26A1', color: 'var(--chatui-accent)' },
-  { value: 'deep', label: 'Deep', desc: 'Balanced reasoning and execution', icon: '\uD83E\uDDE0', color: '#22c55e' },
-  { value: 'precise', label: 'Precise', desc: 'Thorough analysis, verify before acting', icon: '\uD83C\uDFAF', color: '#f59e0b' },
+const EFFORT_LEVELS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'max', label: 'Max' },
 ] as const
 
-function AgentModeSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function EffortSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const idx = EFFORT_LEVELS.findIndex((l) => l.value === value)
+  const activeIdx = idx >= 0 ? idx : 0
+
+  // Colors from left (cool) to right (warm)
+  const dotColors = ['rgba(255,255,255,0.3)', '#6366f1', '#f59e0b', '#ef4444']
+  const activeColor = dotColors[activeIdx]
+
   return (
-    <div style={{ display: 'flex', gap: '8px' }}>
-      {AGENT_MODES.map((mode) => {
-        const selected = value === mode.value
-        return (
+    <div>
+      <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+        <span style={{ fontSize: '13px', fontWeight: 600 }}>Effort</span>
+        <span style={{ fontSize: '12px', opacity: 0.7 }}>({EFFORT_LEVELS[activeIdx].label})</span>
+      </div>
+
+      {/* Slider track */}
+      <div style={{ position: 'relative', padding: '8px 0' }}>
+        {/* Track background */}
+        <div style={{
+          height: '4px',
+          borderRadius: '2px',
+          background: 'rgba(255,255,255,0.1)',
+          position: 'relative',
+        }}>
+          {/* Active fill */}
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            height: '100%',
+            width: `${(activeIdx / (EFFORT_LEVELS.length - 1)) * 100}%`,
+            borderRadius: '2px',
+            background: activeColor,
+            transition: 'all 0.2s ease',
+          }} />
+        </div>
+
+        {/* Dots */}
+        <div className="flex justify-between" style={{
+          position: 'absolute',
+          top: '50%',
+          left: 0,
+          right: 0,
+          transform: 'translateY(-50%)',
+          padding: '0',
+        }}>
+          {EFFORT_LEVELS.map((level, i) => {
+            const isActive = i <= activeIdx
+            const isCurrent = i === activeIdx
+            return (
+              <button
+                key={level.value}
+                onClick={() => onChange(level.value)}
+                className="cursor-pointer border-none"
+                style={{
+                  width: isCurrent ? '16px' : '10px',
+                  height: isCurrent ? '16px' : '10px',
+                  borderRadius: '50%',
+                  background: isActive ? activeColor : 'rgba(255,255,255,0.2)',
+                  border: isCurrent ? '2px solid #fff' : 'none',
+                  padding: 0,
+                  transition: 'all 0.2s ease',
+                  boxShadow: isCurrent ? '0 0 6px rgba(0,0,0,0.3)' : 'none',
+                }}
+                title={level.label}
+              />
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Labels */}
+      <div className="flex justify-between" style={{ marginTop: '6px' }}>
+        {EFFORT_LEVELS.map((level, i) => (
           <button
-            key={mode.value}
-            onClick={() => onChange(mode.value)}
-            className="cursor-pointer border-none text-left"
+            key={level.value}
+            onClick={() => onChange(level.value)}
+            className="cursor-pointer border-none bg-transparent"
             style={{
-              flex: 1,
-              padding: '10px 12px',
-              borderRadius: '8px',
-              background: selected ? `color-mix(in srgb, ${mode.color} 12%, transparent)` : 'rgba(255,255,255,0.04)',
-              border: selected ? `1.5px solid color-mix(in srgb, ${mode.color} 50%, transparent)` : '1.5px solid transparent',
-              color: 'var(--vscode-editor-foreground)',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (!selected) {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!selected) {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-                e.currentTarget.style.borderColor = 'transparent'
-              }
+              fontSize: '10px',
+              opacity: i === activeIdx ? 1 : 0.4,
+              fontWeight: i === activeIdx ? 600 : 400,
+              color: i === activeIdx ? activeColor : 'var(--vscode-editor-foreground)',
+              padding: '2px 4px',
+              transition: 'all 0.2s ease',
             }}
           >
-            <div style={{ fontSize: '18px', marginBottom: '6px' }}>{mode.icon}</div>
-            <div style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              color: selected ? mode.color : 'inherit',
-              marginBottom: '2px',
-            }}>
-              {mode.label}
-            </div>
-            <div style={{ fontSize: '10px', opacity: 0.55, lineHeight: 1.3 }}>{mode.desc}</div>
+            {level.label}
           </button>
-        )
-      })}
+        ))}
+      </div>
     </div>
   )
 }
@@ -92,7 +139,7 @@ function AgentModeSelector({ value, onChange }: { value: string; onChange: (v: s
 // ============================================================================
 
 export function SettingsPanel() {
-  const { thinkingIntensity, yoloMode } = useSettingsStore()
+  const { effortLevel, yoloMode } = useSettingsStore()
   const setActiveView = useUIStore((s) => s.setActiveView)
 
   useEffect(() => {
@@ -101,8 +148,8 @@ export function SettingsPanel() {
 
   const updateSetting = (key: string, value: unknown) => {
     postMessage({ type: 'updateSettings', settings: { [key]: value } })
-    if (key === 'thinking.intensity') {
-      useSettingsStore.getState().updateSettings({ thinkingIntensity: value as string })
+    if (key === 'effortLevel') {
+      useSettingsStore.getState().updateSettings({ effortLevel: value as string })
     } else if (key === 'yoloMode') {
       useSettingsStore.getState().updateSettings({ yoloMode: value as boolean })
     }
@@ -140,10 +187,12 @@ export function SettingsPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '16px 16px 120px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {/* Agent Mode */}
+        {/* Effort Level */}
         <div style={cardStyle}>
-          <div style={sectionTitleStyle}>Agent Mode</div>
-          <AgentModeSelector value={thinkingIntensity} onChange={(v) => updateSetting('thinking.intensity', v)} />
+          <EffortSelector value={effortLevel} onChange={(v) => updateSetting('effortLevel', v)} />
+          <p style={descStyle}>
+            Controls thinking depth. Higher levels prepend thinking prompts to guide Claude's reasoning.
+          </p>
         </div>
 
         {/* YOLO Mode */}

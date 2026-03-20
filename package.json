@@ -113,15 +113,16 @@
     "configuration": {
       "title": "Claude Code ChatUI",
       "properties": {
-        "claudeCodeChatUI.thinking.intensity": {
+        "claudeCodeChatUI.effortLevel": {
           "type": "string",
           "enum": [
-            "fast",
-            "deep",
-            "precise"
+            "low",
+            "medium",
+            "high",
+            "max"
           ],
-          "default": "deep",
-          "description": "Agent mode: fast (minimal tokens), deep (structured workflow), or precise (anti-hallucination)"
+          "default": "low",
+          "description": "Thinking depth: Low (no prompt), Medium (THINK), High (THINK HARD), Max (ULTRATHINK)"
         },
         "claudeCodeChatUI.permissions.yoloMode": {
           "type": "boolean",
@@ -134,14 +135,6 @@
           "minimum": 0,
           "maximum": 100,
           "description": "Maximum number of agentic turns per request (0 = unlimited). Helps control token usage."
-        },
-        "claudeCodeChatUI.disallowedTools": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "List of tool names to block (e.g. Bash, Write). Passed as --disallowedTools to CLI."
         },
         "claudeCodeChatUI.autoOpenDiff": {
           "type": "boolean",

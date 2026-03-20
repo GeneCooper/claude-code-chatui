@@ -196,12 +196,12 @@ export const useMCPStore = create<MCPState>((set) => ({
 // ============================================================================
 
 interface SettingsState {
-  thinkingIntensity: string;
+  effortLevel: string;
   yoloMode: boolean;
   maxTurns: number;
   updateSettings: (
     settings: Partial<{
-      thinkingIntensity: string;
+      effortLevel: string;
       yoloMode: boolean;
       maxTurns: number;
     }>,
@@ -209,7 +209,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  thinkingIntensity: "deep",
+  effortLevel: "low",
   yoloMode: true,
   maxTurns: 25,
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),

@@ -605,24 +605,21 @@ export class ClaudeMessageProcessor {
 
 interface WebviewSettings {
   selectedModel: string;
-  thinkingIntensity: string;
+  effortLevel: string;
   yoloMode: boolean;
   maxTurns: number;
-  disallowedTools: string[];
 }
 
 const CONFIG_KEYS = {
-  THINKING_INTENSITY: 'thinking.intensity',
+  EFFORT_LEVEL: 'effortLevel',
   PERMISSIONS_YOLO_MODE: 'permissions.yoloMode',
   MAX_TURNS: 'maxTurns',
-  DISALLOWED_TOOLS: 'disallowedTools',
 } as const;
 
 const DEFAULTS = {
-  THINKING_INTENSITY: 'deep',
+  EFFORT_LEVEL: 'low',
   YOLO_MODE: true,
   MAX_TURNS: 25,
-  DISALLOWED_TOOLS: [] as string[],
 };
 
 export class SettingsManager {
@@ -634,14 +631,12 @@ export class SettingsManager {
 
   getCurrentSettings(selectedModel: string): WebviewSettings {
     const config = this._getConfig();
+    const effort = config.get<string>(CONFIG_KEYS.EFFORT_LEVEL, DEFAULTS.EFFORT_LEVEL);
     return {
       selectedModel,
-      thinkingIntensity: ['fast', 'deep', 'precise'].includes(config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY))
-        ? config.get<string>(CONFIG_KEYS.THINKING_INTENSITY, DEFAULTS.THINKING_INTENSITY)
-        : DEFAULTS.THINKING_INTENSITY,
+      effortLevel: ['low', 'medium', 'high', 'max'].includes(effort) ? effort : DEFAULTS.EFFORT_LEVEL,
       yoloMode: config.get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE),
       maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
-      disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
     };
   }
 
@@ -649,9 +644,8 @@ export class SettingsManager {
     const config = this._getConfig();
     if (!settings || typeof settings !== 'object') return;
 
-    const intensityValue = settings.thinkingIntensity ?? settings['thinking.intensity'];
-    if (typeof intensityValue === 'string') {
-      await config.update(CONFIG_KEYS.THINKING_INTENSITY, intensityValue, vscode.ConfigurationTarget.Global);
+    if (typeof settings.effortLevel === 'string') {
+      await config.update(CONFIG_KEYS.EFFORT_LEVEL, settings.effortLevel, vscode.ConfigurationTarget.Global);
     }
     if (typeof settings.yoloMode === 'boolean') {
       await config.update(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, settings.yoloMode, vscode.ConfigurationTarget.Global);
@@ -659,13 +653,10 @@ export class SettingsManager {
     if (typeof settings.maxTurns === 'number') {
       await config.update(CONFIG_KEYS.MAX_TURNS, settings.maxTurns, vscode.ConfigurationTarget.Global);
     }
-    if (Array.isArray(settings.disallowedTools)) {
-      await config.update(CONFIG_KEYS.DISALLOWED_TOOLS, settings.disallowedTools, vscode.ConfigurationTarget.Global);
-    }
   }
 
   getDisallowedTools(): string[] {
-    return this._getConfig().get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS);
+    return [];
   }
 
   async enableYoloMode(): Promise<void> {
@@ -725,7 +716,7 @@ const handleReady: MessageHandler = (_msg, ctx) => {
   checkCliAvailable(ctx);
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
+  ctx.postMessage({ type: 'settingsData', data: { effortLevel: settings.effortLevel, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 
 
   // Trigger immediate usage fetch so the indicator shows right away
@@ -845,7 +836,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
+  ctx.postMessage({ type: 'settingsData', data: { effortLevel: settings.effortLevel, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {
