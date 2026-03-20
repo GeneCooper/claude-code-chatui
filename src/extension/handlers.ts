@@ -12,7 +12,7 @@ import { t } from './i18n';
 import { FILE_EDIT_TOOLS, HIDDEN_RESULT_TOOLS, PROTECTED_MCP_SERVERS } from '../shared/constants';
 import type { ClaudeService } from './claude';
 import type { PermissionService } from './claude';
-import type { ConversationService, UsageService, MCPService, SkillService } from './storage';
+import type { ConversationService, UsageService, MCPService } from './storage';
 
 // ============================================================================
 // DiffContentProvider
@@ -654,9 +654,6 @@ interface WebviewSettings {
   maxContextLines: number;
   maxTurns: number;
   disallowedTools: string[];
-  customSnippets: Array<{ id: string; name: string; prompt: string; color: string }>;
-  selectedSnippetIds: string[];
-  snippetMode: string;
 }
 
 const CONFIG_KEYS = {
@@ -677,9 +674,6 @@ const CONFIG_KEYS = {
   CONTEXT_MAX_LINES: 'context.maxContextLines',
   MAX_TURNS: 'maxTurns',
   DISALLOWED_TOOLS: 'disallowedTools',
-  SNIPPETS_CUSTOM: 'promptSnippets.custom',
-  SNIPPETS_SELECTED: 'promptSnippets.selectedIds',
-  SNIPPETS_MODE: 'promptSnippets.mode',
 } as const;
 
 const DEFAULTS = {
@@ -700,9 +694,6 @@ const DEFAULTS = {
   MAX_CONTEXT_LINES: 500,
   MAX_TURNS: 25,
   DISALLOWED_TOOLS: [] as string[],
-  SNIPPETS_CUSTOM: [] as Array<{ id: string; name: string; prompt: string; color: string }>,
-  SNIPPETS_SELECTED: [] as string[],
-  SNIPPETS_MODE: 'single' as string,
 };
 
 export class SettingsManager {
@@ -734,9 +725,6 @@ export class SettingsManager {
       maxContextLines: config.get<number>(CONFIG_KEYS.CONTEXT_MAX_LINES, DEFAULTS.MAX_CONTEXT_LINES),
       maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
       disallowedTools: config.get<string[]>(CONFIG_KEYS.DISALLOWED_TOOLS, DEFAULTS.DISALLOWED_TOOLS),
-      customSnippets: config.get<Array<{ id: string; name: string; prompt: string; color: string }>>(CONFIG_KEYS.SNIPPETS_CUSTOM, DEFAULTS.SNIPPETS_CUSTOM),
-      selectedSnippetIds: config.get<string[]>(CONFIG_KEYS.SNIPPETS_SELECTED, DEFAULTS.SNIPPETS_SELECTED),
-      snippetMode: config.get<string>(CONFIG_KEYS.SNIPPETS_MODE, DEFAULTS.SNIPPETS_MODE),
     };
   }
 
@@ -813,17 +801,6 @@ export class SettingsManager {
       await config.update(CONFIG_KEYS.DISALLOWED_TOOLS, settings.disallowedTools, vscode.ConfigurationTarget.Global);
     }
 
-    // Prompt snippets
-    if (Array.isArray(settings.customSnippets)) {
-      await config.update(CONFIG_KEYS.SNIPPETS_CUSTOM, settings.customSnippets, vscode.ConfigurationTarget.Global);
-    }
-    if (Array.isArray(settings.selectedSnippetIds)) {
-      await config.update(CONFIG_KEYS.SNIPPETS_SELECTED, settings.selectedSnippetIds, vscode.ConfigurationTarget.Global);
-    }
-    if (typeof settings.snippetMode === 'string' && ['single', 'multi'].includes(settings.snippetMode)) {
-      await config.update(CONFIG_KEYS.SNIPPETS_MODE, settings.snippetMode, vscode.ConfigurationTarget.Global);
-    }
-
   }
 
   getDisallowedTools(): string[] {
@@ -848,7 +825,6 @@ export interface MessageHandlerContext {
   claudeService: ClaudeService;
   conversationService: ConversationService;
   mcpService: MCPService;
-  skillService: SkillService;
   usageService: UsageService;
   permissionService: PermissionService;
   stateManager: SessionStateManager;
@@ -888,11 +864,9 @@ const handleReady: MessageHandler = (_msg, ctx) => {
     data: { platform: process.platform, isWindows: process.platform === 'win32', locale: vscode.env.language },
   });
   checkCliAvailable(ctx);
-  checkClaudeMdExists(ctx);
-
   // Send current settings so webview has correct initial state
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds, snippetMode: settings.snippetMode } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, selectedModel: ctx.stateManager.selectedModel } });
 
   // Send active hooks summary so webview can show indicator
   try {
@@ -1049,7 +1023,7 @@ const handleLoadConversation: MessageHandler = async (msg, ctx) => {
 
 const handleGetSettings: MessageHandler = (_msg, ctx) => {
   const settings = ctx.settingsManager.getCurrentSettings(ctx.stateManager.selectedModel);
-  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel, customSnippets: settings.customSnippets, selectedSnippetIds: settings.selectedSnippetIds, snippetMode: settings.snippetMode } });
+  ctx.postMessage({ type: 'settingsData', data: { thinkingIntensity: settings.thinkingIntensity, yoloMode: settings.yoloMode, maxTurns: settings.maxTurns, disallowedTools: settings.disallowedTools, selectedModel: ctx.stateManager.selectedModel } });
 };
 
 const handleUpdateSettings: MessageHandler = (msg, ctx) => {
@@ -1153,26 +1127,6 @@ function checkCliAvailable(ctx: MessageHandlerContext): void {
   });
 }
 
-function checkClaudeMdExists(ctx: MessageHandlerContext): void {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  if (!workspaceFolder) return;
-
-  const root = workspaceFolder.uri.fsPath;
-  const exists = [
-    path.join(root, 'CLAUDE.md'),
-    path.join(root, '.claude', 'CLAUDE.md'),
-  ].some((p) => fs.existsSync(p));
-
-  if (exists) return;
-  if (ctx.extensionContext.globalState.get<boolean>('claudeMdBannerDismissed')) return;
-
-  ctx.postMessage({ type: 'showClaudeMdBanner' });
-}
-
-const handleDismissClaudeMdBanner: MessageHandler = (_msg, ctx) => {
-  void ctx.extensionContext.globalState.update('claudeMdBannerDismissed', true);
-};
-
 const handleCreateNewPanel: MessageHandler = (_msg, ctx) => { ctx.panelManager?.createNewPanel(); };
 
 // ============================================================================
@@ -1214,36 +1168,6 @@ function writeClaudeSettings(settings: Record<string, unknown>): void {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
 }
-
-// ============================================================================
-// Skills handlers
-// ============================================================================
-
-const handleLoadSkills: MessageHandler = (_msg, ctx) => {
-  ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
-};
-
-const handleSaveSkill: MessageHandler = async (msg, ctx) => {
-  try {
-    await ctx.skillService.saveSkill(msg.name as string, msg.description as string, msg.content as string);
-    // Directly return the updated skills list — no extra round-trip
-    ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error('[SkillService] Failed to save skill:', msg.name, detail);
-    ctx.postMessage({ type: 'skillSaveError', data: detail });
-  }
-};
-
-const handleDeleteSkill: MessageHandler = async (msg, ctx) => {
-  try {
-    await ctx.skillService.deleteSkill(msg.name as string);
-    ctx.postMessage({ type: 'skillsList', data: ctx.skillService.loadSkills() });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error('[SkillService] Failed to delete skill:', msg.name, detail);
-  }
-};
 
 const handleLoadHooks: MessageHandler = (_msg, ctx) => {
   const settings = readClaudeSettings();
@@ -1323,13 +1247,9 @@ const messageHandlers: Record<string, MessageHandler> = {
   createNewPanel: handleCreateNewPanel,
   loadHooks: handleLoadHooks,
   saveHooks: handleSaveHooks,
-  loadSkills: handleLoadSkills,
-  saveSkill: handleSaveSkill,
-  deleteSkill: handleDeleteSkill,
   rewindToMessage: (msg: WebviewMessage, ctx: MessageHandlerContext) => ctx.rewindToMessage(msg.userInputIndex as number),
   showWarning: (msg: WebviewMessage) => { vscode.window.showWarningMessage(msg.data as string); },
   showInfo: (msg: WebviewMessage) => { vscode.window.showInformationMessage(msg.data as string); },
-  dismissClaudeMdBanner: handleDismissClaudeMdBanner,
 };
 
 export function handleWebviewMessage(msg: WebviewMessage, ctx: MessageHandlerContext): void {

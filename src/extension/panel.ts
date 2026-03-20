@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ClaudeService } from './claude';
 import { t } from './i18n';
-import { ConversationService, UsageService, MCPService, SkillService } from './storage';
+import { ConversationService, UsageService, MCPService } from './storage';
 import { PermissionService } from './claude';
 import {
   ClaudeMessageProcessor,
@@ -129,7 +129,6 @@ export class PanelProvider {
     private readonly _claudeService: ClaudeService,
     private readonly _conversationService: ConversationService,
     private readonly _mcpService: MCPService,
-    private readonly _skillService: SkillService,
     private readonly _usageService: UsageService,
     private readonly _permissionService: PermissionService,
     private readonly _panelManager?: PanelManager,
@@ -383,7 +382,6 @@ export class PanelProvider {
       claudeService: this._claudeService,
       conversationService: this._conversationService,
       mcpService: this._mcpService,
-      skillService: this._skillService,
       usageService: this._usageService,
       permissionService: this._permissionService,
       stateManager: this._stateManager,
@@ -630,22 +628,7 @@ export class PanelProvider {
     }
 
     if (parts.length === 0) return '';
-    const ideContext = `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]\n\nIMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.`;
-
-    // Rendering format hint — the webview supports full HTML in markdown via rehype-raw
-    const formatHint = `[Rendering Hint]
-Your responses are rendered in a rich markdown viewer that supports inline HTML. When presenting structured/visual content (cards, grids, dashboards, comparison layouts), prefer:
-- Standard markdown tables (| col1 | col2 |) for tabular data
-- Inline HTML (<div>, <details>, <table>, etc.) for complex layouts like card grids
-- NEVER use Unicode box-drawing characters (┌─┐│└┘ etc.) — they render broken in proportional fonts
-Example card grid:
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-<div style="border:1px solid rgba(128,128,128,0.3);border-radius:8px;padding:12px">Card 1</div>
-<div style="border:1px solid rgba(128,128,128,0.3);border-radius:8px;padding:12px">Card 2</div>
-</div>
-[/Rendering Hint]`;
-
-    return `${ideContext}\n\n${formatHint}`;
+    return `[IDE Context]\n${parts.join('\n')}\n[/IDE Context]`;
   }
 
   /**

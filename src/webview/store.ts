@@ -2,7 +2,6 @@ import { create } from "zustand";
 import type {
   UsageData,
   MCPServerConfig,
-  SkillConfig,
   TodoItem,
   ConversationIndexEntry,
 } from "../shared/types";
@@ -200,94 +199,6 @@ export const useMCPStore = create<MCPState>((set) => ({
 }));
 
 // ============================================================================
-// Skills Store
-// ============================================================================
-
-interface SkillState {
-  skills: Record<string, SkillConfig>;
-  editingSkill: string | null;
-  setSkills: (skills: Record<string, SkillConfig>) => void;
-  setEditingSkill: (name: string | null) => void;
-  removeSkill: (name: string) => void;
-}
-
-export const useSkillStore = create<SkillState>((set) => ({
-  skills: {},
-  editingSkill: null,
-  setSkills: (skills) => set({ skills }),
-  setEditingSkill: (name) => set({ editingSkill: name }),
-  removeSkill: (name) =>
-    set((state) => {
-      const { [name]: _, ...rest } = state.skills;
-      return { skills: rest };
-    }),
-}));
-
-// ============================================================================
-// Snippet Store
-// ============================================================================
-
-export interface CustomSnippet {
-  id: string;
-  name: string;
-  prompt: string;
-  color: string;
-}
-
-interface SnippetState {
-  selectedIds: string[];
-  customSnippets: CustomSnippet[];
-  snippetMode: 'single' | 'multi';
-  toggleSnippet: (id: string) => void;
-  setSelectedIds: (ids: string[]) => void;
-  setSnippetMode: (mode: 'single' | 'multi') => void;
-  addCustomSnippet: (snippet: CustomSnippet) => void;
-  removeCustomSnippet: (id: string) => void;
-  updateCustomSnippet: (id: string, updates: Partial<CustomSnippet>) => void;
-  setCustomSnippets: (snippets: CustomSnippet[]) => void;
-}
-
-export const useSnippetStore = create<SnippetState>((set, get) => ({
-  selectedIds: [],
-  customSnippets: [],
-  snippetMode: 'single',
-  toggleSnippet: (id) =>
-    set((state) => {
-      if (state.selectedIds.includes(id)) {
-        return { selectedIds: state.selectedIds.filter((i) => i !== id) };
-      }
-      // Single mode: replace selection; Multi mode: append
-      return {
-        selectedIds: state.snippetMode === 'single' ? [id] : [...state.selectedIds, id],
-      };
-    }),
-  setSelectedIds: (ids) => set({ selectedIds: ids }),
-  setSnippetMode: (mode) => {
-    const state = get();
-    if (mode === 'single' && state.selectedIds.length > 1) {
-      // Keep only the last selected snippet when switching to single mode
-      set({ snippetMode: mode, selectedIds: [state.selectedIds[state.selectedIds.length - 1]] });
-    } else {
-      set({ snippetMode: mode });
-    }
-  },
-  addCustomSnippet: (snippet) =>
-    set((state) => ({ customSnippets: [...state.customSnippets, snippet] })),
-  removeCustomSnippet: (id) =>
-    set((state) => ({
-      customSnippets: state.customSnippets.filter((s) => s.id !== id),
-      selectedIds: state.selectedIds.filter((i) => i !== id),
-    })),
-  updateCustomSnippet: (id, updates) =>
-    set((state) => ({
-      customSnippets: state.customSnippets.map((s) =>
-        s.id === id ? { ...s, ...updates } : s
-      ),
-    })),
-  setCustomSnippets: (snippets) => set({ customSnippets: snippets }),
-}));
-
-// ============================================================================
 // Settings Store
 // ============================================================================
 
@@ -324,7 +235,6 @@ export type RequestResult = "success" | "error" | null;
 interface UIState {
   activeView: ActiveView;
   showMCPModal: boolean;
-  showSkillsModal: boolean;
   showInstallModal: boolean;
   showLoginModal: boolean;
   loginErrorMessage: string;
@@ -337,12 +247,8 @@ interface UIState {
   accountType: "pro" | "max" | undefined;
   platformInfo: { platform: string; isWindows: boolean } | null;
   hooksStatus: { activeCount: number; summary: string[] } | null;
-  showClaudeMdBanner: boolean;
-  showTaskChainDrawer: boolean;
-
   setActiveView: (view: ActiveView) => void;
   setShowMCPModal: (show: boolean) => void;
-  setShowSkillsModal: (show: boolean) => void;
   setShowInstallModal: (show: boolean) => void;
   setShowLoginModal: (show: boolean) => void;
   setLoginErrorMessage: (msg: string) => void;
@@ -360,14 +266,11 @@ interface UIState {
   setHooksStatus: (
     status: { activeCount: number; summary: string[] } | null,
   ) => void;
-  setShowClaudeMdBanner: (show: boolean) => void;
-  setShowTaskChainDrawer: (show: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   activeView: "chat",
   showMCPModal: false,
-  showSkillsModal: false,
   showInstallModal: false,
   showLoginModal: false,
   loginErrorMessage: "",
@@ -380,12 +283,9 @@ export const useUIStore = create<UIState>((set) => ({
   accountType: undefined,
   platformInfo: null,
   hooksStatus: null,
-  showClaudeMdBanner: false,
-  showTaskChainDrawer: false,
 
   setActiveView: (view) => set({ activeView: view }),
   setShowMCPModal: (show) => set({ showMCPModal: show }),
-  setShowSkillsModal: (show) => set({ showSkillsModal: show }),
   setShowInstallModal: (show) => set({ showInstallModal: show }),
   setShowLoginModal: (show) => set({ showLoginModal: show }),
   setLoginErrorMessage: (msg) => set({ loginErrorMessage: msg }),
@@ -397,7 +297,5 @@ export const useUIStore = create<UIState>((set) => ({
   setAccountType: (type) => set({ accountType: type }),
   setPlatformInfo: (info) => set({ platformInfo: info }),
   setHooksStatus: (status) => set({ hooksStatus: status }),
-  setShowClaudeMdBanner: (show) => set({ showClaudeMdBanner: show }),
-  setShowTaskChainDrawer: (show) => set({ showTaskChainDrawer: show }),
 }));
 

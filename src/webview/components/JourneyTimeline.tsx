@@ -6,14 +6,9 @@ import { ThinkingBlock } from './ThinkingBlock'
 import { ToolUseBlock } from './ToolUseBlock'
 import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
-import { DiagnosticsBlock } from './DiagnosticsBlock'
 import { ErrorBoundary } from './ErrorBoundary'
 import { DiffView } from './DiffView'
 import { SUBAGENT_COLORS, FILE_EDIT_TOOLS } from '../../shared/constants'
-import { TaskChainTrigger } from './TaskChainDrawer'
-import { useChainDiagnosis } from '../hooks/useChainDiagnosis'
-import { useUIStore } from '../store'
-import type { DiagnosticsData } from '../../shared/types'
 
 // ============================================================================
 // Constants
@@ -330,10 +325,7 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
         {effectiveExpanded && (
           <div style={{ paddingLeft: '8px' }}>
             <ToolUseBlock data={useData} />
-            {item.toolResult && (item.toolResult.type === 'diagnostics'
-              ? <DiagnosticsBlock data={item.toolResult.data as DiagnosticsData} />
-              : <ToolResultBlock data={resultData!} />
-            )}
+            {item.toolResult && <ToolResultBlock data={resultData!} />}
           </div>
         )}
       </div>
@@ -392,10 +384,7 @@ const ToolBlock = memo(function ToolBlock({ item, isExpanded, onToggle }: {
       {effectiveExpanded && (
         <div style={{ paddingLeft: '20px' }}>
           <ToolUseBlock data={useData} />
-          {item.toolResult && (item.toolResult.type === 'diagnostics'
-            ? <DiagnosticsBlock data={item.toolResult.data as DiagnosticsData} />
-            : <ToolResultBlock data={resultData!} />
-          )}
+          {item.toolResult && <ToolResultBlock data={resultData!} />}
         </div>
       )}
     </div>
@@ -461,8 +450,6 @@ const MessageRenderer = memo(function MessageRenderer({ message, userInputIndex,
     }
     case 'permissionRequest':
       return <PermissionDialog data={message.data as Record<string, unknown>} />
-    case 'diagnostics':
-      return <DiagnosticsBlock data={message.data as DiagnosticsData} />
     case 'toolResult':
       // Orphan toolResult (not matched to any toolUse)
       return <ToolResultBlock data={message.data as Record<string, unknown>} />
@@ -487,10 +474,8 @@ const VISIBLE_WINDOW_SIZE = 50
 export function JourneyTimeline({ messages, isProcessing, onEdit, searchQuery = '' }: Props) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [showAll, setShowAll] = useState(false)
-  const setShowTaskChainDrawer = useUIStore((s) => s.setShowTaskChainDrawer)
 
   const items = useMemo(() => buildChainItems(messages), [messages])
-  const chainDiagnosis = useChainDiagnosis(messages)
 
   const visibleItems = useMemo(() => {
     if (showAll || items.length <= VISIBLE_WINDOW_SIZE) return items
@@ -529,18 +514,6 @@ export function JourneyTimeline({ messages, isProcessing, onEdit, searchQuery = 
 
   return (
     <div className="space-y-2">
-      {/* Task Chain trigger — shows when there are tool steps */}
-      {chainDiagnosis.total > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 4px' }}>
-          <TaskChainTrigger
-            onClick={() => setShowTaskChainDrawer(true)}
-            stepCount={chainDiagnosis.total}
-            failedCount={chainDiagnosis.failed}
-            isRunning={chainDiagnosis.running > 0}
-          />
-        </div>
-      )}
-
       {hiddenCount > 0 && (
         <button
           onClick={() => setShowAll(true)}

@@ -15,10 +15,6 @@ export default defineConfig({
         entryFileNames: 'assets/main.js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name][extname]',
-        manualChunks: {
-          mermaid: ['mermaid'],
-          echarts: ['echarts'],
-        },
       },
     },
     cssCodeSplit: false,

@@ -206,18 +206,6 @@ export interface TodoItem {
 }
 
 // ============================================================================
-// Skill types
-// ============================================================================
-
-export interface SkillConfig {
-  name: string;
-  description: string;
-  content: string;
-  filePath: string;
-  enabled: boolean;
-}
-
-// ============================================================================
 // Role persona types (single-role selection for session)
 // ============================================================================
 
@@ -321,15 +309,9 @@ export type WebviewToExtensionMessage =
   | { type: "loadHooks" }
   | { type: "saveHooks"; hooks: Record<string, unknown> }
 
-  // Skills
-  | { type: "loadSkills" }
-  | { type: "saveSkill"; name: string; content: string; description: string }
-  | { type: "deleteSkill"; name: string }
-
   // UI notifications
   | { type: "showWarning"; data: string }
   | { type: "showInfo"; data: string }
-  | { type: "dismissClaudeMdBanner" }
 
 ;
 

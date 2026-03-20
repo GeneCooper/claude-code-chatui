@@ -7,10 +7,8 @@ import { TodoDisplay } from './components/TodoDisplay'
 import { HistoryView } from './components/HistoryView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { MCPPanel } from './components/MCPPanel'
-import { SkillsPanel } from './components/SkillsPanel'
 import { InstallModal } from './components/InstallModal'
 import { LoginModal } from './components/LoginModal'
-import { TaskChainDrawer } from './components/TaskChainDrawer'
 
 export default function App() {
   // Connect to VS Code extension host
@@ -18,9 +16,6 @@ export default function App() {
 
   const activeView = useUIStore((s) => s.activeView)
   const showMCPModal = useUIStore((s) => s.showMCPModal)
-  const showSkillsModal = useUIStore((s) => s.showSkillsModal)
-  const showTaskChainDrawer = useUIStore((s) => s.showTaskChainDrawer)
-  const setShowTaskChainDrawer = useUIStore((s) => s.setShowTaskChainDrawer)
   const setDraftText = useUIStore((s) => s.setDraftText)
 
   const handleHintClick = (text: string) => {
@@ -38,10 +33,8 @@ export default function App() {
       {activeView === 'history' && <HistoryView />}
       {activeView === 'settings' && <SettingsPanel />}
 {showMCPModal && <MCPPanel />}
-      {showSkillsModal && <SkillsPanel />}
       <InstallModal />
       <LoginModal />
-      <TaskChainDrawer isOpen={showTaskChainDrawer} onClose={() => setShowTaskChainDrawer(false)} />
     </div>
   )
 }

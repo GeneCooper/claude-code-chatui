@@ -1,12 +1,10 @@
-import { useState, useMemo, memo } from 'react'
+import { useState, memo } from 'react'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import { DiffView } from './DiffView'
-import { DiagnosticsBlock } from './DiagnosticsBlock'
 import { CopyButton } from './CopyButton'
 import { postMessage } from '../hooks'
 import { useSettingsStore } from '../store'
 import { isPermissionError } from '../utils'
-import { parseBashDiagnostics, hasDiagnosticPatterns } from '../diagnosticParser'
 
 interface Props {
   data: Record<string, unknown>
@@ -45,14 +43,6 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
 
   const yoloMode = useSettingsStore((s) => s.yoloMode)
   const showYoloHint = isError && isPermissionError(content) && !yoloMode
-
-  // Parse Bash output for compile errors
-  const bashCommand = toolName === 'Bash' ? (rawInput?.command as string | undefined) : undefined
-  const parsedDiagnostics = useMemo(() => {
-    if (toolName !== 'Bash' || !content || content.length < 20) return []
-    if (!hasDiagnosticPatterns(content, bashCommand)) return []
-    return parseBashDiagnostics(content, bashCommand)
-  }, [toolName, content, bashCommand])
 
   return (
     <div
@@ -200,14 +190,6 @@ export const ToolResultBlock = memo(function ToolResultBlock({ data }: Props) {
         </div>
       )}
 
-      {/* Parsed compile errors from Bash output */}
-      {parsedDiagnostics.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', padding: '4px' }}>
-          {parsedDiagnostics.map((pd, i) => (
-            <DiagnosticsBlock key={i} data={pd} />
-          ))}
-        </div>
-      )}
     </div>
   )
 })

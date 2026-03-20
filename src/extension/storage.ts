@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 import { spawn, type ChildProcess } from 'child_process';
 import type {
   ConversationData, ConversationMessage, ConversationIndexEntry,
-  MCPServerConfig, MCPConfig, UsageData, SkillConfig,
+  MCPServerConfig, MCPConfig, UsageData,
 } from '../shared/types';
 import { PROTECTED_MCP_SERVERS } from '../shared/constants';
 
@@ -137,115 +137,6 @@ export class MCPService {
 
   private async _writeConfigAsync(config: MCPConfig): Promise<void> {
     await fsp.writeFile(this._configPath, JSON.stringify(config, null, 2), 'utf8');
-  }
-}
-
-// ============================================================================
-// SkillService
-// ============================================================================
-
-export class SkillService {
-  private _skillsDir: string;
-
-  constructor() {
-    this._skillsDir = path.join(os.homedir(), '.claude', 'skills');
-    this._ensureDir();
-  }
-
-  private _ensureDir(): void {
-    if (!fs.existsSync(this._skillsDir)) {
-      fs.mkdirSync(this._skillsDir, { recursive: true });
-    }
-  }
-
-  /** Parse a skill file (with optional YAML frontmatter) into SkillConfig */
-  private _parseSkillFile(filePath: string, fallbackName?: string): SkillConfig | null {
-    try {
-      const raw = fs.readFileSync(filePath, 'utf8');
-      const baseName = path.basename(filePath);
-      let name = fallbackName ?? baseName.replace(/\.md$/, '');
-      let description = '';
-      let content = raw;
-
-      const fmMatch = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
-      if (fmMatch) {
-        const frontmatter = fmMatch[1];
-        content = fmMatch[2].trim();
-
-        const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
-        if (nameMatch) name = nameMatch[1].trim().replace(/^["']|["']$/g, '');
-
-        const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
-        if (descMatch) description = descMatch[1].trim().replace(/^["']|["']$/g, '');
-      }
-
-      return { name, description, content, filePath, enabled: true };
-    } catch { return null; }
-  }
-
-  /** Load all skills from ~/.claude/skills/ — supports 3 formats:
-   *  1. Flat .md files (our custom format)
-   *  2. Subdirectories containing SKILL.md (CLI plugin format)
-   *  3. Files without extension (CLI flat format with frontmatter)
-   */
-  loadSkills(): Record<string, SkillConfig> {
-    const result: Record<string, SkillConfig> = {};
-    try {
-      const entries = fs.readdirSync(this._skillsDir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(this._skillsDir, entry.name);
-        // Resolve symlinks to get the real type
-        let isDir = entry.isDirectory();
-        let isFile = entry.isFile();
-        if (entry.isSymbolicLink()) {
-          try {
-            const stat = fs.statSync(fullPath);
-            isDir = stat.isDirectory();
-            isFile = stat.isFile();
-          } catch { continue; } // broken symlink
-        }
-
-        if (isDir) {
-          // Format 2: directory with SKILL.md inside
-          const skillMdPath = path.join(fullPath, 'SKILL.md');
-          if (fs.existsSync(skillMdPath)) {
-            const skill = this._parseSkillFile(skillMdPath, entry.name);
-            if (skill) result[skill.name] = skill;
-          }
-        } else if (isFile) {
-          // Format 1 (.md) and Format 3 (no extension)
-          const skill = this._parseSkillFile(fullPath, entry.name.replace(/\.md$/, ''));
-          if (skill) result[skill.name] = skill;
-        }
-      }
-    } catch { /* directory read failed */ }
-    return result;
-  }
-
-  /** Save a skill as a SKILL.md file */
-  async saveSkill(name: string, description: string, content: string): Promise<void> {
-    this._ensureDir();
-    const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
-    const filePath = path.join(this._skillsDir, `${safeName}.md`);
-    const fileContent = `---\nname: ${name}\ndescription: ${description}\n---\n\n${content}`;
-    await fsp.writeFile(filePath, fileContent, 'utf8');
-  }
-
-  /** Delete a skill by name — handles all formats */
-  async deleteSkill(name: string): Promise<boolean> {
-    const skills = this.loadSkills();
-    const skill = skills[name];
-    if (!skill) return false;
-    try {
-      // For directory-based skills, filePath points to dir/SKILL.md — remove the parent dir
-      const parentDir = path.dirname(skill.filePath);
-      if (parentDir !== this._skillsDir) {
-        await fsp.rm(parentDir, { recursive: true });
-      } else {
-        await fsp.unlink(skill.filePath);
-      }
-      return true;
-    } catch { return false; }
   }
 }
 

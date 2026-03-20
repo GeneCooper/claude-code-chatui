@@ -3,9 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { remarkAlert } from 'remark-github-blockquote-alert'
 import remarkBreaks from 'remark-breaks'
-import remarkMath from 'remark-math'
 import remarkGemoji from 'remark-gemoji'
-import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'
@@ -36,8 +34,6 @@ const sanitizeSchema = {
   },
 }
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
-import { MermaidBlock } from './MermaidBlock'
-import { EChartsBlock } from './EChartsBlock'
 import { CopyButton } from './CopyButton'
 import type { ComponentPropsWithoutRef } from 'react'
 import { postMessage } from '../hooks'
@@ -72,7 +68,7 @@ const markdownComponents = {
  * Debounce markdown rendering during streaming — only re-render every 150ms
  * to avoid expensive markdown parsing on every character.
  */
-function useDebouncedText(text: string, isStreaming: boolean, delayMs = 80): string {
+function useDebouncedText(text: string, isStreaming: boolean, delayMs = 150): string {
   const [debouncedText, setDebouncedText] = useState(text)
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -129,8 +125,8 @@ export const AssistantMessage = memo(function AssistantMessage({ text, isStreami
 
   const renderedContent = useMemo(() => (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkAlert, remarkBreaks, remarkMath, remarkGemoji]}
-      rehypePlugins={[rehypeRaw, rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'prepend' }], rehypeKatex, [rehypeSanitize, sanitizeSchema]]}
+      remarkPlugins={[remarkGfm, remarkAlert, remarkBreaks, remarkGemoji]}
+      rehypePlugins={[rehypeRaw, rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'prepend' }], [rehypeSanitize, sanitizeSchema]]}
       components={markdownComponents}
     >
       {displayText}
@@ -320,16 +316,6 @@ function linkifyFilePaths(text: string): React.ReactNode {
 function CodeComponent({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) {
   const match = /language-(\w+)/.exec(className || '')
   const code = String(children).replace(/\n$/, '')
-
-  // Mermaid diagram — render as interactive SVG
-  if (match && match[1] === 'mermaid') {
-    return <MermaidBlock code={code} />
-  }
-
-  // ECharts — render as interactive chart
-  if (match && match[1] === 'echarts') {
-    return <EChartsBlock code={code} />
-  }
 
   if (match) {
     return (

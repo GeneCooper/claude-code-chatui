@@ -1,11 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
 import { postMessage, getState, setState } from '../hooks'
-import { useChatStore, useSettingsStore, useSnippetStore } from '../store'
+import { useChatStore, useSettingsStore } from '../store'
 import { useUIStore } from '../store'
 import { markOptimisticUserInput } from '../mutations'
-import { GENERATE_CLAUDE_MD_PROMPT } from './ClaudeMdBanner'
-import { PROMPT_SNIPPET_PRESETS } from '../../shared/constants'
-import { SnippetButton, SnippetDropdown } from './SnippetSelector'
 
 import { ModelSelectorModal, MODELS } from './ModelSelectorModal'
 
@@ -14,7 +11,6 @@ export const InputArea = memo(function InputArea() {
   const [ctrlEnterSend, setCtrlEnterSend] = useState(false)
   const [selectedModel, setSelectedModel] = useState('default')
   const [showModelPicker, setShowModelPicker] = useState(false)
-  const [showSnippetPicker, setShowSnippetPicker] = useState(false)
   const [images, setImages] = useState<{ name: string; dataUrl: string }[]>([])
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -24,7 +20,6 @@ export const InputArea = memo(function InputArea() {
   const isProcessing = useChatStore((s) => s.isProcessing)
   const sessionId = useChatStore((s) => s.sessionId)
   const yoloMode = useSettingsStore((s) => s.yoloMode)
-  const showClaudeMdBanner = useUIStore((s) => s.showClaudeMdBanner)
   const draftText = useUIStore((s) => s.draftText)
   const setDraftText = useUIStore((s) => s.setDraftText)
   const editingContext = useUIStore((s) => s.editingContext)
@@ -178,26 +173,7 @@ export const InputArea = memo(function InputArea() {
     const trimmed = text.trim()
     if ((!trimmed && images.length === 0) || isProcessing) return
 
-    // Build the final text with snippet prefixes
-    const snippetState = useSnippetStore.getState()
-    const allSnippets = [...PROMPT_SNIPPET_PRESETS, ...snippetState.customSnippets]
-    const selectedSnippets = allSnippets
-      .filter((s) => snippetState.selectedIds.includes(s.id))
-
-    let finalText: string
-    if (selectedSnippets.length === 1) {
-      // Single perspective: supplementary analysis hint, not identity override
-      finalText = `<analysis-perspective>\n${selectedSnippets[0].prompt}\n</analysis-perspective>\n\n${trimmed}`
-    } else if (selectedSnippets.length > 1) {
-      // Multiple perspectives: numbered for clarity
-      const perspectiveBlock = selectedSnippets
-        .map((s, i) => `${i + 1}. **${s.name}**: ${s.prompt}`)
-        .join('\n')
-      finalText = `<analysis-perspectives>\n${perspectiveBlock}\n</analysis-perspectives>\n\n${trimmed}`
-    } else {
-      finalText = trimmed
-    }
-
+    const finalText = trimmed
     const imageData = images.length > 0 ? images.map((img) => img.dataUrl) : undefined
 
     const currentEditingContext = useUIStore.getState().editingContext
@@ -655,33 +631,6 @@ export const InputArea = memo(function InputArea() {
 
             <InputSep />
 
-            {/* Skills button */}
-            <button
-              onClick={() => useUIStore.getState().setShowSkillsModal(true)}
-              className="cursor-pointer border-none"
-              style={{
-                background: 'transparent',
-                padding: '2px 4px',
-                fontWeight: 500,
-                opacity: 0.5,
-                color: 'inherit',
-                transition: 'all 0.2s ease',
-              }}
-              title="Manage Skills"
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--chatui-accent)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'inherit' }}
-            >
-              Skills
-            </button>
-
-            <InputSep />
-
-            {/* Snippets button */}
-            <SnippetButton onClick={() => setShowSnippetPicker(!showSnippetPicker)} />
-            {showSnippetPicker && <SnippetDropdown onClose={() => setShowSnippetPicker(false)} />}
-
-            <InputSep />
-
             {/* Send mode toggle */}
             <button
               onClick={() => setCtrlEnterSend(!ctrlEnterSend)}
@@ -702,46 +651,6 @@ export const InputArea = memo(function InputArea() {
               {ctrlEnterSend ? 'Ctrl+⏎' : '⏎'}
             </button>
 
-            {/* CLAUDE.md generate button */}
-            {showClaudeMdBanner && (
-              <>
-                <InputSep />
-                <button
-                  onClick={() => {
-                    useUIStore.getState().setShowClaudeMdBanner(false)
-                    const store = useChatStore.getState()
-                    markOptimisticUserInput()
-                    store.addMessage({ type: 'userInput', data: { text: GENERATE_CLAUDE_MD_PROMPT } })
-                    store.setProcessing(true)
-                    store.addMessage({ type: 'loading', data: 'Claude is working...' })
-                    useUIStore.getState().setRequestStartTime(Date.now())
-                    postMessage({ type: 'sendMessage', text: GENERATE_CLAUDE_MD_PROMPT })
-                  }}
-                  disabled={isProcessing}
-                  className="cursor-pointer border-none flex items-center gap-1"
-                  style={{
-                    background: 'transparent',
-                    padding: '2px 4px',
-                    fontWeight: 500,
-                    opacity: isProcessing ? 0.3 : 0.7,
-                    color: '#10b981',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  title="No CLAUDE.md detected — click to generate one"
-                  onMouseEnter={(e) => { if (!isProcessing) e.currentTarget.style.opacity = '1' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = isProcessing ? '0.3' : '0.7' }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/>
-                    <line x1="9" y1="15" x2="15" y2="15"/>
-                  </svg>
-                  <span>CLAUDE.md</span>
-                </button>
-              </>
-            )}
           </div>
 
           {/* Right controls */}

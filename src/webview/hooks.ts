@@ -3,14 +3,12 @@ import { useChatStore, type ChatMessage, type TodoItem } from './store'
 import { useSettingsStore } from './store'
 import { useConversationStore } from './store'
 import { useMCPStore } from './store'
-import { useSkillStore } from './store'
-import { useSnippetStore } from './store'
 import { useUIStore } from './store'
 import { createModuleLogger } from '../shared/logger'
 import { setLocale } from './i18n'
 import { parseUsageLimitTimestamp } from './utils'
 import { consumeOptimisticUserInput, consumeOptimisticPermission } from './mutations'
-import type { UsageData, SkillConfig } from '../shared/types'
+import type { UsageData } from '../shared/types'
 
 // ============================================================================
 // VS Code API Bridge
@@ -112,21 +110,26 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   output: (msg) => {
     const text = String(msg.data)
     if (msg.partial) {
-      // Partial streaming update — single setState: remove loading + update/add output
+      // Partial streaming update — mutate-in-place for speed, only create new array ref
       useChatStore.setState((state) => {
-        const msgs = state.messages.filter((m) => m.type !== 'loading')
-        // Find last output to replace
+        const msgs = state.messages
+        // Find last output to update in-place (avoid full array copy on every token)
         for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].type === 'loading') continue
           if (msgs[i].type === 'output') {
-            const updated = [...msgs]
+            // Shallow clone array + update only the changed element
+            const updated = msgs.slice()
             updated[i] = { ...msgs[i], data: text }
-            return { messages: updated, processStatus: null }
+            // Remove loading entries only if they exist
+            const hasLoading = msgs.some((m) => m.type === 'loading')
+            return { messages: hasLoading ? updated.filter((m) => m.type !== 'loading') : updated, processStatus: null }
           }
-          if (msgs[i].type !== 'loading') break
+          break
         }
-        // No existing output — add new
+        // No existing output — add new (filter loading only once)
+        const clean = msgs.some((m) => m.type === 'loading') ? msgs.filter((m) => m.type !== 'loading') : msgs
         return {
-          messages: [...msgs, { type: 'output' as const, data: text, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
+          messages: [...clean, { type: 'output' as const, data: text, id: `msg-${++messageCounter}-${Date.now()}`, timestamp: new Date().toISOString() }],
           processStatus: null,
         }
       })
@@ -278,8 +281,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   showInstallModal: () => { useUIStore.getState().setShowInstallModal(true) },
-  showClaudeMdBanner: () => { useUIStore.getState().setShowClaudeMdBanner(true) },
-
   showLoginRequired: (msg) => {
     const loginData = msg.data as { message: string }
     useUIStore.getState().setLoginErrorMessage(loginData.message || '')
@@ -293,21 +294,12 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   },
 
   settingsData: (msg) => {
-    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string; customSnippets?: Array<{ id: string; name: string; prompt: string; color: string }>; selectedSnippetIds?: string[]; snippetMode?: string }
+    const data = msg.data as { thinkingIntensity: string; yoloMode: boolean; maxTurns?: number; disallowedTools?: string[]; selectedModel?: string }
     const validModes = ['fast', 'deep', 'precise']
     if (!validModes.includes(data.thinkingIntensity)) data.thinkingIntensity = 'deep'
     useSettingsStore.getState().updateSettings(data)
     if (data.selectedModel) {
       window.dispatchEvent(new CustomEvent('modelRestored', { detail: { model: data.selectedModel } }))
-    }
-    if (data.customSnippets) {
-      useSnippetStore.getState().setCustomSnippets(data.customSnippets)
-    }
-    if (data.selectedSnippetIds) {
-      useSnippetStore.getState().setSelectedIds(data.selectedSnippetIds)
-    }
-    if (data.snippetMode && (data.snippetMode === 'single' || data.snippetMode === 'multi')) {
-      useSnippetStore.getState().setSnippetMode(data.snippetMode)
     }
   },
 
@@ -331,14 +323,6 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
 
   mcpServerError: (msg) => {
     useChatStore.getState().addMessage({ type: 'error', data: (msg.data as { error: string }).error })
-  },
-
-  skillsList: (msg) => {
-    useSkillStore.getState().setSkills(msg.data as Record<string, SkillConfig>)
-  },
-
-  skillSaveError: (msg) => {
-    log.error('Skill save error:', { detail: String(msg.data ?? '') })
   },
 
   usageUpdate: (msg) => { useUIStore.getState().setUsageData(msg.data as UsageData) },
