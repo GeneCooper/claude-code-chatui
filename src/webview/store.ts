@@ -209,7 +209,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  effortLevel: "low",
+  effortLevel: "medium",
   yoloMode: true,
   maxTurns: 25,
   updateSettings: (settings) => set((state) => ({ ...state, ...settings })),

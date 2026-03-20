@@ -617,41 +617,56 @@ const CONFIG_KEYS = {
 } as const;
 
 const DEFAULTS = {
-  EFFORT_LEVEL: 'low',
+  EFFORT_LEVEL: 'medium',
   YOLO_MODE: true,
   MAX_TURNS: 25,
 };
 
 export class SettingsManager {
   private readonly _configSection = 'claudeCodeChatUI';
+  private readonly _globalState: vscode.Memento;
+  private static readonly STATE_PREFIX = 'claudeSettings.';
+
+  constructor(context: vscode.ExtensionContext) {
+    this._globalState = context.globalState;
+  }
 
   private _getConfig(): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration(this._configSection);
   }
 
+  private _getFromState<T>(key: string, fallback: T): T {
+    return this._globalState.get<T>(`${SettingsManager.STATE_PREFIX}${key}`, fallback);
+  }
+
+  private async _saveToState(key: string, value: unknown): Promise<void> {
+    await this._globalState.update(`${SettingsManager.STATE_PREFIX}${key}`, value);
+  }
+
   getCurrentSettings(selectedModel: string): WebviewSettings {
-    const config = this._getConfig();
-    const effort = config.get<string>(CONFIG_KEYS.EFFORT_LEVEL, DEFAULTS.EFFORT_LEVEL);
+    // Read from globalState first (reliable), fall back to VS Code config, then defaults
+    const effort = this._getFromState<string>(CONFIG_KEYS.EFFORT_LEVEL, DEFAULTS.EFFORT_LEVEL);
+    const yoloMode = this._getFromState<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE);
+    const maxTurns = this._getFromState<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS);
     return {
       selectedModel,
       effortLevel: ['low', 'medium', 'high', 'max'].includes(effort) ? effort : DEFAULTS.EFFORT_LEVEL,
-      yoloMode: config.get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, DEFAULTS.YOLO_MODE),
-      maxTurns: config.get<number>(CONFIG_KEYS.MAX_TURNS, DEFAULTS.MAX_TURNS),
+      yoloMode,
+      maxTurns,
     };
   }
 
   async updateSettings(settings: Record<string, unknown>): Promise<void> {
-    const config = this._getConfig();
     if (!settings || typeof settings !== 'object') return;
 
     if (typeof settings.effortLevel === 'string') {
-      await config.update(CONFIG_KEYS.EFFORT_LEVEL, settings.effortLevel, vscode.ConfigurationTarget.Global);
+      await this._saveToState(CONFIG_KEYS.EFFORT_LEVEL, settings.effortLevel);
     }
     if (typeof settings.yoloMode === 'boolean') {
-      await config.update(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, settings.yoloMode, vscode.ConfigurationTarget.Global);
+      await this._saveToState(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, settings.yoloMode);
     }
     if (typeof settings.maxTurns === 'number') {
-      await config.update(CONFIG_KEYS.MAX_TURNS, settings.maxTurns, vscode.ConfigurationTarget.Global);
+      await this._saveToState(CONFIG_KEYS.MAX_TURNS, settings.maxTurns);
     }
   }
 
@@ -660,11 +675,11 @@ export class SettingsManager {
   }
 
   async enableYoloMode(): Promise<void> {
-    await this._getConfig().update(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true, vscode.ConfigurationTarget.Global);
+    await this._saveToState(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
   }
 
   isYoloModeEnabled(): boolean {
-    return this._getConfig().get<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
+    return this._getFromState<boolean>(CONFIG_KEYS.PERMISSIONS_YOLO_MODE, true);
   }
 
 }

@@ -289,7 +289,7 @@ const webviewMessageHandlers: Record<string, WebviewMessageHandler> = {
   settingsData: (msg) => {
     const data = msg.data as { effortLevel: string; yoloMode: boolean; maxTurns?: number; selectedModel?: string }
     const validLevels = ['low', 'medium', 'high', 'max']
-    if (!validLevels.includes(data.effortLevel)) data.effortLevel = 'low'
+    if (!validLevels.includes(data.effortLevel)) data.effortLevel = 'medium'
     useSettingsStore.getState().updateSettings(data)
     if (data.selectedModel) {
       window.dispatchEvent(new CustomEvent('modelRestored', { detail: { model: data.selectedModel } }))

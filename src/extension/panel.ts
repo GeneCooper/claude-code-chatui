@@ -114,7 +114,7 @@ export class PanelProvider {
   private _isVisible = true;
   private _titleSet = false;
 
-  private readonly _settingsManager = new SettingsManager();
+  private readonly _settingsManager: SettingsManager;
 
   /** Swap tab icon to a badge icon when a task completes in the background */
   private _showBadgeIcon(result: 'success' | 'error'): void {
@@ -149,6 +149,7 @@ export class PanelProvider {
   ) {
     log.info('PanelProvider initialized');
 
+    this._settingsManager = new SettingsManager(this._context);
     this._stateManager = new SessionStateManager();
     this._stateManager.selectedModel = this._context.workspaceState.get('claude.selectedModel', 'default');
 
